@@ -55,22 +55,23 @@ const CLIP_ALIASES := {
 	"aim": ["aim", "standing aim idle", "standing draw arrow", "bow aim"],
 	"takedown": ["takedown", "chokehold", "choke"],
 	"arrested": ["arrested", "kneeling", "surrender"],
+	"pickpocket": ["pickpocket", "pick pocket", "picking up"],
 }
 const FALLBACK := {
 	"sprint": "run", "crouch_idle": "idle", "crouch_walk": "walk",
 	"jump": "fall", "fall": "idle", "land": "idle", "death": "fall",
 	"hang_idle": "fall", "shimmy_left": "hang_idle", "shimmy_right": "hang_idle",
 	"climb_up": "jump", "hop_up": "hang_idle", "pipe_climb": "hang_idle", "vault": "jump", "roll": "land",
-	"aim": "idle", "takedown": "idle", "arrested": "idle",
+	"aim": "idle", "takedown": "idle", "arrested": "idle", "pickpocket": "walk",
 }
 const FALLBACK_ORDER: Array[String] = [
 	"sprint", "crouch_idle", "crouch_walk", "fall", "jump", "land", "death",
 	"hang_idle", "shimmy_left", "shimmy_right", "climb_up", "hop_up", "pipe_climb", "vault", "roll",
-	"aim", "takedown", "arrested",
+	"aim", "takedown", "arrested", "pickpocket",
 ]
 const LOOPING: Array[String] = [
 	"idle", "walk", "run", "sprint", "crouch_idle", "crouch_walk", "fall",
-	"hang_idle", "shimmy_left", "shimmy_right", "pipe_climb", "aim", "arrested",
+	"hang_idle", "shimmy_left", "shimmy_right", "pipe_climb", "aim", "arrested", "pickpocket",
 ]
 const ONE_SHOT: Array[String] = ["jump", "land", "death", "climb_up", "hop_up", "vault", "roll", "takedown"]
 ## States in which the clips' own root motion is cancelled (the code moves Harry instead).
@@ -274,7 +275,8 @@ func _build_tree(player: AnimationPlayer) -> void:
 	sm.add_node("aim", _anim("aim"), Vector2(750, 150))
 	sm.add_node("takedown", _anim("takedown"), Vector2(750, 300))
 	sm.add_node("arrested", _anim("arrested"), Vector2(750, 450))
-	var states: Array[String] = ["locomotion", "crouch", "jump", "fall", "land", "death", "hang", "roll", "grab", "climb_up", "pipe", "vault", "aim", "takedown", "arrested"]
+	sm.add_node("pickpocket", _anim("pickpocket"), Vector2(1000, 0))
+	var states: Array[String] = ["locomotion", "crouch", "jump", "fall", "land", "death", "hang", "roll", "grab", "climb_up", "pipe", "vault", "aim", "takedown", "arrested", "pickpocket"]
 	for a in states:
 		for b in states:
 			if a == b:
@@ -376,6 +378,9 @@ func _drive_tree(h: Harry) -> void:
 			time_scale = _fit("takedown", h.combat.takedown_time)
 		Harry.State.ARRESTED:
 			target = "arrested"
+		Harry.State.PICKPOCKET:
+			target = "pickpocket"
+			time_scale = maxf(hspeed / walk_clip_speed, 0.3)
 	if h.is_aiming() and target in ["locomotion", "crouch"]:
 		target = "aim"
 	_tree.set("parameters/speed/scale", time_scale)

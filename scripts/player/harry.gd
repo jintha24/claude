@@ -19,7 +19,7 @@ signal respawned
 
 enum State {
 	IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, ROLL,
-	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, ARRESTED, DEAD,
+	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, PICKPOCKET, ARRESTED, DEAD,
 }
 
 # --- Real-world body measurements ---------------------------------------------
@@ -85,6 +85,8 @@ var is_crouching: bool = false
 var parkour: HarryParkour
 var stealth: HarryStealth
 var combat: HarryCombat
+var thievery: HarryThievery
+var inventory: PlayerInventory
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -134,6 +136,9 @@ func _ready() -> void:
 	stealth.setup(self)
 	combat = _ensure_child("Combat", HarryCombat) as HarryCombat
 	combat.setup(self)
+	thievery = _ensure_child("Thievery", HarryThievery) as HarryThievery
+	thievery.setup(self)
+	inventory = _ensure_child("Inventory", PlayerInventory) as PlayerInventory
 	if not camera_path.is_empty():
 		_camera = get_node(camera_path) as ThirdPersonCamera
 	health = max_health
@@ -211,6 +216,7 @@ func arrest(by: Node) -> void:
 		return
 	parkour.cancel()
 	combat.cancel()
+	thievery.cancel()
 	velocity = Vector3.ZERO
 	_set_state(State.ARRESTED)
 	arrested.emit(by)
@@ -233,6 +239,14 @@ func _physics_process(delta: float) -> void:
 		var yaw := _camera.get_yaw() if _camera else 0.0
 		wish_dir = Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw).normalized()
 	_wish_dir = wish_dir * strength
+
+	# ---- Pickpocketing owns the body while it runs ---------------------------
+	if thievery.is_busy():
+		_update_timers(delta, true)
+		thievery.physics_update(delta)
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
 
 	# ---- Takedowns own the body while they run --------------------------------
 	if combat.is_busy():
@@ -264,8 +278,10 @@ func _physics_process(delta: float) -> void:
 		_toggle_crouch()
 	if Input.is_action_just_pressed("jump"):
 		_jump_buffer = jump_buffer_time
+	if on_floor:
+		thievery.update_prompt(delta)
 	combat.handle_input(delta, on_floor)
-	if combat.is_busy():
+	if combat.is_busy() or thievery.is_busy():
 		if _animator:
 			_animator.update_animation(self, delta)
 		return
@@ -509,6 +525,7 @@ func respawn() -> void:
 	_roll_timer = 0.0
 	parkour.cancel()
 	combat.cancel()
+	thievery.cancel()
 	reset_physics_interpolation()
 	_respawning = true
 	_set_state(State.IDLE)

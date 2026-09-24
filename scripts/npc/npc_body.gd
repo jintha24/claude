@@ -7,7 +7,7 @@ extends Node3D
 ## animated with an AnimationTree. Otherwise a procedural mannequin is built in the
 ## silhouette of the chosen period outfit and posed in code.
 
-enum Pose { NORMAL, LOOK_AROUND, ALERT, RATTLE, STUNNED, UNCONSCIOUS }
+enum Pose { NORMAL, LOOK_AROUND, ALERT, RATTLE, STUNNED, UNCONSCIOUS, SHOUT, BROWSE }
 
 ## Victorian outfits for the stand-in mannequin.
 enum Outfit { CONSTABLE, GENTLEMAN, WORKER, LADY, HOUSE_GUARD }
@@ -39,6 +39,10 @@ var _phase := 0.0
 var _speed := 0.0
 var _down := 0.0
 var _t := 0.0
+## Mannequin parts waiting to be merged: one mesh per joint, coloured by vertex colour,
+## so a whole crowd shares a single material (few draw calls per person).
+var _pending := {}
+static var _shared_material: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -48,6 +52,10 @@ func _ready() -> void:
 			_setup_model(scene.instantiate() as Node3D)
 	if not _has_model:
 		_build_mannequin()
+
+
+func is_model() -> bool:
+	return _has_model
 
 
 ## Called by the owning NPC every physics frame.
@@ -141,6 +149,7 @@ func _build_mannequin() -> void:
 	if outfit == Outfit.CONSTABLE:
 		# Truncheon at the right hip.
 		_cylinder(_hips, 0.018, 0.018, 0.38, Vector3(0.22, -0.1, 0.02), _mat(Color(0.12, 0.07, 0.04), 0.6))
+	_flush_parts()
 
 
 func _pose_mannequin(delta: float) -> void:
@@ -176,6 +185,17 @@ func _pose_mannequin(delta: float) -> void:
 			# Swinging the police rattle above his head.
 			_shoulder[1].rotation.x = deg_to_rad(160.0)
 			_shoulder[1].rotation.z = deg_to_rad(20.0) + sin(_t * 18.0) * deg_to_rad(12.0)
+		Pose.SHOUT:
+			# Pointing and shouting after being robbed.
+			_shoulder[1].rotation.x = deg_to_rad(95.0)
+			_shoulder[0].rotation.x = deg_to_rad(40.0) + sin(_t * 8.0) * deg_to_rad(10.0)
+			_head.rotation.x = -deg_to_rad(8.0)
+		Pose.BROWSE:
+			# Looking over the goods on a stall.
+			_head.rotation.x = deg_to_rad(20.0)
+			_spine.rotation.x = -deg_to_rad(8.0)
+			_shoulder[1].rotation.x = deg_to_rad(25.0) + sin(_t * 0.7) * deg_to_rad(8.0)
+			_elbow[1].rotation.x = deg_to_rad(50.0)
 		Pose.STUNNED:
 			for i in 2:
 				_shoulder[i].rotation.x = deg_to_rad(150.0)
@@ -315,14 +335,10 @@ func _capsule(parent: Node3D, radius: float, h: float, pos: Vector3, mat: Materi
 	var mesh := CapsuleMesh.new()
 	mesh.radius = radius
 	mesh.height = maxf(h, radius * 2.0)
-	mesh.radial_segments = 12
-	mesh.rings = 3
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	mi.rotation_degrees = rot_deg
-	parent.add_child(mi)
+	mesh.radial_segments = 10
+	mesh.rings = 2
+	var basis := Basis.from_euler(rot_deg * (PI / 180.0))
+	_add_part(parent, mesh, Transform3D(basis, pos), mat)
 
 
 func _cylinder(parent: Node3D, top: float, bottom: float, h: float, pos: Vector3, mat: Material) -> void:
@@ -330,22 +346,51 @@ func _cylinder(parent: Node3D, top: float, bottom: float, h: float, pos: Vector3
 	mesh.top_radius = top
 	mesh.bottom_radius = bottom
 	mesh.height = h
-	mesh.radial_segments = 14
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
+	mesh.radial_segments = 12
+	mesh.rings = 1
+	_add_part(parent, mesh, Transform3D(Basis.IDENTITY, pos), mat)
 
 
 func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.position = pos
-	parent.add_child(mi)
+	_add_part(parent, mesh, Transform3D(Basis.IDENTITY, pos), mat)
+
+
+func _add_part(parent: Node3D, mesh: PrimitiveMesh, xform: Transform3D, mat: Material) -> void:
+	var color := (mat as StandardMaterial3D).albedo_color if mat is StandardMaterial3D else Color.WHITE
+	var arrays := mesh.get_mesh_arrays()
+	var count := (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+	var colors := PackedColorArray()
+	colors.resize(count)
+	colors.fill(color)
+	arrays[Mesh.ARRAY_COLOR] = colors
+	var tmp := ArrayMesh.new()
+	tmp.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	var st: SurfaceTool = _pending.get(parent)
+	if st == null:
+		st = SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_pending[parent] = st
+	st.append_from(tmp, 0, xform)
+
+
+func _flush_parts() -> void:
+	if _shared_material == null:
+		_shared_material = StandardMaterial3D.new()
+		_shared_material.vertex_color_use_as_albedo = true
+		_shared_material.vertex_color_is_srgb = true
+		_shared_material.roughness = 0.82
+	for parent: Node3D in _pending:
+		var st: SurfaceTool = _pending[parent]
+		st.set_material(_shared_material)
+		var mi := MeshInstance3D.new()
+		mi.mesh = st.commit()
+		mi.visibility_range_end = 150.0
+		mi.visibility_range_end_margin = 10.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		parent.add_child(mi)
+	_pending.clear()
 
 
 static var _mat_cache := {}

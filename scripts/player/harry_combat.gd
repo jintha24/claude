@@ -84,7 +84,8 @@ func handle_input(delta: float, on_floor: bool) -> void:
 	else:
 		draw = 0.0
 		if on_floor and Input.is_action_just_pressed("interact"):
-			if not _try_takedown():
+			# E does the most useful thing within reach: takedown, pick a pocket, pick up an arrow.
+			if not _try_takedown() and not _harry.thievery.try_start():
 				_try_pickup()
 
 

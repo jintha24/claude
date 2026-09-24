@@ -1,5 +1,5 @@
 class_name Guard
-extends CharacterBody3D
+extends NPCCharacter
 ## A Metropolitan Police constable (or a private house guard) with realistic senses.
 ##
 ## Senses (checked 10x a second):
@@ -17,19 +17,14 @@ signal state_changed(guard: Guard, old_state: State, new_state: State)
 
 enum State { PATROL, WAIT, SUSPICIOUS, INVESTIGATE, SEARCH, CHASE, RETURN, STUNNED, UNCONSCIOUS }
 
-const LAYER_NPC := 1 << 2
 const MASK_SIGHT := 1 | (1 << 3)
 
-@export var display_name: String = "Constable"
 @export var patrol_route_path: NodePath
-@export var outfit: NPCBody.Outfit = NPCBody.Outfit.CONSTABLE
-@export_file("*.glb", "*.tscn") var body_model_path: String = ""
 
 @export_group("Movement (m/s)")
 @export var walk_speed: float = 1.35
 @export var brisk_speed: float = 2.1
 @export var run_speed: float = 5.2
-@export var turn_speed: float = 5.0
 
 @export_group("Eyes")
 @export var vision_range: float = 26.0
@@ -63,15 +58,11 @@ var awareness: float = 0.0
 var alertness: float = 0.0
 var last_known: Vector3 = Vector3.ZERO
 
-var _agent: NavigationAgent3D
-var _body: NPCBody
 var _harry: Harry
 var _route: PatrolRoute
 var _route_i := 0
 var _route_dir := 1
 var _home := Transform3D.IDENTITY
-var _yaw := 0.0
-var _look_yaw := NAN
 var _state_time := 0.0
 var _wait_time := 0.0
 var _perceive_timer := 0.0
@@ -81,54 +72,20 @@ var _search_timer := 0.0
 var _pause := 0.0
 var _poking: HidingSpot = null
 var _checked_spots: Array[Node] = []
-var _safe_velocity := Vector3.ZERO
-var _has_safe_velocity := false
-var _moving := false
-var _speed := 0.0
-var _pose: NPCBody.Pose = NPCBody.Pose.NORMAL
 var _rattle_time := 0.0
 var _chase_speed_mult := 1.0
-var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _bark_cooldown := 0.0
 var _found_bodies: Array[Node] = []
 
 
+func _init() -> void:
+	display_name = "Constable"
+	outfit = NPCBody.Outfit.CONSTABLE
+
+
 func _ready() -> void:
 	add_to_group("guards")
-	collision_layer = LAYER_NPC
-	collision_mask = 1 | (1 << 1) | (1 << 3) | LAYER_NPC
-	floor_snap_length = 0.35
-	floor_max_angle = deg_to_rad(46.0)
-	var cs := CollisionShape3D.new()
-	var cap := CapsuleShape3D.new()
-	cap.radius = 0.3
-	cap.height = 1.76
-	cs.shape = cap
-	cs.position = Vector3(0, 0.88, 0)
-	add_child(cs)
-
-	_agent = NavigationAgent3D.new()
-	_agent.path_desired_distance = 0.6
-	_agent.target_desired_distance = 0.5
-	_agent.radius = 0.35
-	_agent.height = 1.8
-	_agent.max_speed = run_speed
-	_agent.avoidance_enabled = true
-	_agent.neighbor_distance = 6.0
-	_agent.time_horizon_agents = 1.2
-	_agent.velocity_computed.connect(func(v: Vector3) -> void:
-		_safe_velocity = v
-		_has_safe_velocity = true)
-	add_child(_agent)
-
-	_body = NPCBody.new()
-	_body.name = "Body"
-	_body.outfit = outfit
-	_body.model_path = body_model_path
-	add_child(_body)
-
-	_yaw = rotation.y
-	rotation = Vector3.ZERO
+	_setup_npc(run_speed)
 	_home = Transform3D(Basis(Vector3.UP, _yaw), global_position)
 	if not patrol_route_path.is_empty():
 		_route = get_node_or_null(patrol_route_path) as PatrolRoute
@@ -148,10 +105,6 @@ func set_route(route: PatrolRoute) -> void:
 # ---------------------------------------------------------------------------
 func is_down() -> bool:
 	return state == State.UNCONSCIOUS or state == State.STUNNED
-
-
-func get_facing_dir() -> Vector3:
-	return Vector3(-sin(_yaw), 0.0, -cos(_yaw))
 
 
 ## A takedown works from behind (or the side) on a guard who isn't chasing Harry.
@@ -211,11 +164,10 @@ func reset_after_player_respawn() -> void:
 func _physics_process(delta: float) -> void:
 	if _harry == null:
 		_harry = get_tree().get_first_node_in_group("player") as Harry
+	_begin_frame(delta)
 	_state_time += delta
 	_bark_cooldown = maxf(_bark_cooldown - delta, 0.0)
 	alertness = move_toward(alertness, 0.0, delta / 120.0)
-	_moving = false
-	_speed = 0.0
 	if state != State.STUNNED:
 		_pose = NPCBody.Pose.NORMAL
 
@@ -258,10 +210,6 @@ func _physics_process(delta: float) -> void:
 				_bark("wake")
 				_enter(State.SEARCH)
 	_apply_movement(delta)
-
-
-func _nav_ready() -> bool:
-	return NavigationServer3D.map_get_iteration_id(get_world_3d().navigation_map) > 0
 
 
 func _enter(new_state: State) -> void:
@@ -408,6 +356,8 @@ func _on_noise(pos: Vector3, radius: float, kind: String, suspicious: bool, sour
 		return
 	if not suspicious:
 		return
+	if kind == "thief_shout":
+		alertness = 1.0 # "Stop, thief!" puts every constable on edge
 	if state == State.CHASE:
 		if source == _harry:
 			last_known = pos
@@ -587,55 +537,8 @@ func _do_return(_delta: float) -> void:
 		_enter(State.PATROL if _route and _route.size() > 1 else State.WAIT)
 
 
-# ---------------------------------------------------------------------------
-# Movement
-# ---------------------------------------------------------------------------
-## Walks towards `target` along the navmesh. Returns true on arrival.
-func _move_to(target: Vector3, speed: float) -> bool:
-	if _agent.target_position.distance_to(target) > 0.3:
-		_agent.target_position = target
-	var flat := Vector2(target.x - global_position.x, target.z - global_position.z).length()
-	if flat < 0.6 or _agent.is_navigation_finished():
-		return true
-	var next := _agent.get_next_path_position()
-	var dir := next - global_position
-	dir.y = 0.0
-	if dir.length() < 0.01:
-		return false
-	dir = dir.normalized()
-	_moving = true
-	_speed = speed
-	_agent.max_speed = speed
-	_agent.velocity = dir * speed
-	_look_yaw = atan2(-dir.x, -dir.z)
-	return false
-
-
-func _face_point(p: Vector3) -> void:
-	var d := p - global_position
-	if Vector2(d.x, d.z).length() > 0.05:
-		_look_yaw = atan2(-d.x, -d.z)
-
-
-func _apply_movement(delta: float) -> void:
-	var h := Vector3.ZERO
-	if _moving:
-		h = _safe_velocity if _has_safe_velocity else _agent.velocity
-		h.y = 0.0
-	if state == State.UNCONSCIOUS or state == State.STUNNED:
-		h = Vector3.ZERO
-	var cur := Vector3(velocity.x, 0.0, velocity.z)
-	cur = cur.move_toward(h, 12.0 * delta)
-	velocity.x = cur.x
-	velocity.z = cur.z
-	velocity.y = 0.0 if is_on_floor() else velocity.y - _gravity * delta
-	if is_on_floor() and h != Vector3.ZERO:
-		CharacterMotion.try_step_up(self, velocity, delta, 0.34)
-	move_and_slide()
-	if not is_nan(_look_yaw) and state != State.UNCONSCIOUS:
-		_yaw = rotate_toward(_yaw, _look_yaw, turn_speed * delta)
-	_body.rotation.y = _yaw
-	_body.update_body(Vector2(velocity.x, velocity.z).length(), _pose, delta)
+func _apply_movement(delta: float, frozen: bool = false) -> void:
+	super._apply_movement(delta, frozen or state == State.UNCONSCIOUS or state == State.STUNNED)
 
 
 # ---------------------------------------------------------------------------

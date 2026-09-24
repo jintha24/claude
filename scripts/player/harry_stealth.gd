@@ -29,6 +29,8 @@ var _harry: Harry
 var _restricted_zones: Array[Node] = []
 var _light_timer := 0.0
 var _stride_acc := 0.0
+## Number of townsfolk close around Harry: a crowd hides him.
+var crowd_cover: int = 0
 
 
 func setup(harry: Harry) -> void:
@@ -75,6 +77,7 @@ func _physics_process(delta: float) -> void:
 		var exclude: Array[RID] = [_harry.get_rid()]
 		exposure = Stealth.light_exposure_at(_harry.global_position + Vector3.UP * 1.2, _harry.get_world_3d(), exclude)
 		_update_surface()
+		_update_crowd()
 	_update_visibility()
 	_update_conspicuousness()
 	_update_footsteps(delta)
@@ -86,6 +89,8 @@ func _update_visibility() -> void:
 		v *= 0.6
 	if _harry.get_horizontal_speed() < 0.2 and not _harry.is_climbing():
 		v *= 0.75 # a still figure is harder to pick out
+	if crowd_cover >= 2:
+		v *= 0.55 # lost among the crowd
 	if is_hidden():
 		v = 0.0
 	visibility = clampf(v, 0.0, 1.0)
@@ -97,6 +102,8 @@ func _update_conspicuousness() -> void:
 		c = maxf(c, 0.3)
 	if _harry.is_crouching and _harry.get_horizontal_speed() > 0.2:
 		c = maxf(c, 0.5)
+	if _harry.thievery and _harry.thievery.is_busy():
+		c = maxf(c, 0.6) # hand in a stranger's pocket
 	if _harry.is_climbing() or surface == "slate":
 		c = maxf(c, 0.9)
 	if is_in_restricted_zone():
@@ -106,6 +113,13 @@ func _update_conspicuousness() -> void:
 	if crime_timer > 0.0:
 		c = 1.0
 	conspicuousness = c
+
+
+func _update_crowd() -> void:
+	crowd_cover = 0
+	for node in _harry.get_tree().get_nodes_in_group("civilians"):
+		if (node as Node3D).global_position.distance_to(_harry.global_position) < 2.2:
+			crowd_cover += 1
 
 
 func _update_surface() -> void:

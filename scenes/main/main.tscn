@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/camera/third_person_camera.tscn" id="7_raeie"]
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="9_nvumn"]
 [ext_resource type="Script" path="res://scripts/world/street_patrols.gd" id="10_patrl"]
+[ext_resource type="Script" path="res://scripts/world/market_square.gd" id="11_markt"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -42,6 +43,9 @@ directional_shadow_max_distance = 150.0
 
 [node name="LondonStreet" type="Node3D" parent="." unique_id=1353735113]
 script = ExtResource("4_blune")
+
+[node name="MarketSquare" type="Node3D" parent="."]
+script = ExtResource("11_markt")
 
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavigationMesh_street")

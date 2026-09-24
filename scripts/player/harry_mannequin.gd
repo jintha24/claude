@@ -147,6 +147,13 @@ func _pose_combat(h: Harry, delta: float) -> void:
 				_elbow[i].rotation.x = deg_to_rad(115.0)
 			_spine.rotation.x = deg_to_rad(8.0)
 			_hips.position.y = HIP_HEIGHT - 0.12
+		Harry.State.PICKPOCKET:
+			# Close behind the mark, right hand slipping into their coat pocket.
+			_shoulder[1].rotation.x = deg_to_rad(35.0)
+			_shoulder[1].rotation.z = deg_to_rad(-10.0)
+			_elbow[1].rotation.x = deg_to_rad(55.0)
+			_spine.rotation.x = -deg_to_rad(12.0)
+			_head.rotation.x = deg_to_rad(15.0)
 		Harry.State.ARRESTED:
 			# On his knees, hands behind his back.
 			for i in 2:

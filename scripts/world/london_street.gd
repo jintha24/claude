@@ -102,8 +102,9 @@ func _build_ground() -> void:
 		mb.add_box(pave_size, Vector3(pave_x, PAVE_TOP - pave_size.y * 0.5, 0), paving)
 		_box_collider(ground, kerb_size, Vector3(kerb_x, PAVE_TOP - kerb_size.y * 0.5, 0))
 		_box_collider(ground, pave_size, Vector3(pave_x, PAVE_TOP - pave_size.y * 0.5, 0))
-	# Pavement strips in front of the two end buildings.
-	for side in [-1.0, 1.0]:
+	# Pavement strip in front of the bank at the south end (the north end opens into the
+	# market square, Phase 4).
+	for side in [1.0]:
 		var z: float = side * (STREET_HALF_LEN - 1.25)
 		var size := Vector3(ROAD_HALF * 2.0, PAVE_TOP + 0.2, 2.5)
 		mb.add_box(size, Vector3(0, PAVE_TOP - size.y * 0.5, z), paving)
@@ -203,16 +204,6 @@ func _style_building(b: BuildingFacade) -> void:
 
 
 func _build_end_buildings() -> void:
-	var north := BuildingFacade.new()
-	north.name = "EndNorth"
-	north.width = FACADE_X * 2.0
-	north.depth = 12.0
-	north.upper_floors = 2
-	north.wall_material = "stucco"
-	north.variation_seed = 7
-	north.position = Vector3(-FACADE_X, PAVE_TOP, -STREET_HALF_LEN)
-	add_child(north)
-
 	var south := BuildingFacade.new()
 	south.name = "EndSouth"
 	south.width = FACADE_X * 2.0
@@ -418,7 +409,7 @@ func _build_landmarks() -> void:
 	for i in 8:
 		var w := _rng.randf_range(6.0, 12.0)
 		var h := _rng.randf_range(10.0, 16.0)
-		var pos := Vector3(_rng.randf_range(-40.0, 40.0), h * 0.5, _rng.randf_range(-100.0, -65.0))
+		var pos := Vector3(_rng.randf_range(-40.0, 40.0), h * 0.5, _rng.randf_range(-150.0, -110.0))
 		roofs.add_box(Vector3(w, h, 10.0), pos, brick)
 	var rmi := roofs.build_into(self, "DistantBlocks")
 	rmi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED

@@ -145,11 +145,11 @@ static func make_horse_trough() -> StaticBody3D:
 
 
 ## A loose heap of hay (no collision) with a HidingSpot inside it.
-static func make_hay_heap() -> Node3D:
+static func make_hay_heap(color: Color = Color(0.72, 0.6, 0.33)) -> Node3D:
 	var root := Node3D.new()
 	root.name = "HayHeap"
 	var hay := StandardMaterial3D.new()
-	hay.albedo_color = Color(0.72, 0.6, 0.33)
+	hay.albedo_color = color
 	hay.roughness = 1.0
 	var noise := NoiseTexture2D.new()
 	var fnl := FastNoiseLite.new()
@@ -190,3 +190,99 @@ static func make_hay_heap() -> Node3D:
 	spot.add_child(cs)
 	root.add_child(spot)
 	return root
+
+
+## A costermonger's market stall: trestle table under a canvas awning, laden with goods.
+## Faces local -Z (customers stand in front, the trader behind). 2.6 m wide.
+## goods: "fish", "fruit", "vegetables", "bread", "flowers", "cloth", "crockery", "chestnuts"
+static func make_market_stall(goods: String, awning: Color, seed_value: int) -> StaticBody3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var body := StaticBody3D.new()
+	body.name = "Stall"
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	var wood := MaterialLibrary.get_material("wood_planks")
+	var cloth := MaterialLibrary.get_tinted("wood_painted", awning)
+	var stripe := MaterialLibrary.get_tinted("wood_painted", Color(0.85, 0.82, 0.72))
+	var mb := MeshBuilder.new()
+	var w := 2.6
+	var d := 1.1
+	var h := 0.85
+	mb.add_box(Vector3(w, 0.05, d), Vector3(0, h, 0), wood) # table top
+	mb.add_box(Vector3(w, h - 0.05, 0.03), Vector3(0, (h - 0.05) * 0.5, -d * 0.5 + 0.02), cloth) # front cloth
+	for sx: float in [-1.0, 1.0]:
+		for sz: float in [-1.0, 1.0]:
+			mb.add_box(Vector3(0.06, 2.3 if sz > 0 else 2.1, 0.06), Vector3(sx * (w * 0.5 - 0.05), (2.3 if sz > 0 else 2.1) * 0.5, sz * (d * 0.5 + 0.35)), wood)
+	# Striped awning sloping down towards the customers.
+	var stripes := 8
+	for i in stripes:
+		var x := -w * 0.5 - 0.1 + (w + 0.2) * (float(i) + 0.5) / stripes
+		mb.add_box(Vector3((w + 0.2) / stripes, 0.02, d + 1.2), Vector3(x, 2.22, 0.0), cloth if i % 2 == 0 else stripe, Basis(Vector3.RIGHT, deg_to_rad(-9.0)))
+	# Goods.
+	var produce := func(color: Color, radius: float, count: int, area: Vector2, y: float) -> void:
+		var mat := MaterialLibrary.get_tinted("wood_painted", color)
+		for i in count:
+			var p := Vector3(rng.randf_range(-area.x, area.x), y + radius, rng.randf_range(-area.y, area.y))
+			var m := SphereMesh.new()
+			m.radius = radius * rng.randf_range(0.85, 1.15)
+			m.height = m.radius * 2.0 * rng.randf_range(0.85, 1.0)
+			m.radial_segments = 8
+			m.rings = 4
+			mb.add_mesh(m, Transform3D(Basis.IDENTITY, p), mat)
+	for bx: float in [-0.8, 0.0, 0.8]:
+		mb.add_box(Vector3(0.7, 0.14, 0.55), Vector3(bx, h + 0.1, 0.05), wood) # wooden trays
+	match goods:
+		"fish":
+			var ice := MaterialLibrary.get_tinted("wood_painted", Color(0.85, 0.9, 0.95))
+			var fish := MaterialLibrary.get_tinted("iron", Color(0.55, 0.58, 0.6))
+			mb.add_box(Vector3(2.3, 0.06, 0.6), Vector3(0, h + 0.18, 0.05), ice)
+			for i in 14:
+				var m := CapsuleMesh.new()
+				m.radius = 0.04
+				m.height = rng.randf_range(0.28, 0.4)
+				var basis := Basis(Vector3.FORWARD, PI * 0.5).rotated(Vector3.UP, rng.randf_range(-0.4, 0.4))
+				mb.add_mesh(m, Transform3D(basis, Vector3(rng.randf_range(-1.0, 1.0), h + 0.25, rng.randf_range(-0.2, 0.25))), fish)
+		"fruit":
+			produce.call(Color(0.62, 0.1, 0.06), 0.04, 30, Vector2(1.0, 0.22), h + 0.16)
+			produce.call(Color(0.9, 0.5, 0.08), 0.045, 24, Vector2(1.0, 0.22), h + 0.16)
+		"vegetables":
+			produce.call(Color(0.3, 0.45, 0.18), 0.09, 12, Vector2(1.0, 0.2), h + 0.16)
+			produce.call(Color(0.45, 0.33, 0.2), 0.045, 26, Vector2(1.0, 0.22), h + 0.16)
+		"bread":
+			var crust := MaterialLibrary.get_tinted("wood_painted", Color(0.62, 0.4, 0.18))
+			for i in 12:
+				var m := CapsuleMesh.new()
+				m.radius = 0.06
+				m.height = 0.26
+				mb.add_mesh(m, Transform3D(Basis(Vector3.FORWARD, PI * 0.5), Vector3(rng.randf_range(-1.0, 1.0), h + 0.24, rng.randf_range(-0.2, 0.2))), crust)
+		"flowers":
+			for c: Color in [Color(0.75, 0.1, 0.15), Color(0.9, 0.85, 0.3), Color(0.9, 0.9, 0.9), Color(0.5, 0.2, 0.6)]:
+				produce.call(c, 0.035, 14, Vector2(1.0, 0.22), h + 0.3)
+		"cloth":
+			for i in 8:
+				var m := CylinderMesh.new()
+				m.top_radius = 0.07
+				m.bottom_radius = 0.07
+				m.height = 0.55
+				var c := Color.from_hsv(rng.randf(), 0.5, rng.randf_range(0.3, 0.7))
+				mb.add_mesh(m, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(-1.0 + i * 0.28, h + 0.25, 0.05)), MaterialLibrary.get_tinted("wood_painted", c))
+		"crockery":
+			var glaze := MaterialLibrary.get_tinted("wood_painted", Color(0.88, 0.86, 0.8))
+			for i in 10:
+				var m := CylinderMesh.new()
+				m.top_radius = rng.randf_range(0.06, 0.1)
+				m.bottom_radius = m.top_radius * 0.7
+				m.height = rng.randf_range(0.1, 0.25)
+				mb.add_mesh(m, Transform3D(Basis.IDENTITY, Vector3(rng.randf_range(-1.0, 1.0), h + 0.17 + m.height * 0.5, rng.randf_range(-0.2, 0.2))), glaze)
+		_:
+			produce.call(Color(0.35, 0.2, 0.1), 0.025, 40, Vector2(1.0, 0.22), h + 0.16) # chestnuts
+	var mi := mb.build_into(body, "Mesh")
+	mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(w, h + 0.1, d)
+	cs.shape = box
+	cs.position = Vector3(0, (h + 0.1) * 0.5, 0)
+	body.add_child(cs)
+	return body
