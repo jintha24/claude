@@ -107,6 +107,7 @@ func _build() -> void:
 
 ## Broken glass lets the wind blow the gas flame out (a blunt arrow does this).
 func extinguish() -> void:
+	set_meta("broken", true) # stays dark until it's mended (DayNightCycle, next day)
 	lit = false
 
 

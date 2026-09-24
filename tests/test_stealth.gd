@@ -153,8 +153,9 @@ func run_tests() -> void:
 	await clear_guards()
 
 	# --- Light ---------------------------------------------------------------------
-	var old_ambient := Stealth.ambient_light
-	Stealth.ambient_light = 0.05 # night
+	GameClock.minutes = 22.0 * 60.0 # night: the lamplighter has been round
+	await wait(45)
+	check("at 10 pm it's dark and the gas lamps are lit", Stealth.ambient_light < 0.1 and get_nodes_in_group_safe("gas_lamps").all(func(l: Node) -> bool: return (l as GasLamp).lit))
 	var lamp: GasLamp = null
 	for n in get_nodes_in_group_safe("gas_lamps"):
 		lamp = n as GasLamp
@@ -180,8 +181,10 @@ func run_tests() -> void:
 	await tp(lamp.global_position + Vector3(1.2, 0.0, 0.0), 0.0)
 	await wait(10)
 	check("the doused lamp no longer lights Harry", harry.stealth.exposure < lit_exposure - 0.3, "%.2f" % harry.stealth.exposure)
+	lamp.remove_meta("broken")
 	lamp.lit = true
-	Stealth.ambient_light = old_ambient
+	GameClock.minutes = 12.0 * 60.0
+	await wait(45)
 
 	g = spawn_guard(Vector3(0, 0, 20), 0.0)
 	await tp(Vector3(0, 0.05, 30.0), 0.0)

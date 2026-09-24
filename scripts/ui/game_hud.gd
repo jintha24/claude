@@ -29,6 +29,9 @@ var _last_health := 100.0
 var _flash := 0.0
 var _stealth_hud: StealthHUD
 var _pickpocket_hud: PickpocketHUD
+var _clock_label: Label
+var _clock_alpha := 0.0
+var _clock_timer := 6.0
 
 
 func _ready() -> void:
@@ -45,6 +48,16 @@ func _ready() -> void:
 	add_child(_pickpocket_hud)
 	_build_overlays()
 	_build_debug()
+	_clock_label = _make_label("", 20)
+	_clock_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_clock_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_clock_label.offset_top = 18.0
+	_clock_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	_clock_label.add_theme_constant_override("outline_size", 5)
+	add_child(_clock_label)
+	GameClock.bus().hour_passed.connect(func(_h: int) -> void: _clock_timer = 6.0)
+	GameClock.bus().time_jumped.connect(func(_h: float) -> void: _clock_timer = 6.0)
 	_build_pause_menu()
 	if not player_path.is_empty():
 		_player = get_node(player_path) as Harry
@@ -198,6 +211,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		_set_paused(not get_tree().paused)
 		get_viewport().set_input_as_handled()
+	elif OS.is_debug_build() and event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).physical_keycode == KEY_F6:
+		GameClock.advance(60.0) # debug builds only: skip an hour
 	elif event.is_action_pressed("debug_overlay"):
 		_debug_label.visible = not _debug_label.visible
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and not get_tree().paused:
@@ -214,6 +229,13 @@ func _set_paused(p: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	# Pocket-watch clock: shown on the hour, and while holding Tab.
+	_clock_timer = maxf(_clock_timer - delta, 0.0)
+	var show_clock := _clock_timer > 0.0 or Input.is_action_pressed("inventory")
+	_clock_alpha = move_toward(_clock_alpha, 1.0 if show_clock else 0.0, delta * 2.0)
+	_clock_label.modulate.a = _clock_alpha
+	if _clock_alpha > 0.0:
+		_clock_label.text = "%s\n%s" % [GameClock.clock_string(), GameClock.date_string()]
 	# Health bar fades in when hurt and out again a few seconds after.
 	_health_show_timer = maxf(_health_show_timer - delta, 0.0)
 	var want := 1.0 if _health_show_timer > 0.0 or (_player and _player.health < _player.max_health * 0.35) else 0.0

@@ -42,6 +42,9 @@ static func get_material(key: String) -> StandardMaterial3D:
 	match key:
 		"glass":
 			mat = _glass()
+		"glass_0", "glass_1", "glass_2", "glass_shop":
+			mat = _glass()
+			mat.resource_name = key
 		"iron":
 			mat = _simple(Color(0.035, 0.035, 0.035), 0.45, 0.75)
 		"brass":
@@ -58,6 +61,26 @@ static func get_material(key: String) -> StandardMaterial3D:
 			mat = _textured(key)
 	_cache[key] = mat
 	return mat
+
+
+## Lamplight behind a group of house windows (0..2) at night. DayNightCycle drives this.
+static func set_window_lit(group: int, lit: bool) -> void:
+	# Oil lamps and candles behind curtains: a dim, warm glow, not a shop sign.
+	_set_glass_glow(get_material("glass_%d" % group), lit, Color(1.0, 0.52, 0.22), 0.35)
+
+
+## Shop windows stay lit until closing time.
+static func set_shop_window_lit(lit: bool) -> void:
+	_set_glass_glow(get_material("glass_shop"), lit, Color(1.0, 0.6, 0.3), 0.6)
+
+
+static func _set_glass_glow(mat: StandardMaterial3D, lit: bool, color: Color, energy: float) -> void:
+	if mat.emission_enabled == lit:
+		return
+	mat.emission_enabled = lit
+	mat.emission = color
+	mat.emission_energy_multiplier = energy
+	mat.albedo_color = Color(0.12, 0.07, 0.04) if lit else Color(0.045, 0.05, 0.055)
 
 
 ## A copy of a textured material multiplied by a colour (e.g. painted woodwork).

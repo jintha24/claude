@@ -9,6 +9,8 @@
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="9_nvumn"]
 [ext_resource type="Script" path="res://scripts/world/street_patrols.gd" id="10_patrl"]
 [ext_resource type="Script" path="res://scripts/world/market_square.gd" id="11_markt"]
+[ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="12_daynt"]
+[ext_resource type="Script" path="res://scripts/npc/population.gd" id="13_popul"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -49,6 +51,12 @@ script = ExtResource("11_markt")
 
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavigationMesh_street")
+
+[node name="DayNight" type="Node" parent="."]
+script = ExtResource("12_daynt")
+
+[node name="Population" type="Node3D" parent="."]
+script = ExtResource("13_popul")
 
 [node name="Patrols" type="Node3D" parent="."]
 script = ExtResource("10_patrl")

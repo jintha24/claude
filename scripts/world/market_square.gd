@@ -5,8 +5,8 @@ extends Node3D
 ##
 ## Layout (world metres): a 7.6 m carriageway passage from the street's north end
 ## (z = -46) leads into a cobbled square x = -25 .. 25, z = -52 .. -90, ringed by shops and
-## a pub, with 16 costermongers' stalls in four rows. Townsfolk wander and browse, traders
-## cry their wares, and a constable walks the square. Main pickpocketing ground.
+## a pub, with 16 costermongers' stalls in four rows. The people who fill it (traders,
+## shoppers) follow the clock and are managed by Population; the constable by StreetPatrols.
 
 const X0 := -25.0
 const X1 := 25.0
@@ -28,11 +28,12 @@ const AWNINGS: Array[Color] = [
 	Color(0.45, 0.1, 0.08), Color(0.12, 0.25, 0.15), Color(0.15, 0.18, 0.35), Color(0.5, 0.42, 0.25),
 ]
 
-@export var shoppers: int = 30
 @export var layout_seed: int = 1866
 
 var _rng := RandomNumberGenerator.new()
 var _shop_i := 0
+## The stalls, in order. Traders and shoppers are managed by Population (Phase 5).
+var stalls: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -43,10 +44,8 @@ func _ready() -> void:
 		c.queue_free()
 	_build_ground()
 	_build_buildings()
-	var stalls := _build_stalls()
+	stalls = _build_stalls()
 	_build_lamps()
-	if not Engine.is_editor_hint():
-		_spawn_people(stalls)
 
 
 func get_wander_center() -> Vector3:
@@ -206,63 +205,6 @@ func _build_lamps() -> void:
 		add_child(lamp)
 
 
-func _spawn_people(stalls: Array[Node3D]) -> void:
-	var people := Node3D.new()
-	people.name = "People"
-	add_child(people)
-	var first := ["Mr", "Mrs", "Miss", "Old", "Young"]
-	var surnames := ["Clarke", "Hughes", "Price", "Evans", "Shaw", "Moss", "Riley", "Dawes", "Pratt", "Leach", "Bell", "Stone", "Hale", "Gates", "Webb"]
-	# Traders behind their stalls.
-	var j := 0
-	for stall in stalls:
-		var c := Civilian.new()
-		c.name = "Trader_%02d" % j
-		c.display_name = "Costermonger"
-		c.is_merchant = true
-		c.outfit = NPCBody.Outfit.WORKER if j % 3 != 0 else NPCBody.Outfit.LADY
-		var back := stall.global_transform.basis * Vector3(0, 0, 1)
-		c.position = stall.global_position + back * 1.0
-		c.rotation.y = stall.rotation.y
-		c.stall_point = c.position
-		c.stall_look = stall.global_position - back * 3.0
-		people.add_child(c)
-		j += 1
-	# Shoppers of every class.
-	var center := get_wander_center()
-	var extent := get_wander_extent()
-	for i in shoppers:
-		var c := Civilian.new()
-		var roll := _rng.randf()
-		c.outfit = NPCBody.Outfit.GENTLEMAN if roll < 0.25 else (NPCBody.Outfit.LADY if roll < 0.55 else NPCBody.Outfit.WORKER)
-		c.name = "Shopper_%02d" % i
-		c.display_name = "%s %s" % [first[_rng.randi() % first.size()], surnames[_rng.randi() % surnames.size()]]
-		c.wander_center = center
-		c.wander_extent = extent
-		c.position = center + Vector3(_rng.randf_range(-extent.x, extent.x), 0.05, _rng.randf_range(-extent.y, extent.y))
-		# Keep them out of the stalls on spawn.
-		for stall in stalls:
-			if Vector2(c.position.x - stall.global_position.x, c.position.z - stall.global_position.z).length() < 2.2:
-				c.position.z += 3.4
-		c.rotation.y = _rng.randf() * TAU
-		people.add_child(c)
-	# A constable walking the square.
-	var route := PatrolRoute.new()
-	route.name = "DunnBeat"
-	route.loop = true
-	for p: Array in [
-		[Vector3(-20.0, 0.0, -55.5), 3.0], [Vector3(-20.0, 0.0, -86.0), 3.0],
-		[Vector3(20.0, 0.0, -86.0), 3.0], [Vector3(20.0, 0.0, -55.5), 3.0], [Vector3(0.0, 0.0, -70.5), 5.0],
-	]:
-		route.add_point(p[0], p[1])
-	add_child(route)
-	var dunn := Guard.new()
-	dunn.name = "ConstableDunn"
-	dunn.display_name = "Constable Dunn"
-	dunn.position = Vector3(0.0, 0.0, -70.5)
-	add_child(dunn)
-	dunn.set_route(route)
-
-
 func _box_collider(body: StaticBody3D, size: Vector3, center: Vector3) -> void:
 	var cs := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -270,3 +212,10 @@ func _box_collider(body: StaticBody3D, size: Vector3, center: Vector3) -> void:
 	cs.shape = box
 	cs.position = center
 	body.add_child(cs)
+
+
+## Where the trader of stall `i` stands, and where he looks (his customers).
+func get_trader_spot(i: int) -> Array[Vector3]:
+	var stall := stalls[i]
+	var back := stall.global_transform.basis * Vector3(0, 0, 1)
+	return [stall.global_position + back * 1.0, stall.global_position - back * 3.0]

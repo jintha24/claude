@@ -134,6 +134,8 @@ func _new_stage() -> void:
 	width *= 1.0 + (1.0 - Stealth.ambient_light) * 0.3
 	if victim.is_walking():
 		width *= 0.75
+	if victim.state == Civilian.State.CHAT:
+		width *= 1.3 # deep in conversation, they won't feel a thing
 	zone_width = clampf(width, 0.08, 0.5)
 	zone_center = _rng.randf_range(0.2 + zone_width * 0.5, 0.8 - zone_width * 0.5)
 

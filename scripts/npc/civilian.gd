@@ -7,8 +7,16 @@ extends NPCCharacter
 ## to pickpockets. Merchants stay at their stall and cry their wares.
 ## Every person has real pocket contents rolled from LootTable for their class.
 
-enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE }
+enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE, TRAVEL, CHAT }
 
+const CHATTER: Array[String] = [
+	"Did you hear about the Hill Fox?", "Terrible price of bread these days.", "Looks like rain again.",
+	"Ashcombe's put the rents up on Flower and Dean Street.", "My Albert's found work at the docks.",
+]
+const DRUNK_SONGS: Array[String] = [
+	"Champagne Charlie is me name, champagne drinking is me game!",
+	"Oh, the Rose and Crown... hic... finest ale in London!",
+]
 const CRIES: Array[String] = [
 	"Fresh herrings! Three a penny!", "Hot baked potatoes, all hot!", "Sweet oranges, ha'penny each!",
 	"Fine cabbages! Fine cabbages!", "Flowers! Pretty flowers for your sweetheart!",
@@ -40,6 +48,13 @@ var _cry_timer := 0.0
 var _rng := RandomNumberGenerator.new()
 var _flee_from := Vector3.ZERO
 var _browse_on_arrival := false
+## Walking somewhere specific: then "vanish" (goes indoors), "stall" (opens up), "wander".
+var _travel_target := Vector3.ZERO
+var _travel_then := ""
+var drunk := false
+var leaving := false
+var _chat_partner: Civilian = null
+var _sing_timer := 0.0
 
 
 func _ready() -> void:
@@ -51,7 +66,12 @@ func _ready() -> void:
 	pockets = LootTable.roll(victim_class, _rng)
 	Stealth.bus().noise_made.connect(_on_noise)
 	_cry_timer = _rng.randf_range(4.0, 15.0)
-	if is_merchant:
+	if drunk:
+		walk_speed *= 0.7
+		_sing_timer = _rng.randf_range(3.0, 10.0)
+	if state == State.TRAVEL:
+		pass
+	elif is_merchant:
 		state = State.TEND_STALL
 	else:
 		_pick_wander_target()
@@ -76,6 +96,8 @@ func _physics_process(delta: float) -> void:
 					_browse_on_arrival = false
 					state = State.BROWSE
 					_timer = _rng.randf_range(4.0, 12.0)
+				elif _rng.randf() < 0.15 and _start_chat():
+					pass
 				elif _rng.randf() > 0.55 or not _start_browsing():
 					_pick_wander_target()
 		State.BROWSE:
@@ -100,6 +122,34 @@ func _physics_process(delta: float) -> void:
 			_pose = NPCBody.Pose.SHOUT
 			_face_point(_gawk_point)
 			if _timer <= 0.0:
+				_resume()
+		State.TRAVEL:
+			var arrived := _move_to(_travel_target, walk_speed)
+			if drunk and _moving:
+				# Weaving home from the pub.
+				var right := Vector3(cos(_yaw), 0.0, -sin(_yaw))
+				_agent.velocity += right * sin(float(_frame) * 0.05) * 0.45
+				_sing_timer -= delta
+				if _sing_timer <= 0.0:
+					_sing_timer = _rng.randf_range(8.0, 16.0)
+					_say(DRUNK_SONGS[_rng.randi() % DRUNK_SONGS.size()], 18.0)
+			if arrived:
+				match _travel_then:
+					"vanish":
+						queue_free()
+						return
+					"stall":
+						is_merchant = true
+						stall_point = _travel_target
+						state = State.TEND_STALL
+					_:
+						_pick_wander_target()
+		State.CHAT:
+			if _chat_partner and is_instance_valid(_chat_partner):
+				_face_point(_chat_partner.global_position)
+			_pose = NPCBody.Pose.NORMAL
+			if _timer <= 0.0 or _chat_partner == null or not is_instance_valid(_chat_partner):
+				_chat_partner = null
 				_resume()
 		State.FLEE:
 			var away := (global_position - _flee_from)
@@ -196,7 +246,43 @@ func _cry() -> void:
 		Stealth.bark(self, "%s: \"%s\"" % [display_name, CRIES[_rng.randi() % CRIES.size()]])
 
 
+## Walk to `target`, then do `then`: "vanish" (go indoors), "stall" (set up and trade),
+## or "wander".
+func go_to(target: Vector3, then: String) -> void:
+	_travel_target = target
+	_travel_then = then
+	leaving = then == "vanish"
+	state = State.TRAVEL
+
+
+func _start_chat() -> bool:
+	for node in get_tree().get_nodes_in_group("civilians"):
+		var other := node as Civilian
+		if other == self or other.state not in [State.WANDER, State.BROWSE] or other.is_merchant or other.leaving:
+			continue
+		if other.global_position.distance_to(global_position) < 3.0:
+			_chat_partner = other
+			other._chat_partner = self
+			state = State.CHAT
+			other.state = State.CHAT
+			_timer = _rng.randf_range(5.0, 10.0)
+			other._timer = _timer
+			if _rng.randf() < 0.5:
+				_say(CHATTER[_rng.randi() % CHATTER.size()], 10.0)
+			return true
+	return false
+
+
+func _say(line: String, max_distance: float) -> void:
+	var harry := get_tree().get_first_node_in_group("player") as Node3D
+	if harry and harry.global_position.distance_to(global_position) < max_distance:
+		Stealth.bark(self, "%s: \"%s\"" % [display_name, line])
+
+
 func _resume() -> void:
+	if leaving:
+		state = State.TRAVEL
+		return
 	if is_merchant:
 		state = State.TEND_STALL
 	else:

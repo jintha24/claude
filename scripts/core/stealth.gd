@@ -82,11 +82,21 @@ static func light_exposure_at(point: Vector3, world: World3D, exclude: Array[RID
 
 	# Gas lamps and any other light added to the "stealth_lights" group.
 	for node in tree.get_nodes_in_group("stealth_lights"):
-		var light := node as OmniLight3D
-		if light == null or not light.is_visible_in_tree():
+		var light := node as Light3D
+		if light == null or not light.is_visible_in_tree() or light.light_energy <= 0.0:
 			continue
 		var d := light.global_position.distance_to(point)
-		if d >= light.omni_range:
+		var light_range := 0.0
+		if light is OmniLight3D:
+			light_range = (light as OmniLight3D).omni_range
+		elif light is SpotLight3D:
+			# A lantern beam only lights what's inside its cone.
+			var spot := light as SpotLight3D
+			light_range = spot.spot_range
+			var fwd := -spot.global_basis.z
+			if rad_to_deg(fwd.angle_to(point - spot.global_position)) > spot.spot_angle:
+				continue
+		if d >= light_range:
 			continue
 		# Start just outside the lantern so the lamp's own post doesn't shadow everything.
 		var from := light.global_position + (point - light.global_position).normalized() * 0.3
@@ -94,6 +104,6 @@ static func light_exposure_at(point: Vector3, world: World3D, exclude: Array[RID
 		if not space.intersect_ray(q2).is_empty():
 			continue
 		# Inverse-square-like falloff that reaches zero at the light's range.
-		var falloff := pow(1.0 - d / light.omni_range, 2.0)
+		var falloff := pow(1.0 - d / light_range, 2.0)
 		total += light.light_energy / 2.2 * falloff * 1.1
 	return clampf(total, 0.0, 1.0)

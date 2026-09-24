@@ -13,6 +13,17 @@ var failed := 0
 var _errors_before := 0
 
 
+## A test file that stalls (e.g. after a script error) fails instead of hanging forever.
+var watchdog_seconds := 900.0
+
+
+func _process(_delta: float) -> bool:
+	if Time.get_ticks_msec() > watchdog_seconds * 1000.0:
+		print("FAIL  watchdog: %s took longer than %d s" % [get_script().resource_path.get_file(), int(watchdog_seconds)])
+		quit(1)
+	return false
+
+
 func _initialize() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_boot.call_deferred()
@@ -23,7 +34,14 @@ func make_scene() -> Node:
 	return load("res://scenes/main/main.tscn").instantiate()
 
 
+## Tests run at a fixed hour with the clock stopped, unless they say otherwise.
+var start_hour := 12.0
+var freeze_clock := true
+
+
 func _boot() -> void:
+	GameClock.minutes = start_hour * 60.0
+	GameClock.paused = freeze_clock
 	main = make_scene()
 	root.add_child(main)
 	current_scene = main

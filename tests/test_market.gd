@@ -19,7 +19,7 @@ func run_tests() -> void:
 	check("16 market stalls", stalls.size() == 16)
 	check("a trader at every stall", traders.size() == 16)
 	check("at least 30 shoppers", shoppers.size() >= 30)
-	check("a constable walks the square", market.get_node_or_null("ConstableDunn") is Guard)
+	check("a constable walks the square", get_nodes_in_group_safe("guards").any(func(g: Node) -> bool: return g.name == "ConstableDunn"))
 	for g in get_nodes_in_group_safe("guards"):
 		g.free() # keep the pickpocketing checks deterministic; guards are added back below
 	var start := {}
@@ -27,7 +27,12 @@ func run_tests() -> void:
 		start[c] = (c as Node3D).global_position
 	await wait(900)
 	var moved := 0
+	var still_out := 0
 	for c in shoppers:
+		if not is_instance_valid(c):
+			moved += 1 # finished their errand and went indoors
+			continue
+		still_out += 1
 		if (c as Node3D).global_position.distance_to(start[c]) > 2.0:
 			moved += 1
 	check("shoppers wander and browse", moved >= shoppers.size() * 0.8, "%d/%d moved" % [moved, shoppers.size()])
@@ -144,7 +149,7 @@ func run_tests() -> void:
 
 
 func get_tree_civilians() -> Array:
-	return get_nodes_in_group_safe("civilians")
+	return get_nodes_in_group_safe("civilians").filter(func(c: Node) -> bool: return is_instance_valid(c) and not c.is_queued_for_deletion())
 
 
 func spawn_still_person(victim_class: String, pos: Vector3, yaw: float) -> Civilian:

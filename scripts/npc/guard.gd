@@ -15,11 +15,13 @@ extends NPCCharacter
 
 signal state_changed(guard: Guard, old_state: State, new_state: State)
 
-enum State { PATROL, WAIT, SUSPICIOUS, INVESTIGATE, SEARCH, CHASE, RETURN, STUNNED, UNCONSCIOUS }
+enum State { PATROL, WAIT, SUSPICIOUS, INVESTIGATE, SEARCH, CHASE, RETURN, STUNNED, UNCONSCIOUS, OFF_DUTY }
 
 const MASK_SIGHT := 1 | (1 << 3)
 
 @export var patrol_route_path: NodePath
+## Night constables carry a bullseye lantern: a real beam that lights up whatever it points at.
+@export var has_lantern: bool = false
 
 @export_group("Movement (m/s)")
 @export var walk_speed: float = 1.35
@@ -76,6 +78,9 @@ var _rattle_time := 0.0
 var _chase_speed_mult := 1.0
 var _bark_cooldown := 0.0
 var _found_bodies: Array[Node] = []
+var _off_duty_target := Vector3.ZERO
+var _going_off_duty := false
+var lantern: SpotLight3D
 
 
 func _init() -> void:
@@ -90,6 +95,8 @@ func _ready() -> void:
 	if not patrol_route_path.is_empty():
 		_route = get_node_or_null(patrol_route_path) as PatrolRoute
 	Stealth.bus().noise_made.connect(_on_noise)
+	if has_lantern:
+		_add_lantern()
 	_perceive_timer = randf() * 0.1
 	_enter(State.PATROL if _route and _route.size() > 0 else State.WAIT)
 
@@ -143,6 +150,51 @@ func on_arrow_hit(kind: String, point: Vector3, from_dir: Vector3) -> void:
 	_bark("hit")
 	_enter(State.STUNNED)
 	_pause = stun_time
+
+
+## Where this constable's post is (for fixed posts and returning after an incident).
+func set_home(xform: Transform3D) -> void:
+	_home = xform
+
+
+## End of shift: once things are calm, walk back to the station and go home.
+func go_off_duty(station: Vector3) -> void:
+	_off_duty_target = station
+	_going_off_duty = true
+	if state in [State.PATROL, State.WAIT, State.RETURN, State.SUSPICIOUS]:
+		_enter(State.OFF_DUTY)
+
+
+func _add_lantern() -> void:
+	# A bullseye lantern held at the hip: a narrow, warm beam.
+	lantern = SpotLight3D.new()
+	lantern.name = "BullseyeLantern"
+	lantern.position = Vector3(0.28, 1.05, -0.25)
+	lantern.rotation_degrees = Vector3(-8.0, 0.0, 0.0)
+	lantern.light_color = Color(1.0, 0.74, 0.45)
+	lantern.light_energy = 4.0
+	lantern.spot_range = 14.0
+	lantern.spot_angle = 20.0
+	lantern.spot_attenuation = 1.2
+	lantern.shadow_enabled = true
+	lantern.light_volumetric_fog_energy = 2.5
+	lantern.add_to_group("stealth_lights")
+	_body.add_child(lantern)
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = 0.06
+	mesh.bottom_radius = 0.06
+	mesh.height = 0.16
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.1, 0.1, 0.1)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.7, 0.4)
+	mat.emission_energy_multiplier = 3.0
+	mi.material_override = mat
+	mi.position = lantern.position + Vector3(0, 0, 0.08)
+	mi.rotation_degrees = Vector3(90, 0, 0)
+	_body.add_child(mi)
 
 
 ## After Harry respawns (arrested or died), everyone goes back to their beat.
@@ -200,6 +252,10 @@ func _physics_process(delta: float) -> void:
 			_pause -= delta
 			if _pause <= 0.0:
 				_enter(State.INVESTIGATE if awareness >= suspicious_at else State.SEARCH)
+		State.OFF_DUTY:
+			if _move_to(_off_duty_target, walk_speed * 1.2):
+				queue_free()
+				return
 		State.UNCONSCIOUS:
 			_pose = NPCBody.Pose.UNCONSCIOUS
 			if _state_time >= unconscious_time:
@@ -213,6 +269,8 @@ func _physics_process(delta: float) -> void:
 
 
 func _enter(new_state: State) -> void:
+	if _going_off_duty and new_state in [State.PATROL, State.WAIT, State.RETURN]:
+		new_state = State.OFF_DUTY
 	var old := state
 	state = new_state
 	_state_time = 0.0

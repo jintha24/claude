@@ -149,8 +149,10 @@ func rebuild() -> void:
 func _add_window(mb: MeshBuilder, body: StaticBody3D, cx: float, y: float, ww: float, wh: float, stone: Material, frame: Material, glass: Material, keystone: bool) -> void:
 	var yc := y + wh * 0.5
 	# Glass sits just proud of the wall; the stone surround projects in front of it,
-	# which reads as a window set back into the brickwork.
-	mb.add_box(Vector3(ww, wh, 0.02), Vector3(cx, yc, 0.0), glass)
+	# which reads as a window set back into the brickwork. Each window belongs to one of
+	# three lamplight groups so houses light up and go dark at different hours.
+	var pane := MaterialLibrary.get_material("glass_%d" % (_rng.randi() % 3))
+	mb.add_box(Vector3(ww, wh, 0.02), Vector3(cx, yc, 0.0), pane)
 	# Sash frame, meeting rail and glazing bars (2-over-2 Victorian sash).
 	mb.add_box(Vector3(0.06, wh, 0.05), Vector3(cx - ww * 0.5 + 0.03, yc, 0.025), frame)
 	mb.add_box(Vector3(0.06, wh, 0.05), Vector3(cx + ww * 0.5 - 0.03, yc, 0.025), frame)
@@ -188,6 +190,8 @@ func _build_house_front(mb: MeshBuilder, body: StaticBody3D, paint: Material, wh
 	for side in [-1.0, 1.0]:
 		mb.add_box(Vector3(0.22, door_h + 0.55, 0.16), Vector3(door_x + side * (door_w * 0.5 + 0.11), floor_y + (door_h + 0.55) * 0.5, 0.08), stone)
 	_add_ledge(mb, body, Vector3(door_w + 0.7, 0.32, 0.24), Vector3(door_x, floor_y + door_h + 0.66, 0.12), stone) # door hood
+
+	_add_door_marker(Vector3(door_x, 0.0, steps * STEP_RUN + 0.5), "house")
 
 	# Ground-floor windows (skip the bay where the door is).
 	for i in count:
@@ -245,13 +249,16 @@ func _build_shopfront(mb: MeshBuilder, body: StaticBody3D, paint: Material, whit
 	var disp_w := disp_x1 - disp_x0
 	var disp_c := (disp_x0 + disp_x1) * 0.5
 	mb.add_box(Vector3(disp_w, 0.6, 0.14), Vector3(disp_c, 0.3, 0.07), paint)
-	mb.add_box(Vector3(disp_w, 2.0, 0.02), Vector3(disp_c, 1.6, 0.06), glass)
+	mb.add_box(Vector3(disp_w, 2.0, 0.02), Vector3(disp_c, 1.6, 0.06), MaterialLibrary.get_material("glass_shop"))
 	mb.add_box(Vector3(disp_w, 0.07, 0.08), Vector3(disp_c, 2.25, 0.08), white)
 	mb.add_box(Vector3(disp_w, 0.08, 0.1), Vector3(disp_c, 2.62, 0.08), paint)
 	var mullions := maxi(1, int(disp_w / 1.1))
 	for m in mullions + 1:
 		var mx := disp_x0 + disp_w * float(m) / float(mullions)
 		mb.add_box(Vector3(0.06, 2.0, 0.08), Vector3(mx, 1.6, 0.08), white)
+
+	var kind := "pub" if (shop_name.contains("BELLS") or shop_name.contains("HART") or shop_name.contains("ANCHOR") or shop_name.contains("CROWN")) else "shop"
+	_add_door_marker(Vector3(door_x, 0.0, 0.7), kind)
 
 	# Half-glazed shop door, set back from the window line.
 	mb.add_box(Vector3(door_w, 2.45, 0.05), Vector3(door_x, 1.225, -0.02), paint)
@@ -366,6 +373,19 @@ func _build_downpipe(mb: MeshBuilder, iron: Material, h: float) -> void:
 	cs.position = Vector3(x, h * 0.5, 0.09)
 	pipe_body.add_child(cs)
 	add_child(pipe_body)
+
+
+## Where townsfolk come out of and go into this building (their homes, shops and pubs).
+func _add_door_marker(local_pos: Vector3, kind: String) -> void:
+	if Engine.is_editor_hint():
+		return
+	var m := Marker3D.new()
+	m.name = "Door"
+	m.position = local_pos
+	m.set_meta("kind", kind)
+	m.set_meta("building", name)
+	m.add_to_group("npc_doors")
+	add_child(m)
 
 
 ## A visible projecting ledge that also has collision (for climbing and the camera).
