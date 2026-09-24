@@ -91,6 +91,10 @@ var inventory: PlayerInventory
 var interaction: HarryInteraction
 ## The horse Harry is riding (null on foot).
 var horse: Horse = null
+## Set during conversations and cutscenes: he stands still and ignores the controls.
+var controls_locked: bool = false
+## A fist fight (BrawlFight) that owns his body while it lasts.
+var brawl: BrawlFight = null
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -240,7 +244,7 @@ func arrest(by: Node) -> void:
 	_set_state(State.ARRESTED)
 	Progress.on_arrested(self)
 	arrested.emit(by)
-	get_tree().create_timer(4.0).timeout.connect(respawn)
+	get_tree().create_timer(4.0).timeout.connect(_respawn_if_down)
 
 
 func _physics_process(delta: float) -> void:
@@ -252,6 +256,32 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, ground_deceleration * delta)
 		velocity.y -= _gravity * delta
 		move_and_slide()
+		return
+
+	# ---- A fist fight owns the body ------------------------------------------
+	if brawl != null and is_instance_valid(brawl):
+		_update_timers(delta, true)
+		brawl.harry_physics(delta)
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
+
+	# ---- Conversations and cutscenes: stand still ------------------------------
+	if controls_locked and state != State.RIDE:
+		_wish_dir = Vector3.ZERO
+		velocity.x = move_toward(velocity.x, 0.0, ground_deceleration * delta)
+		velocity.z = move_toward(velocity.z, 0.0, ground_deceleration * delta)
+		if not is_on_floor():
+			velocity.y -= _gravity * delta
+		move_and_slide()
+		var locked_floor := is_on_floor()
+		if locked_floor:
+			_air_peak_y = global_position.y
+		_update_timers(delta, locked_floor)
+		_update_state(locked_floor, get_horizontal_speed())
+		_was_on_floor = locked_floor
+		if _animator:
+			_animator.update_animation(self, delta)
 		return
 
 	# ---- Input -------------------------------------------------------------
@@ -571,7 +601,14 @@ func apply_damage(amount: float) -> void:
 		parkour.cancel()
 		_set_state(State.DEAD)
 		died.emit()
-		get_tree().create_timer(3.5).timeout.connect(respawn)
+		get_tree().create_timer(3.5).timeout.connect(_respawn_if_down)
+
+
+## The delayed respawn after a fall or an arrest (skipped if something, such as a mission
+## restarting from a checkpoint, has already put him back on his feet).
+func _respawn_if_down() -> void:
+	if state == State.DEAD or state == State.ARRESTED:
+		respawn()
 
 
 func respawn() -> void:
@@ -604,10 +641,10 @@ func respawn() -> void:
 
 ## Wading through water (the lake in the hills) slows him down.
 func _wading_factor() -> float:
+	var depth := WaterVolume.depth_at(get_tree(), global_position)
 	var s := get_tree().get_first_node_in_group("world_streamer") as WorldStreamer
-	if s == null:
-		return 1.0
-	var depth := s.generator.water_depth(global_position.x, global_position.z)
+	if s:
+		depth = maxf(depth, s.generator.water_depth(global_position.x, global_position.z))
 	if depth > 0.25:
 		if Engine.get_physics_frames() % 40 == 0 and get_horizontal_speed() > 0.5:
 			Stealth.make_noise(global_position, 6.0, "splash", stealth.conspicuousness >= 0.45, self)

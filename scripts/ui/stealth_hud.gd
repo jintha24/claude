@@ -51,6 +51,8 @@ func _draw() -> void:
 	if player == null:
 		return
 	var center := size * 0.5
+	if Story.has_band("pip"):
+		_draw_lookouts()
 	_draw_detection(center)
 	_draw_light_gem()
 	if player.is_aiming():
@@ -98,6 +100,28 @@ func _draw_detection(center: Vector2) -> void:
 			var mark := "!" if chasing else "?"
 			var p := tip + dir * 14.0 - Vector2(5, -8)
 			draw_string(_font(), p, mark, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(col, 1.0))
+
+
+## Pip's lookouts (once he's joined the band): a small mark over every constable within
+## 40 m, whether Harry can see him or not.
+func _draw_lookouts() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if cam == null:
+		return
+	for node in get_tree().get_nodes_in_group("guards"):
+		var g := node as Guard
+		if g == null or not g.visible or g.is_down() or not g.can_process():
+			continue
+		var head := g.global_position + Vector3.UP * 2.15
+		if head.distance_to(player.global_position) > 40.0 or cam.is_position_behind(head):
+			continue
+		var p := cam.unproject_position(head)
+		var col := Color(0.55, 0.75, 0.95, 0.75)
+		if g.state == Guard.State.CHASE:
+			col = Color(RED, 0.9)
+		elif g.state in [Guard.State.INVESTIGATE, Guard.State.SEARCH, Guard.State.SUSPICIOUS]:
+			col = Color(AMBER, 0.85)
+		draw_colored_polygon(PackedVector2Array([p + Vector2(-5, -6), p + Vector2(5, -6), p + Vector2(0, 2)]), col)
 
 
 func _draw_light_gem() -> void:

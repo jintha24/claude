@@ -13,6 +13,8 @@
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="11_hud"]
 [ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="12_dn"]
 [ext_resource type="Script" path="res://scripts/world/weather_effects.gd" id="13_wfx"]
+[ext_resource type="Script" path="res://scripts/audio/audio_director.gd" id="14_audio"]
+[ext_resource type="Script" path="res://scripts/story/story_director.gd" id="15_story"]
 
 [node name="Hills" type="Node3D"]
 script = ExtResource("1_hills")
@@ -49,6 +51,14 @@ scene_path = "res://scenes/wilderness/cave.tscn"
 
 [node name="Animals" type="Node3D" parent="."]
 script = ExtResource("6_anim")
+
+[node name="Audio" type="Node" parent="."]
+script = ExtResource("14_audio")
+place = 1
+bell_position = Vector3(0, -1000, 0)
+
+[node name="Story" type="Node3D" parent="."]
+script = ExtResource("15_story")
 
 [node name="CaveClearing" type="Marker3D" parent="." groups=["spawn_points"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -120, 0, 96)

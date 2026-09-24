@@ -141,6 +141,7 @@ func _build_camp() -> void:
 	fire_light.shadow_enabled = true
 	fire_light.add_to_group("stealth_lights")
 	add_child(fire_light)
+	AudioDirector.attach_loop(fire_light, "fire", -4.0, 20.0)
 	var smoke := ChimneySmoke.new()
 	smoke.position = fire + Vector3(0, 0.5, 0)
 	smoke.amount = 12

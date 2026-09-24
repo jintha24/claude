@@ -7,10 +7,10 @@ extends Node3D
 ## animated with an AnimationTree. Otherwise a procedural mannequin is built in the
 ## silhouette of the chosen period outfit and posed in code.
 
-enum Pose { NORMAL, LOOK_AROUND, ALERT, RATTLE, STUNNED, UNCONSCIOUS, SHOUT, BROWSE }
+enum Pose { NORMAL, LOOK_AROUND, ALERT, RATTLE, STUNNED, UNCONSCIOUS, SHOUT, BROWSE, GUARD, WINDUP, PUNCH, SIT, TALK, WAVE }
 
 ## Victorian outfits for the stand-in mannequin.
-enum Outfit { CONSTABLE, GENTLEMAN, WORKER, LADY, HOUSE_GUARD }
+enum Outfit { CONSTABLE, GENTLEMAN, WORKER, LADY, HOUSE_GUARD, PRIEST, RAGGED }
 
 @export_file("*.glb", "*.gltf", "*.tscn") var model_path: String = ""
 @export var outfit: Outfit = Outfit.CONSTABLE
@@ -52,6 +52,7 @@ func _ready() -> void:
 			_setup_model(scene.instantiate() as Node3D)
 	if not _has_model:
 		_build_mannequin()
+	PerfTuning.set_visibility_range(self, PerfTuning.RANGE_PERSON)
 
 
 var _umbrella: Node3D
@@ -140,6 +141,14 @@ func _build_mannequin() -> void:
 			coat = _mat(Color(0.2, 0.12, 0.2), 0.8)
 			legs = coat
 			accent = _mat(Color(0.85, 0.82, 0.76), 0.8)
+		Outfit.PRIEST:
+			coat = _mat(Color(0.03, 0.03, 0.035), 0.9) # black cassock
+			legs = coat
+			accent = _mat(Color(0.92, 0.92, 0.9), 0.5) # clerical collar
+		Outfit.RAGGED:
+			coat = _mat(Color(0.26, 0.24, 0.2), 1.0) # patched, faded fustian
+			legs = _mat(Color(0.18, 0.16, 0.14), 1.0)
+			accent = _mat(Color(0.34, 0.27, 0.2), 1.0)
 
 	_root_pivot = _pivot(self, Vector3.ZERO)
 	_root_pivot.scale = Vector3.ONE * s
@@ -152,6 +161,8 @@ func _build_mannequin() -> void:
 			_box(_spine, Vector3(0.025, 0.025, 0.02), Vector3(0, 0.12 + i * 0.09, -0.19), accent) # buttons
 	if outfit == Outfit.LADY:
 		_cylinder(_hips, 0.2, 0.42, 0.9, Vector3(0, -0.45, 0), coat) # crinoline skirt
+	elif outfit == Outfit.PRIEST:
+		_cylinder(_hips, 0.2, 0.27, 0.86, Vector3(0, -0.42, 0), coat) # cassock to the ankles
 	else:
 		_box(_hips, Vector3(0.4, 0.45 if outfit != Outfit.WORKER else 0.25, 0.28), Vector3(0, -0.2, 0.01), coat) # coat skirt
 	var neck := _pivot(_spine, Vector3(0, 0.54, 0))
@@ -170,6 +181,11 @@ func _build_mannequin() -> void:
 			_cylinder(_head, 0.11, 0.11, 0.12, Vector3(0, 0.2, 0), coat) # kepi-style cap
 		Outfit.LADY:
 			_capsule(_head, 0.13, 0.3, Vector3(0, 0.1, 0.03), accent) # bonnet
+		Outfit.PRIEST:
+			_box(_head, Vector3(0.16, 0.035, 0.15), Vector3(0, -0.1, 0.0), accent) # collar
+		Outfit.RAGGED:
+			_capsule(_head, 0.12, 0.25, Vector3(0.02, 0.13, 0.01), accent, Vector3(90, 0, 12)) # battered cap
+			_box(_spine, Vector3(0.12, 0.1, 0.02), Vector3(0.08, 0.3, -0.195), _mat(Color(0.4, 0.33, 0.22), 1.0)) # a patch
 
 	for side in [-1.0, 1.0]:
 		var thigh := _pivot(_hips, Vector3(side * 0.1, 0, 0))
@@ -241,6 +257,50 @@ func _pose_mannequin(delta: float) -> void:
 				_shoulder[i].rotation.x = deg_to_rad(150.0)
 				_elbow[i].rotation.x = deg_to_rad(120.0)
 			_spine.rotation.x = deg_to_rad(10.0) + sin(_t * 3.0) * deg_to_rad(6.0)
+		Pose.GUARD:
+			# Fists up, weight on the balls of the feet, swaying.
+			for i in 2:
+				_shoulder[i].rotation.x = deg_to_rad(72.0 + (8.0 if i == 1 else 0.0))
+				_shoulder[i].rotation.z = (1.0 if i == 1 else -1.0) * deg_to_rad(-14.0)
+				_elbow[i].rotation.x = deg_to_rad(118.0)
+			_spine.rotation.x = -deg_to_rad(10.0)
+			_hips.position.y = 0.88 + sin(_t * 5.0) * 0.015
+		Pose.WINDUP:
+			# Drawing the right fist back for a haymaker.
+			_shoulder[0].rotation.x = deg_to_rad(75.0)
+			_elbow[0].rotation.x = deg_to_rad(115.0)
+			_shoulder[1].rotation.x = deg_to_rad(-35.0)
+			_shoulder[1].rotation.z = deg_to_rad(35.0)
+			_elbow[1].rotation.x = deg_to_rad(100.0)
+			_spine.rotation.x = deg_to_rad(6.0)
+			_head.rotation.x = -deg_to_rad(5.0)
+		Pose.PUNCH:
+			# Right arm thrown straight out.
+			_shoulder[0].rotation.x = deg_to_rad(70.0)
+			_elbow[0].rotation.x = deg_to_rad(115.0)
+			_shoulder[1].rotation.x = deg_to_rad(92.0)
+			_shoulder[1].rotation.z = deg_to_rad(-8.0)
+			_elbow[1].rotation.x = deg_to_rad(6.0)
+			_spine.rotation.x = -deg_to_rad(14.0)
+		Pose.SIT:
+			# Sitting on a step or the ground, forearms on the knees.
+			for i in 2:
+				_thigh[i].rotation.x = deg_to_rad(85.0)
+				_knee[i].rotation.x = -deg_to_rad(80.0)
+				_shoulder[i].rotation.x = deg_to_rad(38.0)
+				_elbow[i].rotation.x = deg_to_rad(50.0)
+			_hips.position.y = 0.46
+			_spine.rotation.x = -deg_to_rad(16.0)
+			_head.rotation.x = deg_to_rad(10.0)
+		Pose.TALK:
+			# Gesturing while talking.
+			_shoulder[1].rotation.x = deg_to_rad(35.0) + sin(_t * 2.3) * deg_to_rad(14.0)
+			_elbow[1].rotation.x = deg_to_rad(70.0) + sin(_t * 3.1) * deg_to_rad(15.0)
+			_head.rotation.x = sin(_t * 1.7) * deg_to_rad(5.0)
+		Pose.WAVE:
+			_shoulder[1].rotation.x = deg_to_rad(160.0)
+			_shoulder[1].rotation.z = deg_to_rad(-15.0) + sin(_t * 9.0) * deg_to_rad(20.0)
+			_elbow[1].rotation.x = deg_to_rad(20.0)
 	if has_umbrella_open():
 		_shoulder[0].rotation.x = deg_to_rad(70.0)
 		_shoulder[0].rotation.z = deg_to_rad(-15.0)
@@ -353,7 +413,7 @@ func _drive_model() -> void:
 	match pose:
 		Pose.LOOK_AROUND:
 			target = "look_around"
-		Pose.ALERT, Pose.RATTLE:
+		Pose.ALERT, Pose.RATTLE, Pose.GUARD, Pose.WINDUP, Pose.PUNCH:
 			target = "alert" if _speed < 0.5 else "loco"
 		Pose.STUNNED:
 			target = "stunned"

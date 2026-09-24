@@ -25,6 +25,8 @@ static func exists(slot: int) -> bool:
 
 ## Writes the current game to `slot`. Returns true on success.
 static func save(tree: SceneTree, slot: int) -> bool:
+	if Story.is_active():
+		return false # missions restart from their beginning, so there's nothing to save mid-way
 	var scene := tree.current_scene
 	var harry := tree.get_first_node_in_group("player") as Harry
 	if scene == null or harry == null:
@@ -44,6 +46,7 @@ static func save(tree: SceneTree, slot: int) -> bool:
 		"stash": GameState.stash,
 		"world": GameState.world,
 		"progress": Progress.to_dict(),
+		"story": Story.to_dict(),
 		"clock": {"day": GameClock.day, "minutes": GameClock.minutes},
 		"weather": int(Weather.kind),
 	}
@@ -101,6 +104,7 @@ static func load_game(tree: SceneTree, slot: int) -> bool:
 		GameState.stash.append(it)
 	GameState.world = d.get("world", {})
 	Progress.from_dict(d.get("progress", {}))
+	Story.from_dict(d.get("story", {}))
 	var clock: Dictionary = d.get("clock", {})
 	GameClock.day = int(clock.get("day", 0))
 	GameClock.minutes = float(clock.get("minutes", 16.0 * 60.0))
@@ -133,6 +137,7 @@ static func new_game() -> void:
 	GameState.spawn_position = Vector3.INF
 	GameState.arrived_mounted = false
 	Progress.reset()
+	Story.reset()
 	GameClock.day = 0
 	GameClock.minutes = 16.0 * 60.0
 	playtime = 0.0

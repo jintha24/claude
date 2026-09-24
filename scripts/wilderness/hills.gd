@@ -18,6 +18,9 @@ func _ready() -> void:
 		m.position.y = gen.height(m.position.x, m.position.z) + 0.05
 	_build_jump_course(gen)
 	_build_fishing(gen)
+	var audio := get_node_or_null("Audio") as AudioDirector
+	if audio:
+		audio.add_zone("water_lap", Vector3(TerrainGenerator.LAKE.x, TerrainGenerator.WATER_Y, TerrainGenerator.LAKE.y), TerrainGenerator.LAKE_RADIUS - 15.0, 45.0, 0.7)
 	GameSettings.apply(get_tree())
 	var spawn_v: Variant = GameState.take_spawn(get_tree())
 	var spawn_t: Transform3D = spawn_v if spawn_v != null else ($CaveClearing as Node3D).global_transform

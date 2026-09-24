@@ -197,6 +197,25 @@ func notice_disturbance(pos: Vector3, line: String, alarm: bool) -> void:
 	_enter(State.INVESTIGATE)
 
 
+## Starts a chase straight away (Crowe's men sent after Harry in a mission).
+func start_chase(pos: Vector3) -> void:
+	if is_down():
+		return
+	last_known = pos
+	awareness = 1.0
+	alertness = 1.0
+	_unseen = 0.0
+	_enter(State.CHASE)
+
+
+## Calls off whatever he was doing and sends him back to his beat.
+func stand_down() -> void:
+	if is_down():
+		return
+	awareness = 0.0
+	_enter(State.RETURN)
+
+
 ## Where this constable's post is (for fixed posts and returning after an incident).
 func set_home(xform: Transform3D) -> void:
 	_home = xform
@@ -241,6 +260,7 @@ func _add_lantern() -> void:
 	mi.rotation_degrees = Vector3(90, 0, 0)
 	_body.add_child(mi)
 	_lantern_mesh = mi
+	PerfTuning.set_visibility_range(mi, PerfTuning.RANGE_PERSON)
 
 
 ## Light or shutter the bullseye lantern (house guards carry theirs by day too).
@@ -374,6 +394,10 @@ func _enter(new_state: State) -> void:
 func _perceive(dt: float) -> void:
 	_check_for_fallen_colleagues()
 	if _harry == null or _harry.is_dead() or _harry.is_arrested():
+		awareness = maxf(awareness - decay_rate * dt, 0.0)
+		return
+	# Sanctuary: inside St Giles (once Father Bernard has taken him in) he isn't pursued.
+	if StGiles.is_sanctuary(_harry.global_position):
 		awareness = maxf(awareness - decay_rate * dt, 0.0)
 		return
 	var score := vision_score()
@@ -631,13 +655,18 @@ func _do_chase(delta: float) -> void:
 			_bark("come_down")
 	var flat_dist := Vector2(global_position.x - _harry.global_position.x, global_position.z - _harry.global_position.z).length()
 	var vertical := absf(_harry.global_position.y - global_position.y)
-	if flat_dist <= catch_distance and vertical < 1.2 and _unseen < 0.5 and not _harry.is_climbing():
+	if flat_dist <= catch_distance and vertical < 1.2 and _unseen < 0.5 and not _harry.is_climbing() and not StGiles.is_sanctuary(_harry.global_position):
 		_bark("arrest")
 		_harry.arrest(self)
 		_enter(State.WAIT)
 		return
 	if _move_to(target, run_speed) and high_up:
 		_face_point(_harry.global_position)
+	# Sanctuary: once he's inside St Giles, nobody goes in after him.
+	if StGiles.is_sanctuary(_harry.global_position):
+		_bark("lost")
+		stand_down()
+		return
 	if _unseen >= lose_sight_time:
 		_bark("lost")
 		awareness = investigate_at

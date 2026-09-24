@@ -158,7 +158,7 @@ Fish go in your bag as provisions. Sell them to Mags, or keep them.
 - upgrades and camp improvements
 - what's been looted (emptied safes and taken loot stay empty)
 
-Saves are plain JSON in `%APPDATA%\Godot\app_userdata\The Thief of London\saves\`. You can
+Saves are plain JSON in `%APPDATA%\ThiefOfLondon\saves\`. You can
 back them up or delete them there.
 
 ## Part 7 — Pause menu and settings

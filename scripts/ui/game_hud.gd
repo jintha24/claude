@@ -222,7 +222,7 @@ func _process(delta: float) -> void:
 		var climb := ""
 		if _player.parkour and not _player.parkour.ledge.is_empty() and _player.is_climbing():
 			climb = "\nLedge top: %.2f m" % float(_player.parkour.ledge["top"])
-		_debug_label.text = "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s%s\nLight %.2f  Visibility %.2f  Suspicious %.2f  Surface %s%s" % [
+		_debug_label.text = PerfTuning.stats_text() + "\n" + "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s%s\nLight %.2f  Visibility %.2f  Suspicious %.2f  Surface %s%s" % [
 			Engine.get_frames_per_second(),
 			Harry.State.keys()[_player.state],
 			_player.get_horizontal_speed(),

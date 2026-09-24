@@ -38,11 +38,16 @@ func get_interact_point() -> Vector3:
 
 
 func get_prompt(_harry: Harry) -> String:
-	return "" if _travelling else "Set off for %s" % destination_name
+	if _travelling:
+		return ""
+	if Story.is_active():
+		return "Finish \"%s\" before you leave" % Story.active.title
+	return "Set off for %s" % destination_name
 
 
 func interact(_harry: Harry) -> void:
-	travel()
+	if not Story.is_active():
+		travel()
 
 
 func travel() -> void:

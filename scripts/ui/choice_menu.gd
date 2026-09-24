@@ -10,6 +10,12 @@ signal closed
 var title: String = ""
 var body: String = ""
 var options: Array[Dictionary] = []
+## False for story choices: there's no Leave button and Esc doesn't close it.
+var cancellable: bool = true:
+	set(v):
+		cancellable = v
+		if is_inside_tree():
+			_build()
 
 var _root: Control
 var _box: VBoxContainer
@@ -55,10 +61,14 @@ func _build() -> void:
 		_box.add_child(b)
 		if first == null and not b.disabled:
 			first = b
-	var leave := UIKit.button("Leave", 19)
-	leave.pressed.connect(close)
-	_box.add_child(leave)
-	(first if first else leave).grab_focus.call_deferred()
+	var leave: Button = null
+	if cancellable:
+		leave = UIKit.button("Leave", 19)
+		leave.pressed.connect(close)
+		_box.add_child(leave)
+	var focus: Button = first if first else leave
+	if focus:
+		focus.grab_focus.call_deferred()
 
 
 ## Picks option `i` (also used by tests).
@@ -90,6 +100,6 @@ func close() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel"):
+	if cancellable and (event.is_action_pressed("pause") or event.is_action_pressed("ui_cancel")):
 		get_viewport().set_input_as_handled()
 		close()

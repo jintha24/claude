@@ -187,6 +187,9 @@ func _pose_combat(h: Harry, delta: float) -> void:
 		_spine.rotation.y = deg_to_rad(-12.0) * _aim_blend
 	else:
 		_spine.rotation.y = 0.0
+	if h.brawl != null and is_instance_valid(h.brawl):
+		_pose_brawl(h.brawl)
+		return
 	match h.state:
 		Harry.State.TAKEDOWN:
 			# Rear chokehold: both arms locked round the neck, weight back.
@@ -219,6 +222,46 @@ func _pose_combat(h: Harry, delta: float) -> void:
 				_elbow[i].rotation.x = deg_to_rad(70.0)
 			_hips.position.y = 0.5
 			_spine.rotation.x = -deg_to_rad(10.0)
+
+
+## Bare-knuckle stance: fists up, and the jab, haymaker, guard, sway and stagger.
+func _pose_brawl(b: BrawlFight) -> void:
+	_bow_hand.visible = false
+	_bow_back.visible = true
+	for i in 2:
+		_shoulder[i].rotation = Vector3(deg_to_rad(70.0), 0.0, (1.0 if i == 0 else -1.0) * deg_to_rad(12.0))
+		_elbow[i].rotation.x = deg_to_rad(120.0)
+	_spine.rotation = Vector3(-deg_to_rad(8.0), 0.0, 0.0)
+	_hips.position.y = HIP_HEIGHT - 0.04
+	match b.harry_act:
+		BrawlFight.Act.JAB:
+			_shoulder[0].rotation.x = deg_to_rad(92.0)
+			_elbow[0].rotation.x = deg_to_rad(8.0)
+			_spine.rotation.y = deg_to_rad(10.0)
+		BrawlFight.Act.HEAVY_WIND:
+			_shoulder[1].rotation = Vector3(deg_to_rad(-30.0), 0.0, deg_to_rad(-35.0))
+			_elbow[1].rotation.x = deg_to_rad(100.0)
+			_spine.rotation.y = deg_to_rad(25.0)
+		BrawlFight.Act.HEAVY:
+			_shoulder[1].rotation = Vector3(deg_to_rad(95.0), 0.0, deg_to_rad(10.0))
+			_elbow[1].rotation.x = deg_to_rad(10.0)
+			_spine.rotation.y = -deg_to_rad(25.0)
+			_spine.rotation.x = -deg_to_rad(16.0)
+		BrawlFight.Act.BLOCK:
+			for i in 2:
+				_shoulder[i].rotation.x = deg_to_rad(105.0)
+				_elbow[i].rotation.x = deg_to_rad(135.0)
+			_head.rotation.x = deg_to_rad(12.0)
+		BrawlFight.Act.DODGE:
+			_spine.rotation.z = -deg_to_rad(18.0) * signf(b.get("_dodge_side"))
+			_hips.position.y = HIP_HEIGHT - 0.12
+		BrawlFight.Act.STAGGER:
+			_spine.rotation.x = deg_to_rad(14.0)
+			_head.rotation.x = -deg_to_rad(15.0)
+		BrawlFight.Act.FALLEN:
+			for i in 2:
+				_shoulder[i].rotation.x = deg_to_rad(150.0)
+				_elbow[i].rotation.x = deg_to_rad(30.0)
 
 
 func update_pose(h: Harry, delta: float) -> void:

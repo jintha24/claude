@@ -55,8 +55,12 @@ func _build() -> void:
 
 func _pick(slot: int) -> void:
 	if saving:
-		SaveGame.save(get_tree(), slot)
-		Progress.bus().note.emit("Game saved.")
+		if SaveGame.save(get_tree(), slot):
+			Progress.bus().note.emit("Game saved.")
+		elif Story.is_active():
+			Progress.bus().note.emit("You can't save during a mission.")
+		else:
+			Progress.bus().note.emit("The game couldn't be saved.")
 		_build()
 	else:
 		close()

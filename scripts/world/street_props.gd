@@ -49,6 +49,7 @@ static func make_crate(size: float = 0.6) -> RigidBody3D:
 	box.size = Vector3.ONE * size
 	cs.shape = box
 	body.add_child(cs)
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_SMALL_PROP)
 	return body
 
 
@@ -79,6 +80,7 @@ static func make_barrel() -> RigidBody3D:
 	cyl.height = 0.86
 	cs.shape = cyl
 	body.add_child(cs)
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_SMALL_PROP)
 	return body
 
 
@@ -114,6 +116,7 @@ static func make_handcart() -> StaticBody3D:
 	cs.shape = box
 	cs.position = Vector3(0, 0.55, 0.05)
 	body.add_child(cs)
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_PROP)
 	return body
 
 
@@ -141,6 +144,7 @@ static func make_horse_trough() -> StaticBody3D:
 	cs.shape = box
 	cs.position = Vector3(0, size.y * 0.5, 0)
 	body.add_child(cs)
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_PROP)
 	return body
 
 
@@ -189,6 +193,7 @@ static func make_hay_heap(color: Color = Color(0.72, 0.6, 0.33)) -> Node3D:
 	cs.position = Vector3(0, 0.65, 0)
 	spot.add_child(cs)
 	root.add_child(spot)
+	PerfTuning.set_visibility_range(root, PerfTuning.RANGE_SMALL_PROP)
 	return root
 
 
@@ -285,6 +290,7 @@ static func make_market_stall(goods: String, awning: Color, seed_value: int) -> 
 	cs.shape = box
 	cs.position = Vector3(0, (h + 0.1) * 0.5, 0)
 	body.add_child(cs)
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_PROP)
 	return body
 
 
@@ -410,4 +416,5 @@ static func make_bollard() -> StaticBody3D:
 	cap.rings = 5
 	mb.add_mesh(cap, Transform3D(Basis.IDENTITY, Vector3(0, 0.84, 0)), iron)
 	mb.build_into(body, "Mesh")
+	PerfTuning.set_visibility_range(body, PerfTuning.RANGE_SMALL_PROP)
 	return body

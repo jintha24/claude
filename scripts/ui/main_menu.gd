@@ -3,6 +3,8 @@ extends Control
 ## at once), the title, and Continue / New Game / Load Game / Settings / Quit.
 
 const GAME_SCENE := "res://scenes/main/main.tscn"
+## A new game begins where the story does: Harry's cave in the hills (Mission 1).
+const NEW_GAME_SCENE := "res://scenes/wilderness/hills.tscn"
 
 var _buttons: VBoxContainer
 var _t := 0.0
@@ -62,8 +64,9 @@ func _ready() -> void:
 
 func start_new_game() -> void:
 	SaveGame.new_game()
+	GameState.spawn_at = "CaveClearing"
 	var ls := LoadingScreen.new()
-	ls.scene_path = GAME_SCENE
+	ls.scene_path = NEW_GAME_SCENE
 	ls.title = "Thursday, 20th September 1866"
 	get_tree().root.add_child(ls)
 

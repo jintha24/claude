@@ -18,6 +18,9 @@
 [ext_resource type="Script" path="res://scripts/horse/horse.gd" id="18_horse"]
 [ext_resource type="Script" path="res://scripts/wilderness/travel_point.gd" id="19_travel"]
 [ext_resource type="Script" path="res://scripts/economy/london_trade.gd" id="20_trade"]
+[ext_resource type="Script" path="res://scripts/world/st_giles.gd" id="21_stgil"]
+[ext_resource type="Script" path="res://scripts/audio/audio_director.gd" id="22_audio"]
+[ext_resource type="Script" path="res://scripts/story/story_director.gd" id="23_story"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -62,6 +65,9 @@ script = ExtResource("17_skyln")
 [node name="AshcombeHouse" type="Node3D" parent="."]
 script = ExtResource("15_ashhs")
 
+[node name="StGiles" type="Node3D" parent="."]
+script = ExtResource("21_stgil")
+
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavigationMesh_street")
 
@@ -82,6 +88,12 @@ script = ExtResource("16_ashst")
 
 [node name="Trade" type="Node3D" parent="."]
 script = ExtResource("20_trade")
+
+[node name="Audio" type="Node" parent="."]
+script = ExtResource("22_audio")
+
+[node name="Story" type="Node3D" parent="."]
+script = ExtResource("23_story")
 
 [node name="Cinder" type="CharacterBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0.1, -106)

@@ -20,6 +20,9 @@ const STREET_HALF_LEN := 46.0
 const ALLEY_Z0 := 4.0
 const ALLEY_Z1 := 6.4
 const ALLEY_END_X := 20.0
+## Church Lane: a gap in the west terrace leading into the St Giles rookery (StGiles).
+const WEST_LANE_Z0 := -6.0
+const WEST_LANE_Z1 := -2.6
 
 const SHOP_NAMES: Array[String] = [
 	"J. PARKER & SONS  TOBACCONIST",
@@ -80,9 +83,10 @@ func _build_ground() -> void:
 	ground.collision_layer = 1
 	ground.collision_mask = 0
 	add_child(ground)
-	# Solid ground under the whole neighbourhood, stopping short of the mews (x = 35),
-	# where Ashcombe House has its own ground with a sewer beneath.
-	_box_collider(ground, Vector3(114, 2, 160), Vector3(-23, -1, 0))
+	# Solid ground under the street and its terraces, stopping short of the mews (x = 35),
+	# where Ashcombe House has its own ground with a sewer beneath, and of St Giles
+	# (x < -18), which has its own with the Fleet ditch and the church crypt cut into it.
+	_box_collider(ground, Vector3(52, 2, 160), Vector3(8, -1, 0))
 
 	var road := MeshInstance3D.new()
 	road.name = "Carriageway"
@@ -129,7 +133,9 @@ func _build_terrace_east() -> void:
 
 
 func _build_terrace_west() -> void:
-	_build_row(-STREET_HALF_LEN, STREET_HALF_LEN, false, 10.0, 10.0)
+	# West side, with a gap for Church Lane into St Giles.
+	_build_row(-STREET_HALF_LEN, WEST_LANE_Z0, false, 10.0, 10.0)
+	_build_row(WEST_LANE_Z1, STREET_HALF_LEN, false, 10.0, 10.0)
 
 
 ## Fills z0..z1 with buildings. first_depth/last_depth let the buildings next to the
@@ -453,6 +459,8 @@ func _add_lamp(pos: Vector3) -> void:
 
 
 func _build_props() -> void:
+	# Props and landmarks get their own seed, so changing the terraces never moves them.
+	_rng.seed = layout_seed + 7919
 	var props := Node3D.new()
 	props.name = "Props"
 	add_child(props)

@@ -116,6 +116,8 @@ func rebuild() -> void:
 	# --- Main mass and facade bands -------------------------------------------
 	mb.add_box(Vector3(width, h + 0.3, depth), Vector3(width * 0.5, (h - 0.3) * 0.5, -depth * 0.5), wall)
 	_add_box_collider(body, Vector3(width, h + 0.3, depth), Vector3(width * 0.5, (h - 0.3) * 0.5, -depth * 0.5))
+	if not Engine.is_editor_hint():
+		PerfTuning.add_box_occluder(self, Vector3(width, h + 0.3, depth), Vector3(width * 0.5, (h - 0.3) * 0.5, -depth * 0.5))
 	# Projecting bands are real ledges Harry can hang from, so they get collision too.
 	_add_ledge(mb, body, Vector3(width, 0.22, 0.14), Vector3(width * 0.5, ground_floor_height, 0.07), stone) # string course
 	mb.add_box(Vector3(width, 0.12, 0.18), Vector3(width * 0.5, h - 0.36, 0.09), stone) # dentil band

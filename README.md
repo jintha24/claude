@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–9 of 11 complete and playable
+## Status: Phases 1–10 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -87,6 +87,29 @@ and bite.
 - **Fishing:** cast, wait for the bite, strike, and play roach, perch, tench and pike on the tension line.
 - **Menus and saving:** title screen, pause menu, the Ledger (Tab), save slots with autosave, and full settings with Low–Ultra presets, audio buses and key/pad rebinding.
 
+**Phase 10 — the story begins:**
+- **Act One, "The Outlaw of the Hills":** six missions, from Aldous's first lesson in the hills to Captain Crowe's manhunt through the market. They are:
+  - hunting and fishing
+  - chasing Pip through the crowds
+  - lifting a widow's rent back from Ashcombe's collector
+  - a fist fight with Big Tom on the Fleet footbridge
+  - Father Bernard's soup kitchen and crypt safehouse
+  - the Police News naming the Hill Fox
+- **The mission system:**
+  - objectives and markers, checkpoints with retry
+  - in-engine cutscenes, dialogue and choices
+  - the Lantern Men band (Pip marks the constables)
+  - the Legend, and ending logic for the Acts to come
+- **St Giles:** a new district behind the street.
+  - The rookery's courts, and the Fleet ditch (wade it, climb out by ladders or steps).
+  - Tom's footbridge, and St Giles-in-the-Fields with its tower, crypt safehouse and sanctuary.
+  - It visibly improves as Harry gives to the poor.
+- **Sound:**
+  - every sound built in code (footsteps on 8 surfaces, doors, locks, bow, rattle, dogs, hooves, bells, thunder)
+  - ambience that follows weather, time and place, and chase and tension music
+  - drop-in replacements for real recordings
+- **Performance:** occlusion culling, draw distances, NPC level of detail and an F3 performance overlay.
+
 **Visual pass (Syndicate-style mood):**
 - blue skies with cumulus, blue-grey aerial haze
 - a distant skyline with St Paul's, Westminster's Clock Tower, spires and smoking factory chimneys
@@ -98,7 +121,7 @@ Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](d
 
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)** and **[docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)** **[docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md)** and **[docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -112,6 +135,7 @@ the recommended PC specs.
 - [docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md) — Ashcombe House: routes in, lockpicking, the safe, dogs
 - [docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md) — the hills: streaming world, cave, hunting, Cinder, travel
 - [docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md) — Steal and Give: fence, poor box, upgrades, Legend, notoriety, fishing, menus, settings, saving
+- [docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md) — Act One walkthrough, the mission system, the fist fight, St Giles, sound (and adding real recordings), performance, writing missions
 - [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
@@ -126,5 +150,5 @@ the recommended PC specs.
 7. ✅ First palace infiltration (Ashcombe House)
 8. ✅ World streaming, wilderness, cave camp, animals, Cinder the horse
 9. ✅ Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
-10. Story missions (Act 1 first), full districts, sound, performance
+10. ✅ Story missions (Act 1), the St Giles district, sound, performance
 11. Windows export and installer
