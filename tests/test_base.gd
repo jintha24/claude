@@ -7,6 +7,8 @@ extends SceneTree
 var harry: Harry
 var main: Node
 var passed := 0
+## Movement/parkour tests remove the constables so nobody arrests Harry mid-test.
+var keep_guards := false
 var failed := 0
 var _errors_before := 0
 
@@ -25,6 +27,9 @@ func _boot() -> void:
 	main = make_scene()
 	root.add_child(main)
 	current_scene = main
+	if not keep_guards:
+		for g in get_nodes_in_group_safe("guards"):
+			g.free()
 	await wait(5)
 	harry = main.get_node_or_null("Harry") as Harry
 	await run_tests()
@@ -35,6 +40,14 @@ func _boot() -> void:
 
 func run_tests() -> void:
 	pass
+
+
+func get_nodes_in_group_safe(group: String) -> Array[Node]:
+	var out: Array[Node] = []
+	for n in root.find_children("*", "", true, false):
+		if n.is_in_group(group):
+			out.append(n)
+	return out
 
 
 func wait(frames: int) -> void:
@@ -57,8 +70,13 @@ func press_for(action: String, frames: int) -> void:
 ## Teleports Harry, resets his state and lets him settle for a few frames.
 func tp(pos: Vector3, yaw: float = 0.0, settle: int = 20) -> void:
 	release_all()
+	if harry.is_dead() or harry.is_arrested():
+		harry.respawn()
 	harry.parkour.cancel()
-	harry.respawn()
+	harry.combat.cancel()
+	harry.set_crouched(false)
+	harry.health = harry.max_health
+	harry.stealth.crime_timer = 0.0
 	harry.global_position = pos
 	harry.velocity = Vector3.ZERO
 	harry.facing_yaw = yaw

@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–2 of 11 complete and playable
+## Status: Phases 1–3 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -30,22 +30,30 @@ landing rolls. The rooftops are connected by side pipes, an alley gap and roof a
 ledges (sills, lintels, string courses, cornices) are grabbable. The real model gets foot IK on
 uneven ground and hand IK on ledges (Godot 4.7 `TwoBoneIK3D`).
 
+**Phase 3 — stealth:** Metropolitan Police constables with realistic sight (light, shadow,
+posture, line of sight) and hearing (gait, surface, walls). Suspicion depends on behaviour, so
+walking the street is fine but rooftops, sneaking and trespassing are not. Guards search, poke
+hiding places, chase with the police rattle, arrest, give up and return to their beats.
+Non-lethal chokehold takedowns, and a longbow with blunt arrows (knock-outs, dousing gas lamps)
+and whistle arrows (distractions). Hiding spots, restricted zones, and a stealth HUD.
+
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** and **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
 ## Documents
 - [docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md) — step-by-step setup and Phase 1 walkthrough
 - [docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md) — climbing controls, tuning, climbing animations and IK
+- [docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md) — stealth rules, guards, takedowns, the longbow, building stealth spaces
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
 
 ## Roadmap
 1. ✅ Project, lighting, Harry, camera, one street
 2. ✅ Climbing, parkour, rooftops (plus foot/hand IK)
-3. Stealth: guards, vision, hearing, light, noise, search; non-lethal takedowns; longbow basics
+3. ✅ Stealth: guards, vision, hearing, light, noise, search; non-lethal takedowns; longbow
 4. Market crowds and pickpocketing
 5. NPC daily schedules and the day/night cycle
 6. Dynamic weather and its gameplay effects

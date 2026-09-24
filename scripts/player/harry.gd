@@ -14,11 +14,12 @@ signal state_changed(old_state: State, new_state: State)
 signal health_changed(health: float, max_health: float)
 signal landed(fall_height: float)
 signal died
+signal arrested(by: Node)
 signal respawned
 
 enum State {
 	IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, ROLL,
-	GRAB, HANG, CLIMB_UP, PIPE, VAULT, DEAD,
+	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, ARRESTED, DEAD,
 }
 
 # --- Real-world body measurements ---------------------------------------------
@@ -82,6 +83,8 @@ var health: float
 var facing_yaw: float = 0.0
 var is_crouching: bool = false
 var parkour: HarryParkour
+var stealth: HarryStealth
+var combat: HarryCombat
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -104,7 +107,7 @@ var _wish_dir := Vector3.ZERO
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 1 << 1
-	collision_mask = 1 | (1 << 3) # world + props
+	collision_mask = 1 | (1 << 2) | (1 << 3) # world + NPCs + props
 	floor_max_angle = deg_to_rad(46.0)
 	floor_snap_length = 0.4
 	floor_constant_speed = true
@@ -127,6 +130,10 @@ func _ready() -> void:
 		parkour.name = "Parkour"
 		add_child(parkour)
 	parkour.setup(self, CAPSULE_RADIUS, STAND_CAPSULE_HEIGHT, CROUCH_CAPSULE_HEIGHT)
+	stealth = _ensure_child("StealthProfile", HarryStealth) as HarryStealth
+	stealth.setup(self)
+	combat = _ensure_child("Combat", HarryCombat) as HarryCombat
+	combat.setup(self)
 	if not camera_path.is_empty():
 		_camera = get_node(camera_path) as ThirdPersonCamera
 	health = max_health
@@ -135,6 +142,15 @@ func _ready() -> void:
 	_spawn_transform = global_transform
 	_spawn_transform.basis = Basis(Vector3.UP, facing_yaw)
 	_air_peak_y = global_position.y
+
+
+func _ensure_child(child_name: String, type: Script) -> Node:
+	var n := get_node_or_null(child_name)
+	if n == null:
+		n = type.new()
+		n.name = child_name
+		add_child(n)
+	return n
 
 
 func set_spawn(xform: Transform3D) -> void:
@@ -181,8 +197,28 @@ func is_dead() -> bool:
 	return state == State.DEAD
 
 
+func is_arrested() -> bool:
+	return state == State.ARRESTED
+
+
+func is_aiming() -> bool:
+	return combat != null and combat.is_aiming()
+
+
+## Caught by a constable: led away, then the game continues from the spawn point.
+func arrest(by: Node) -> void:
+	if state == State.DEAD or state == State.ARRESTED:
+		return
+	parkour.cancel()
+	combat.cancel()
+	velocity = Vector3.ZERO
+	_set_state(State.ARRESTED)
+	arrested.emit(by)
+	get_tree().create_timer(4.0).timeout.connect(respawn)
+
+
 func _physics_process(delta: float) -> void:
-	if state == State.DEAD:
+	if state == State.DEAD or state == State.ARRESTED:
 		velocity.x = move_toward(velocity.x, 0.0, ground_deceleration * delta)
 		velocity.z = move_toward(velocity.z, 0.0, ground_deceleration * delta)
 		velocity.y -= _gravity * delta
@@ -197,6 +233,14 @@ func _physics_process(delta: float) -> void:
 		var yaw := _camera.get_yaw() if _camera else 0.0
 		wish_dir = Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw).normalized()
 	_wish_dir = wish_dir * strength
+
+	# ---- Takedowns own the body while they run --------------------------------
+	if combat.is_busy():
+		_update_timers(delta, true)
+		combat.physics_update(delta)
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
 
 	# ---- Climbing / parkour actions own the body while they run --------------
 	if parkour.is_busy():
@@ -220,6 +264,14 @@ func _physics_process(delta: float) -> void:
 		_toggle_crouch()
 	if Input.is_action_just_pressed("jump"):
 		_jump_buffer = jump_buffer_time
+	combat.handle_input(delta, on_floor)
+	if combat.is_busy():
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
+	var aiming := combat.is_aiming()
+	if aiming:
+		_jump_buffer = 0.0
 
 	# Parkour from the ground: vault, mantle, climb, jump-grab, drainpipe.
 	if _jump_buffer > 0.0 and on_floor and state != State.LAND and state != State.ROLL:
@@ -242,7 +294,7 @@ func _physics_process(delta: float) -> void:
 			return
 
 	# ---- Choose a gait and target speed -----------------------------------
-	var wants_sprint := Input.is_action_pressed("sprint") and strength > 0.6 and not is_crouching
+	var wants_sprint := Input.is_action_pressed("sprint") and strength > 0.6 and not is_crouching and not aiming
 	var wants_walk := Input.is_action_pressed("walk") or strength < 0.55
 	if wants_sprint and is_crouching:
 		_try_stand_up()
@@ -258,6 +310,8 @@ func _physics_process(delta: float) -> void:
 			target_speed = run_speed
 	if state == State.LAND:
 		target_speed *= 0.35 # recovering from a heavy landing
+	if aiming:
+		target_speed = minf(target_speed, walk_speed * 0.8) # walking with a drawn bow
 	if state == State.ROLL:
 		# Keep the momentum through the roll, along the way Harry is facing.
 		wish_dir = get_facing_dir()
@@ -313,7 +367,9 @@ func _physics_process(delta: float) -> void:
 
 	# ---- Facing ------------------------------------------------------------
 	var hspeed := get_horizontal_speed()
-	if hspeed > 0.2 and state != State.ROLL:
+	if aiming and _camera:
+		facing_yaw = rotate_toward(facing_yaw, _camera.get_yaw(), 14.0 * delta)
+	elif hspeed > 0.2 and state != State.ROLL:
 		var target_yaw := atan2(-velocity.x, -velocity.z)
 		var rate := lerpf(turn_rate_slow, turn_rate_fast, clampf(hspeed / sprint_speed, 0.0, 1.0))
 		facing_yaw = rotate_toward(facing_yaw, target_yaw, rate * delta)
@@ -382,8 +438,8 @@ func set_state(new_state: State) -> void:
 func _set_state(new_state: State) -> void:
 	if new_state == state:
 		return
-	# Once dead, only respawn() may bring Harry back.
-	if state == State.DEAD and not _respawning:
+	# Once dead or arrested, only respawn() may bring Harry back.
+	if (state == State.DEAD or state == State.ARRESTED) and not _respawning:
 		return
 	var old := state
 	state = new_state
@@ -407,7 +463,6 @@ func _enter_state(new_state: State, _old_state: State) -> void:
 func _on_landed() -> void:
 	var fall := _air_peak_y - global_position.y
 	_air_peak_y = global_position.y
-	landed.emit(fall)
 	var damage := 0.0
 	if fall > safe_fall_height:
 		var t := clampf((fall - safe_fall_height) / (fatal_fall_height - safe_fall_height), 0.0, 1.0)
@@ -423,6 +478,9 @@ func _on_landed() -> void:
 		else:
 			# Knees absorb the impact: longer recovery for bigger drops.
 			_land_timer = clampf(0.25 + (fall - hard_landing_height) * 0.12, 0.25, 1.2)
+	if _roll_timer > 0.0:
+		_set_state(State.ROLL)
+	landed.emit(fall)
 	apply_damage(damage)
 
 
@@ -450,6 +508,7 @@ func respawn() -> void:
 	_land_timer = 0.0
 	_roll_timer = 0.0
 	parkour.cancel()
+	combat.cancel()
 	reset_physics_interpolation()
 	_respawning = true
 	_set_state(State.IDLE)
@@ -495,42 +554,10 @@ func _set_capsule_height(h: float) -> void:
 # Steps: walk straight up kerbs, stoops and stairs up to max_step_height.
 # ---------------------------------------------------------------------------
 func _try_step_up(delta: float) -> bool:
-	var horizontal := Vector3(velocity.x, 0.0, velocity.z) * delta
-	if horizontal.length() < 0.0005:
-		return false
-	# Look a little further ahead than one frame so fast movement still detects the step.
-	var probe := horizontal.normalized() * maxf(horizontal.length(), CAPSULE_RADIUS * 0.5)
-	var params := PhysicsTestMotionParameters3D.new()
-	var result := PhysicsTestMotionResult3D.new()
-	params.from = global_transform
-	params.motion = probe
-	if not PhysicsServer3D.body_test_motion(get_rid(), params, result):
-		return false # nothing in the way
-	if result.get_collision_normal().y > 0.7:
-		return false # it's a walkable slope, move_and_slide handles it
-	# Try the same move from max_step_height higher up.
-	var up := Vector3.UP * max_step_height
-	params.motion = up
-	if PhysicsServer3D.body_test_motion(get_rid(), params, result):
-		return false # ceiling above
-	params.from = global_transform.translated(up)
-	params.motion = probe
-	if PhysicsServer3D.body_test_motion(get_rid(), params, result):
-		return false # still blocked: it's a wall, not a step
-	# Drop back down onto the step.
-	params.from = global_transform.translated(up + probe)
-	params.motion = -up
-	if not PhysicsServer3D.body_test_motion(get_rid(), params, result):
-		return false # no floor there
-	if result.get_collision_normal().y < cos(floor_max_angle):
-		return false
-	var step_height := max_step_height + result.get_travel().y
-	if step_height < 0.02:
-		return false
-	global_position.y += step_height + 0.005
-	if _animator:
-		_animator.absorb_step(step_height)
-	return true
+	var lifted := CharacterMotion.try_step_up(self, velocity, delta, max_step_height, CAPSULE_RADIUS * 0.5)
+	if lifted > 0.0 and _animator:
+		_animator.absorb_step(lifted)
+	return lifted > 0.0
 
 
 func _push_props(delta: float, wish_dir: Vector3) -> void:

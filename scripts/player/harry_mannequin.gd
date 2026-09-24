@@ -29,6 +29,9 @@ var _death_blend := 0.0
 var _speed_smooth := 0.0
 var _breath := 0.0
 var _hang_blend := 0.0
+var _aim_blend := 0.0
+var _bow_hand: Node3D
+var _bow_back: Node3D
 var _climb_phase := 0.0
 
 
@@ -75,6 +78,84 @@ func _ready() -> void:
 		_capsule(elbow, 0.045, 0.14, Vector3(0, -FOREARM - 0.04, 0), skin) # hand
 		_shoulder.append(shoulder)
 		_elbow.append(elbow)
+
+
+func _make_bow() -> Node3D:
+	var bow := Node3D.new()
+	var wood := _mat(Color(0.35, 0.22, 0.12), 0.55)
+	var string_mat := _mat(Color(0.8, 0.78, 0.7), 0.9)
+	# A 1.8 m yew longbow: grip plus two gently curved limbs, and the string.
+	for side: float in [-1.0, 1.0]:
+		for seg in 3:
+			var mesh := CylinderMesh.new()
+			mesh.top_radius = 0.012 - seg * 0.003
+			mesh.bottom_radius = 0.014 - seg * 0.003
+			mesh.height = 0.31
+			mesh.radial_segments = 6
+			var mi := MeshInstance3D.new()
+			mi.mesh = mesh
+			mi.material_override = wood
+			var y := side * (0.16 + seg * 0.29)
+			var bend := side * deg_to_rad(4.0 + seg * 7.0)
+			mi.position = Vector3(0, y, 0.02 * seg * seg)
+			mi.rotation.x = -bend
+			bow.add_child(mi)
+	var s_mesh := CylinderMesh.new()
+	s_mesh.top_radius = 0.002
+	s_mesh.bottom_radius = 0.002
+	s_mesh.height = 1.72
+	var string_mi := MeshInstance3D.new()
+	string_mi.mesh = s_mesh
+	string_mi.material_override = string_mat
+	string_mi.position = Vector3(0, 0, 0.19)
+	bow.add_child(string_mi)
+	return bow
+
+
+func _pose_combat(h: Harry, delta: float) -> void:
+	if _bow_hand == null:
+		_bow_hand = _make_bow()
+		_elbow[0].add_child(_bow_hand)
+		_bow_hand.position = Vector3(0, -FOREARM - 0.05, 0)
+		_bow_hand.rotation = Vector3(deg_to_rad(-90.0), 0, 0)
+		_bow_back = _make_bow()
+		_spine.add_child(_bow_back)
+		_bow_back.position = Vector3(0, 0.3, 0.24)
+		_bow_back.rotation = Vector3(0, 0, deg_to_rad(35.0))
+	var aiming := h.is_aiming()
+	_aim_blend = move_toward(_aim_blend, 1.0 if aiming else 0.0, delta * 8.0)
+	_bow_hand.visible = _aim_blend > 0.5
+	_bow_back.visible = not _bow_hand.visible
+	if _aim_blend > 0.0:
+		var draw := h.combat.draw
+		# Bow arm straight out towards the target, string hand drawn back to the jaw.
+		_shoulder[0].rotation.x = lerpf(_shoulder[0].rotation.x, deg_to_rad(88.0), _aim_blend)
+		_shoulder[0].rotation.z = lerpf(_shoulder[0].rotation.z, deg_to_rad(10.0), _aim_blend)
+		_elbow[0].rotation.x = lerpf(_elbow[0].rotation.x, deg_to_rad(4.0), _aim_blend)
+		_shoulder[1].rotation.x = lerpf(_shoulder[1].rotation.x, deg_to_rad(88.0), _aim_blend)
+		_shoulder[1].rotation.z = lerpf(_shoulder[1].rotation.z, deg_to_rad(-25.0 - 10.0 * draw), _aim_blend)
+		_elbow[1].rotation.x = lerpf(_elbow[1].rotation.x, deg_to_rad(60.0 + 90.0 * draw), _aim_blend)
+		_spine.rotation.y = deg_to_rad(-12.0) * _aim_blend
+	else:
+		_spine.rotation.y = 0.0
+	match h.state:
+		Harry.State.TAKEDOWN:
+			# Rear chokehold: both arms locked round the neck, weight back.
+			for i in 2:
+				_shoulder[i].rotation.x = deg_to_rad(75.0)
+				_shoulder[i].rotation.z = (1.0 if i == 0 else -1.0) * deg_to_rad(25.0)
+				_elbow[i].rotation.x = deg_to_rad(115.0)
+			_spine.rotation.x = deg_to_rad(8.0)
+			_hips.position.y = HIP_HEIGHT - 0.12
+		Harry.State.ARRESTED:
+			# On his knees, hands behind his back.
+			for i in 2:
+				_thigh[i].rotation.x = deg_to_rad(10.0)
+				_knee[i].rotation.x = -deg_to_rad(95.0)
+				_shoulder[i].rotation.x = deg_to_rad(-35.0)
+				_elbow[i].rotation.x = deg_to_rad(70.0)
+			_hips.position.y = 0.5
+			_spine.rotation.x = -deg_to_rad(10.0)
 
 
 func update_pose(h: Harry, delta: float) -> void:
@@ -142,6 +223,7 @@ func update_pose(h: Harry, delta: float) -> void:
 	_coat_skirt.rotation.x = -deg_to_rad(12.0) * run_t + deg_to_rad(25.0) * _crouch_blend + clampf(vertical_speed * 0.05, -0.3, 0.3) * _air_blend
 
 	_pose_parkour(h, delta)
+	_pose_combat(h, delta)
 
 	# Death: collapse forward onto the ground.
 	rotation.x = -_death_blend * PI * 0.47

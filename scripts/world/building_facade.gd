@@ -319,6 +319,7 @@ func _build_roof(mb: MeshBuilder, body: StaticBody3D, wall: Material, stone: Mat
 	])
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
+	cs.set_meta("surface", "slate") # clattering slates: loud to walk on
 	body.add_child(cs)
 
 	# Chimney stacks on the party walls, with clay pots and coal smoke.

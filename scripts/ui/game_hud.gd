@@ -27,6 +27,7 @@ var _pause_root: Control
 var _last_fall := 0.0
 var _last_health := 100.0
 var _flash := 0.0
+var _stealth_hud: StealthHUD
 
 
 func _ready() -> void:
@@ -35,6 +36,9 @@ func _ready() -> void:
 	_font = SystemFont.new()
 	_font.font_names = PackedStringArray(["Georgia", "Times New Roman", "Liberation Serif", "DejaVu Serif", "serif"])
 	_build_health()
+	_stealth_hud = StealthHUD.new()
+	_stealth_hud.font = _font
+	add_child(_stealth_hud)
 	_build_overlays()
 	_build_debug()
 	_build_pause_menu()
@@ -43,6 +47,8 @@ func _ready() -> void:
 	if _player:
 		_player.health_changed.connect(_on_health_changed)
 		_player.died.connect(_on_died)
+		_player.arrested.connect(_on_arrested)
+		_stealth_hud.player = _player
 		_player.respawned.connect(_on_respawned)
 		_player.landed.connect(func(h: float) -> void: _last_fall = h)
 		_last_health = _player.max_health
@@ -76,7 +82,7 @@ func _build_health() -> void:
 
 func _build_overlays() -> void:
 	_damage_flash = ColorRect.new()
-	_damage_flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_damage_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_damage_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var shader := Shader.new()
 	shader.code = """
@@ -93,7 +99,7 @@ void fragment() {
 	add_child(_damage_flash)
 
 	_death_fade = ColorRect.new()
-	_death_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_death_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_death_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_death_fade.color = Color(0, 0, 0, 0)
 	add_child(_death_fade)
@@ -116,11 +122,11 @@ func _build_debug() -> void:
 
 func _build_pause_menu() -> void:
 	_pause_root = Control.new()
-	_pause_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_pause_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pause_root.visible = false
 	add_child(_pause_root)
 	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.color = Color(0, 0, 0, 0.55)
 	_pause_root.add_child(dim)
 
@@ -212,10 +218,14 @@ func _process(delta: float) -> void:
 	(_damage_flash.material as ShaderMaterial).set_shader_parameter("strength", _flash)
 
 	if _debug_label.visible and _player:
+		var guards := ""
+		for node in get_tree().get_nodes_in_group("guards"):
+			var g := node as Guard
+			guards += "\n%s: %s  awareness %.2f" % [g.display_name, Guard.State.keys()[g.state], g.awareness]
 		var climb := ""
 		if _player.parkour and not _player.parkour.ledge.is_empty() and _player.is_climbing():
 			climb = "\nLedge top: %.2f m" % float(_player.parkour.ledge["top"])
-		_debug_label.text = "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s%s" % [
+		_debug_label.text = "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s%s\nLight %.2f  Visibility %.2f  Suspicious %.2f  Surface %s%s" % [
 			Engine.get_frames_per_second(),
 			Harry.State.keys()[_player.state],
 			_player.get_horizontal_speed(),
@@ -223,6 +233,8 @@ func _process(delta: float) -> void:
 			_last_fall,
 			str(_player.global_position.snapped(Vector3.ONE * 0.01)),
 			climb,
+			_player.stealth.exposure, _player.stealth.visibility, _player.stealth.conspicuousness, _player.stealth.surface,
+			guards,
 		]
 
 
@@ -239,6 +251,13 @@ func _on_died() -> void:
 	var tw := create_tween()
 	tw.tween_property(_death_fade, "color:a", 1.0, 2.0).set_delay(0.6)
 	tw.parallel().tween_property(_death_label, "modulate:a", 1.0, 1.2).set_delay(1.2)
+
+
+func _on_arrested(_by: Node) -> void:
+	_death_label.text = "Arrested by the Metropolitan Police"
+	var tw := create_tween()
+	tw.tween_property(_death_fade, "color:a", 1.0, 1.8).set_delay(1.0)
+	tw.parallel().tween_property(_death_label, "modulate:a", 1.0, 1.0).set_delay(1.2)
 
 
 func _on_respawned() -> void:

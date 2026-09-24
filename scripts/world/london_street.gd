@@ -43,6 +43,7 @@ var _shop_index := 0
 
 
 func _ready() -> void:
+	add_to_group("navigation_source")
 	rebuild()
 
 
@@ -73,6 +74,7 @@ func rebuild() -> void:
 func _build_ground() -> void:
 	var length := STREET_HALF_LEN * 2.0
 	var ground := StaticBody3D.new()
+	ground.set_meta("surface", "stone")
 	ground.name = "Ground"
 	ground.collision_layer = 1
 	ground.collision_mask = 0
@@ -265,7 +267,7 @@ func _build_alley() -> void:
 		var top := PAVE_TOP + (k + 1) * rise
 		var size := Vector3(run, top - PAVE_TOP, f1_w)
 		var center := Vector3(x_start + (k + 0.5) * run, PAVE_TOP + size.y * 0.5, f1_z0 + f1_w * 0.5)
-		_box_collider(alley, size, center)
+		_box_collider(alley, size, center, "wood")
 		mb.add_box(Vector3(run + 0.03, 0.05, f1_w), Vector3(center.x, top - 0.025, center.z), wood) # tread
 		mb.add_box(Vector3(0.03, rise, f1_w), Vector3(center.x - run * 0.5, top - rise * 0.5, center.z), wood) # riser
 	var x_land := x_start + steps * run # 15.5
@@ -275,7 +277,7 @@ func _build_alley() -> void:
 	var land_size := Vector3(2.0, 0.15, width_z)
 	var land_c := Vector3(x_land + 1.0, 4.5 - 0.075, zc)
 	mb.add_box(land_size, land_c, wood)
-	_box_collider(alley, land_size, land_c)
+	_box_collider(alley, land_size, land_c, "wood")
 
 	# Flight 2: open treads back towards the street, rising to the 9 m platform.
 	var f2_z0 := ALLEY_Z0 + 1.25
@@ -287,7 +289,7 @@ func _build_alley() -> void:
 		var size := Vector3(run, 0.18, f2_w)
 		var center := Vector3(cx, top - 0.09, f2_z0 + f2_w * 0.5)
 		mb.add_box(Vector3(run + 0.03, 0.05, f2_w), Vector3(cx, top - 0.025, center.z), wood)
-		_box_collider(alley, size, center)
+		_box_collider(alley, size, center, "wood")
 	_add_stringer(mb, wood, Vector3(x_land, 4.5, f2_z0 + f2_w), Vector3(x_land - steps * run, 9.0, f2_z0 + f2_w))
 	_add_stringer(mb, wood, Vector3(x_land, 4.5, f2_z0), Vector3(x_land - steps * run, 9.0, f2_z0))
 
@@ -297,7 +299,7 @@ func _build_alley() -> void:
 	var top_size := Vector3(top_x1 - top_x0, 0.15, width_z)
 	var top_c := Vector3((top_x0 + top_x1) * 0.5, 9.0 - 0.075, zc)
 	mb.add_box(top_size, top_c, wood)
-	_box_collider(alley, top_size, top_c)
+	_box_collider(alley, top_size, top_c, "wood")
 	# Handrail along the street side of the platform.
 	mb.add_box(Vector3(0.08, 1.0, width_z), Vector3(top_x0 + 0.04, 9.5, zc), wood)
 	_box_collider(alley, Vector3(0.08, 1.0, width_z), Vector3(top_x0 + 0.04, 9.5, zc))
@@ -315,6 +317,13 @@ func _build_alley() -> void:
 		_box_collider(alley, Vector3(0.16, h, 0.16), Vector3(p.x, PAVE_TOP + h * 0.5, p.z))
 
 	mb.build_into(self, "AlleyMesh").gi_mode = GeometryInstance3D.GI_MODE_STATIC
+
+	# The alley is a private yard: anyone seen in it is trespassing.
+	var zone := RestrictedZone.new()
+	zone.name = "PrivateYard"
+	zone.zone_name = "Hargreaves' yard"
+	zone.set_box(Vector3(ALLEY_END_X - FACADE_X, 12.0, width_z), Vector3((FACADE_X + ALLEY_END_X) * 0.5, 6.0, zc))
+	add_child(zone)
 
 
 func _add_stringer(mb: MeshBuilder, mat: Material, from: Vector3, to: Vector3) -> void:
@@ -374,6 +383,10 @@ func _build_props() -> void:
 	var trough := StreetProps.make_horse_trough()
 	trough.position = Vector3(-3.3, 0.0, 20.0)
 	props.add_child(trough)
+	# A heap of hay delivered for a nearby stable: crouch inside it to hide.
+	var hay := StreetProps.make_hay_heap()
+	hay.position = Vector3(-2.7, 0.0, 12.5)
+	props.add_child(hay)
 	var cart := StreetProps.make_handcart()
 	cart.position = Vector3(-2.7, 0.0, -8.0)
 	cart.rotation.y = 0.12
@@ -411,8 +424,10 @@ func _build_landmarks() -> void:
 	rmi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 
 
-func _box_collider(body: StaticBody3D, size: Vector3, center: Vector3) -> void:
+func _box_collider(body: StaticBody3D, size: Vector3, center: Vector3, surface: String = "") -> void:
 	var cs := CollisionShape3D.new()
+	if surface != "":
+		cs.set_meta("surface", surface)
 	var box := BoxShape3D.new()
 	box.size = size
 	cs.shape = box

@@ -7,6 +7,19 @@
 [ext_resource type="PackedScene" path="res://scenes/player/harry.tscn" id="5_th5th"]
 [ext_resource type="PackedScene" path="res://scenes/camera/third_person_camera.tscn" id="7_raeie"]
 [ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="9_nvumn"]
+[ext_resource type="Script" path="res://scripts/world/street_patrols.gd" id="10_patrl"]
+
+[sub_resource type="NavigationMesh" id="NavigationMesh_street"]
+geometry_parsed_geometry_type = 1
+geometry_collision_mask = 1
+geometry_source_geometry_mode = 1
+geometry_source_group_name = &"navigation_source"
+cell_size = 0.1
+cell_height = 0.1
+agent_height = 1.8
+agent_radius = 0.4
+agent_max_climb = 0.2
+agent_max_slope = 30.0
 
 [node name="Main" type="Node3D" unique_id=193345690]
 script = ExtResource("1_b1x3f")
@@ -15,7 +28,7 @@ script = ExtResource("1_b1x3f")
 environment = ExtResource("2_a8run")
 camera_attributes = ExtResource("3_ouso4")
 
-[node name="Sun" type="DirectionalLight3D" parent="." unique_id=902957692]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=902957692 groups=["sun"]]
 transform = Transform3D(-0.9396926, 0.09427353, -0.32877088, 0, 0.9612617, 0.27563736, 0.34202015, 0.2590144, -0.9032905, 0, 0, 0)
 light_color = Color(1, 0.8, 0.6, 1)
 light_energy = 2.2
@@ -29,6 +42,12 @@ directional_shadow_max_distance = 150.0
 
 [node name="LondonStreet" type="Node3D" parent="." unique_id=1353735113]
 script = ExtResource("4_blune")
+
+[node name="Navigation" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavigationMesh_street")
+
+[node name="Patrols" type="Node3D" parent="."]
+script = ExtResource("10_patrl")
 
 [node name="Harry" type="CharacterBody3D" parent="." unique_id=1192760808 instance=ExtResource("5_th5th")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 38)

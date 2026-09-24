@@ -52,22 +52,27 @@ const CLIP_ALIASES := {
 	"fall": ["fall", "falling idle", "falling"],
 	"jump": ["jump", "jumping"],
 	"death": ["death", "dying"],
+	"aim": ["aim", "standing aim idle", "standing draw arrow", "bow aim"],
+	"takedown": ["takedown", "chokehold", "choke"],
+	"arrested": ["arrested", "kneeling", "surrender"],
 }
 const FALLBACK := {
 	"sprint": "run", "crouch_idle": "idle", "crouch_walk": "walk",
 	"jump": "fall", "fall": "idle", "land": "idle", "death": "fall",
 	"hang_idle": "fall", "shimmy_left": "hang_idle", "shimmy_right": "hang_idle",
 	"climb_up": "jump", "hop_up": "hang_idle", "pipe_climb": "hang_idle", "vault": "jump", "roll": "land",
+	"aim": "idle", "takedown": "idle", "arrested": "idle",
 }
 const FALLBACK_ORDER: Array[String] = [
 	"sprint", "crouch_idle", "crouch_walk", "fall", "jump", "land", "death",
 	"hang_idle", "shimmy_left", "shimmy_right", "climb_up", "hop_up", "pipe_climb", "vault", "roll",
+	"aim", "takedown", "arrested",
 ]
 const LOOPING: Array[String] = [
 	"idle", "walk", "run", "sprint", "crouch_idle", "crouch_walk", "fall",
-	"hang_idle", "shimmy_left", "shimmy_right", "pipe_climb",
+	"hang_idle", "shimmy_left", "shimmy_right", "pipe_climb", "aim", "arrested",
 ]
-const ONE_SHOT: Array[String] = ["jump", "land", "death", "climb_up", "hop_up", "vault", "roll"]
+const ONE_SHOT: Array[String] = ["jump", "land", "death", "climb_up", "hop_up", "vault", "roll", "takedown"]
 ## States in which the clips' own root motion is cancelled (the code moves Harry instead).
 const ROOT_MOTION_STATES: Array[String] = ["hang", "climb_up", "grab", "pipe", "vault", "roll"]
 
@@ -266,7 +271,10 @@ func _build_tree(player: AnimationPlayer) -> void:
 	sm.add_node("climb_up", _anim("climb_up"), Vector2(250, 450))
 	sm.add_node("pipe", _anim("pipe_climb"), Vector2(500, 450))
 	sm.add_node("vault", _anim("vault"), Vector2(750, 0))
-	var states: Array[String] = ["locomotion", "crouch", "jump", "fall", "land", "death", "hang", "roll", "grab", "climb_up", "pipe", "vault"]
+	sm.add_node("aim", _anim("aim"), Vector2(750, 150))
+	sm.add_node("takedown", _anim("takedown"), Vector2(750, 300))
+	sm.add_node("arrested", _anim("arrested"), Vector2(750, 450))
+	var states: Array[String] = ["locomotion", "crouch", "jump", "fall", "land", "death", "hang", "roll", "grab", "climb_up", "pipe", "vault", "aim", "takedown", "arrested"]
 	for a in states:
 		for b in states:
 			if a == b:
@@ -363,6 +371,13 @@ func _drive_tree(h: Harry) -> void:
 			target = "pipe"
 			# The ladder clip plays backwards when climbing down and freezes when still.
 			time_scale = h.parkour.pipe_speed / pipe_clip_speed
+		Harry.State.TAKEDOWN:
+			target = "takedown"
+			time_scale = _fit("takedown", h.combat.takedown_time)
+		Harry.State.ARRESTED:
+			target = "arrested"
+	if h.is_aiming() and target in ["locomotion", "crouch"]:
+		target = "aim"
 	_tree.set("parameters/speed/scale", time_scale)
 	if target != _current_anim_state:
 		_playback.travel(target)

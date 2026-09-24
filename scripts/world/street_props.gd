@@ -142,3 +142,51 @@ static func make_horse_trough() -> StaticBody3D:
 	cs.position = Vector3(0, size.y * 0.5, 0)
 	body.add_child(cs)
 	return body
+
+
+## A loose heap of hay (no collision) with a HidingSpot inside it.
+static func make_hay_heap() -> Node3D:
+	var root := Node3D.new()
+	root.name = "HayHeap"
+	var hay := StandardMaterial3D.new()
+	hay.albedo_color = Color(0.72, 0.6, 0.33)
+	hay.roughness = 1.0
+	var noise := NoiseTexture2D.new()
+	var fnl := FastNoiseLite.new()
+	fnl.frequency = 0.08
+	noise.noise = fnl
+	noise.seamless = true
+	noise.as_normal_map = true
+	noise.bump_strength = 12.0
+	hay.normal_enabled = true
+	hay.normal_texture = noise
+	hay.uv1_triplanar = true
+	hay.uv1_scale = Vector3(3, 3, 3)
+	var blobs := [
+		[Vector3(0, 0.45, 0), Vector3(1.9, 1.05, 1.7)],
+		[Vector3(0.45, 0.35, 0.35), Vector3(1.2, 0.8, 1.1)],
+		[Vector3(-0.5, 0.3, -0.3), Vector3(1.1, 0.7, 1.2)],
+		[Vector3(0.1, 0.85, -0.1), Vector3(1.1, 0.7, 1.0)],
+	]
+	for b in blobs:
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.5
+		mesh.height = 1.0
+		mesh.radial_segments = 16
+		mesh.rings = 8
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.material_override = hay
+		mi.position = b[0]
+		mi.scale = b[1]
+		root.add_child(mi)
+	var spot := HidingSpot.new()
+	spot.name = "HidingSpot"
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.4, 1.3, 1.3)
+	cs.shape = box
+	cs.position = Vector3(0, 0.65, 0)
+	spot.add_child(cs)
+	root.add_child(spot)
+	return root

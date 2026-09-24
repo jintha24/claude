@@ -32,6 +32,10 @@ extends Node3D
 @export var sprint_distance: float = 3.2
 ## Pulled back a little while hanging or climbing so the wall and next ledge are visible.
 @export var climb_distance: float = 3.1
+## Tight over-the-shoulder framing while aiming the longbow.
+@export var aim_distance: float = 1.7
+@export var aim_shoulder_offset: float = 0.8
+@export var aim_fov: float = 48.0
 @export var shoulder_offset: float = 0.55
 @export var base_fov: float = 68.0
 @export var sprint_fov: float = 74.0
@@ -58,6 +62,7 @@ var _pivot_height := 1.62
 var _distance := 2.5
 var _bob_phase := 0.0
 var _follow_pos := Vector3.ZERO
+var _current_shoulder := 0.55
 
 
 func _ready() -> void:
@@ -170,11 +175,17 @@ func _process(delta: float) -> void:
 	_follow_pos.y = lerpf(_follow_pos.y, harry_pos.y, t_v)
 
 	# Framing: lower and closer when crouching, further back and wider when sprinting.
-	var t_f := 1.0 - exp(-framing_sharpness * delta)
+	var t_f := 1.0 - exp(-framing_sharpness * (2.5 if _target.is_aiming() else 1.0) * delta)
 	var want_height := crouch_pivot_height if _target.is_crouching else stand_pivot_height
 	var want_distance := stand_distance
 	var want_fov := base_fov
-	if _target.is_climbing():
+	var want_shoulder := shoulder_offset
+	if _target.is_aiming():
+		want_distance = aim_distance
+		want_fov = aim_fov
+		want_shoulder = aim_shoulder_offset
+		want_height = stand_pivot_height - 0.05 if not _target.is_crouching else crouch_pivot_height
+	elif _target.is_climbing():
 		want_distance = climb_distance
 	elif _target.is_crouching:
 		want_distance = crouch_distance
@@ -192,7 +203,8 @@ func _process(delta: float) -> void:
 	# The shoulder arm points along +X (right) or -X (left); the boom arm then points back.
 	var side_angle := PI * 0.5 * signf(_side if absf(_side) > 0.001 else 1.0)
 	_shoulder_arm.rotation = Vector3(0, side_angle, 0)
-	_shoulder_arm.spring_length = absf(_side) * shoulder_offset
+	_current_shoulder = lerpf(_current_shoulder, want_shoulder, t_f * 2.0)
+	_shoulder_arm.spring_length = absf(_side) * _current_shoulder
 	_boom_arm.rotation = Vector3(0, -side_angle, 0)
 	_boom_arm.spring_length = _distance
 

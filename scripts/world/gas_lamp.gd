@@ -77,7 +77,8 @@ func _build() -> void:
 	_light.light_indirect_energy = 1.0
 	_light.light_volumetric_fog_energy = 2.0
 	_light.light_size = 0.08
-	_light.omni_range = 13.0
+	# 1860s street gas lamps were dim: a pool of light a few metres across.
+	_light.omni_range = 10.0
 	_light.omni_attenuation = 1.6
 	_light.shadow_enabled = casts_shadows
 	_light.shadow_bias = 0.04
@@ -85,6 +86,7 @@ func _build() -> void:
 	_light.distance_fade_enabled = true
 	_light.distance_fade_begin = 70.0
 	_light.distance_fade_length = 20.0
+	_light.add_to_group("stealth_lights")
 	add_child(_light)
 
 	var cs := CollisionShape3D.new()
@@ -94,6 +96,18 @@ func _build() -> void:
 	cs.shape = cyl
 	cs.position = Vector3(0, 1.5, 0)
 	add_child(cs)
+	# The lantern itself, so arrows (and the camera) can hit it.
+	var lantern_cs := CollisionShape3D.new()
+	var lantern := BoxShape3D.new()
+	lantern.size = Vector3(0.5, 0.75, 0.5)
+	lantern_cs.shape = lantern
+	lantern_cs.position = Vector3(0, LANTERN_HEIGHT + 0.08, 0)
+	add_child(lantern_cs)
+
+
+## Broken glass lets the wind blow the gas flame out (a blunt arrow does this).
+func extinguish() -> void:
+	lit = false
 
 
 func _apply_lit() -> void:

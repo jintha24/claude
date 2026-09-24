@@ -85,7 +85,7 @@ slate…). They are cached in your user folder, so later launches start straight
 | Debug overlay (FPS, state, speed, fall height) | F3 | — |
 
 Interact (E), horse (F / H), inventory (Tab) and map (M) are already in the Input Map. They start
-working in later phases.
+working in later phases (E: takedowns and arrow pick-ups from Phase 3; aim/fire/R: the longbow).
 
 ### Phase 1 test checklist
 
