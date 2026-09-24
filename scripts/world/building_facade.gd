@@ -116,9 +116,10 @@ func rebuild() -> void:
 	# --- Main mass and facade bands -------------------------------------------
 	mb.add_box(Vector3(width, h + 0.3, depth), Vector3(width * 0.5, (h - 0.3) * 0.5, -depth * 0.5), wall)
 	_add_box_collider(body, Vector3(width, h + 0.3, depth), Vector3(width * 0.5, (h - 0.3) * 0.5, -depth * 0.5))
-	mb.add_box(Vector3(width, 0.22, 0.1), Vector3(width * 0.5, ground_floor_height, 0.05), stone) # string course
+	# Projecting bands are real ledges Harry can hang from, so they get collision too.
+	_add_ledge(mb, body, Vector3(width, 0.22, 0.14), Vector3(width * 0.5, ground_floor_height, 0.07), stone) # string course
 	mb.add_box(Vector3(width, 0.12, 0.18), Vector3(width * 0.5, h - 0.36, 0.09), stone) # dentil band
-	mb.add_box(Vector3(width, 0.34, 0.34), Vector3(width * 0.5, h - 0.12, 0.17), stone) # cornice
+	_add_ledge(mb, body, Vector3(width, 0.34, 0.34), Vector3(width * 0.5, h - 0.12, 0.17), stone) # cornice
 
 	# --- Upper floor windows ---------------------------------------------------
 	var count := maxi(1, int((width - 0.6) / 1.8))
@@ -129,7 +130,7 @@ func rebuild() -> void:
 		var wh := 1.45 if top_floor else 1.8
 		var ww := 0.85 if top_floor else 0.95
 		for i in count:
-			_add_window(mb, spacing * (i + 0.5), y_floor + 0.75, ww, wh, stone, white, glass, not top_floor)
+			_add_window(mb, body, spacing * (i + 0.5), y_floor + 0.75, ww, wh, stone, white, glass, not top_floor)
 
 	# --- Ground floor ------------------------------------------------------------
 	if ground_floor == GroundFloor.SHOP:
@@ -145,7 +146,7 @@ func rebuild() -> void:
 	mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
 
 
-func _add_window(mb: MeshBuilder, cx: float, y: float, ww: float, wh: float, stone: Material, frame: Material, glass: Material, keystone: bool) -> void:
+func _add_window(mb: MeshBuilder, body: StaticBody3D, cx: float, y: float, ww: float, wh: float, stone: Material, frame: Material, glass: Material, keystone: bool) -> void:
 	var yc := y + wh * 0.5
 	# Glass sits just proud of the wall; the stone surround projects in front of it,
 	# which reads as a window set back into the brickwork.
@@ -160,8 +161,8 @@ func _add_window(mb: MeshBuilder, cx: float, y: float, ww: float, wh: float, sto
 	# Stone surround: jambs, lintel, sill.
 	mb.add_box(Vector3(0.14, wh + 0.1, 0.09), Vector3(cx - ww * 0.5 - 0.07, yc, 0.045), stone)
 	mb.add_box(Vector3(0.14, wh + 0.1, 0.09), Vector3(cx + ww * 0.5 + 0.07, yc, 0.045), stone)
-	mb.add_box(Vector3(ww + 0.44, 0.24, 0.12), Vector3(cx, y + wh + 0.12, 0.06), stone)
-	mb.add_box(Vector3(ww + 0.3, 0.07, 0.17), Vector3(cx, y - 0.035, 0.085), stone)
+	_add_ledge(mb, body, Vector3(ww + 0.44, 0.24, 0.12), Vector3(cx, y + wh + 0.12, 0.06), stone) # lintel
+	_add_ledge(mb, body, Vector3(ww + 0.3, 0.07, 0.17), Vector3(cx, y - 0.035, 0.085), stone) # sill
 	if keystone:
 		mb.add_box(Vector3(0.18, 0.32, 0.15), Vector3(cx, y + wh + 0.13, 0.075), stone)
 
@@ -186,14 +187,14 @@ func _build_house_front(mb: MeshBuilder, body: StaticBody3D, paint: Material, wh
 	mb.add_box(Vector3(door_w, 0.05, 0.05), Vector3(door_x, floor_y + door_h + 0.025, 0.025), white)
 	for side in [-1.0, 1.0]:
 		mb.add_box(Vector3(0.22, door_h + 0.55, 0.16), Vector3(door_x + side * (door_w * 0.5 + 0.11), floor_y + (door_h + 0.55) * 0.5, 0.08), stone)
-	mb.add_box(Vector3(door_w + 0.7, 0.32, 0.24), Vector3(door_x, floor_y + door_h + 0.66, 0.12), stone)
+	_add_ledge(mb, body, Vector3(door_w + 0.7, 0.32, 0.24), Vector3(door_x, floor_y + door_h + 0.66, 0.12), stone) # door hood
 
 	# Ground-floor windows (skip the bay where the door is).
 	for i in count:
 		var cx := spacing * (i + 0.5)
 		if absf(cx - door_x) < 1.3:
 			continue
-		_add_window(mb, cx, floor_y + 0.75, 1.0, 1.95, stone, white, glass, true)
+		_add_window(mb, body, cx, floor_y + 0.75, 1.0, 1.95, stone, white, glass, true)
 
 	# Granite front steps (a "stoop"), each step a solid block you can walk up.
 	var granite := MaterialLibrary.get_material("curb_granite")
@@ -236,7 +237,7 @@ func _build_shopfront(mb: MeshBuilder, body: StaticBody3D, paint: Material, whit
 	for x in [0.15, width - 0.15]:
 		mb.add_box(Vector3(0.3, gh - 0.1, 0.18), Vector3(x, (gh - 0.1) * 0.5, 0.09), paint)
 	mb.add_box(Vector3(width - 0.3, 0.55, 0.12), Vector3(width * 0.5, gh - 0.475, 0.2), paint)
-	mb.add_box(Vector3(width, 0.12, 0.34), Vector3(width * 0.5, gh - 0.14, 0.17), paint)
+	_add_ledge(mb, body, Vector3(width, 0.12, 0.34), Vector3(width * 0.5, gh - 0.14, 0.17), paint) # shop cornice
 
 	# Display window: stallriser, glass, mullions, transom. The door is recessed.
 	var disp_x0 := 0.3 if not door_on_left else door_x + door_w * 0.5 + 0.05
@@ -364,6 +365,12 @@ func _build_downpipe(mb: MeshBuilder, iron: Material, h: float) -> void:
 	cs.position = Vector3(x, h * 0.5, 0.09)
 	pipe_body.add_child(cs)
 	add_child(pipe_body)
+
+
+## A visible projecting ledge that also has collision (for climbing and the camera).
+func _add_ledge(mb: MeshBuilder, body: StaticBody3D, size: Vector3, center: Vector3, mat: Material) -> void:
+	mb.add_box(size, center, mat)
+	_add_box_collider(body, size, center)
 
 
 func _add_box_collider(body: StaticBody3D, size: Vector3, center: Vector3) -> void:

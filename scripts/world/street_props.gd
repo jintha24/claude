@@ -7,10 +7,22 @@ extends RefCounted
 const LAYER_PROPS := 1 << 3
 const LAYER_WORLD := 1
 
+static var _wood_on_stone: PhysicsMaterial
+
+
+## Dry timber sliding on stone setts: friction about 0.5, very little bounce.
+static func wood_material() -> PhysicsMaterial:
+	if _wood_on_stone == null:
+		_wood_on_stone = PhysicsMaterial.new()
+		_wood_on_stone.friction = 0.5
+		_wood_on_stone.bounce = 0.05
+	return _wood_on_stone
+
 
 static func make_crate(size: float = 0.6) -> RigidBody3D:
 	var body := RigidBody3D.new()
 	body.name = "Crate"
+	body.physics_material_override = wood_material()
 	body.mass = 22.0 * pow(size / 0.6, 3.0)
 	body.collision_layer = LAYER_PROPS
 	body.collision_mask = LAYER_WORLD | LAYER_PROPS | (1 << 1) | (1 << 2)
@@ -43,6 +55,7 @@ static func make_crate(size: float = 0.6) -> RigidBody3D:
 static func make_barrel() -> RigidBody3D:
 	var body := RigidBody3D.new()
 	body.name = "Barrel"
+	body.physics_material_override = wood_material()
 	body.mass = 45.0
 	body.collision_layer = LAYER_PROPS
 	body.collision_mask = LAYER_WORLD | LAYER_PROPS | (1 << 1) | (1 << 2)
@@ -100,5 +113,32 @@ static func make_handcart() -> StaticBody3D:
 	box.size = Vector3(1.4, 1.05, 1.9)
 	cs.shape = box
 	cs.position = Vector3(0, 0.55, 0.05)
+	body.add_child(cs)
+	return body
+
+
+## A granite horse trough (0.8 m high), vaultable. Long side runs along Z.
+static func make_horse_trough() -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "HorseTrough"
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	var granite := MaterialLibrary.get_material("curb_granite")
+	var water := MaterialLibrary.get_material("glass")
+	var mb := MeshBuilder.new()
+	var size := Vector3(0.75, 0.8, 2.4)
+	mb.add_box(Vector3(size.x, 0.12, size.z), Vector3(0, 0.06, 0), granite) # base
+	mb.add_box(Vector3(0.1, size.y, size.z), Vector3(-size.x * 0.5 + 0.05, size.y * 0.5, 0), granite)
+	mb.add_box(Vector3(0.1, size.y, size.z), Vector3(size.x * 0.5 - 0.05, size.y * 0.5, 0), granite)
+	mb.add_box(Vector3(size.x, size.y, 0.1), Vector3(0, size.y * 0.5, -size.z * 0.5 + 0.05), granite)
+	mb.add_box(Vector3(size.x, size.y, 0.1), Vector3(0, size.y * 0.5, size.z * 0.5 - 0.05), granite)
+	mb.add_plane(Vector2(size.x - 0.2, size.z - 0.2), Vector3(0, size.y - 0.12, 0), water) # still water
+	var mi := mb.build_into(body, "Mesh")
+	mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+	var cs := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	cs.shape = box
+	cs.position = Vector3(0, size.y * 0.5, 0)
 	body.add_child(cs)
 	return body

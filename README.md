@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phase 1 of 11 — complete and playable
+## Status: Phases 1–2 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -24,20 +24,27 @@ Jolt Physics) and GDScript.
   roofs, chimneys with smoke, drainpipes), 12 shadow-casting gas lamps, an alley with a timber
   stair to 4.5 m and 9 m, physics crates and barrels, handcarts, and a church spire in the haze.
 
+**Phase 2 — climbing and parkour:** vault, mantle, jump-grab and wall-run grab, hang, shimmy,
+climb up, hop up between ledges, drop-to-hang from edges, drainpipe climbing, jump off walls, and
+landing rolls. The rooftops are connected by side pipes, an alley gap and roof access. Real building
+ledges (sills, lintels, string courses, cornices) are grabbable. The real model gets foot IK on
+uneven ground and hand IK on ledges (Godot 4.7 `TwoBoneIK3D`).
+
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
 ## Documents
 - [docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md) — step-by-step setup and Phase 1 walkthrough
+- [docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md) — climbing controls, tuning, climbing animations and IK
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
 
 ## Roadmap
 1. ✅ Project, lighting, Harry, camera, one street
-2. Climbing, parkour, rooftops (plus foot/hand IK)
+2. ✅ Climbing, parkour, rooftops (plus foot/hand IK)
 3. Stealth: guards, vision, hearing, light, noise, search; non-lethal takedowns; longbow basics
 4. Market crowds and pickpocketing
 5. NPC daily schedules and the day/night cycle

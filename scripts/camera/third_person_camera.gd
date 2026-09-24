@@ -30,6 +30,8 @@ extends Node3D
 @export var stand_distance: float = 2.5
 @export var crouch_distance: float = 2.0
 @export var sprint_distance: float = 3.2
+## Pulled back a little while hanging or climbing so the wall and next ledge are visible.
+@export var climb_distance: float = 3.1
 @export var shoulder_offset: float = 0.55
 @export var base_fov: float = 68.0
 @export var sprint_fov: float = 74.0
@@ -172,7 +174,9 @@ func _process(delta: float) -> void:
 	var want_height := crouch_pivot_height if _target.is_crouching else stand_pivot_height
 	var want_distance := stand_distance
 	var want_fov := base_fov
-	if _target.is_crouching:
+	if _target.is_climbing():
+		want_distance = climb_distance
+	elif _target.is_crouching:
 		want_distance = crouch_distance
 	elif _target.is_sprinting():
 		want_distance = sprint_distance

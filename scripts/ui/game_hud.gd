@@ -212,13 +212,17 @@ func _process(delta: float) -> void:
 	(_damage_flash.material as ShaderMaterial).set_shader_parameter("strength", _flash)
 
 	if _debug_label.visible and _player:
-		_debug_label.text = "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s" % [
+		var climb := ""
+		if _player.parkour and not _player.parkour.ledge.is_empty() and _player.is_climbing():
+			climb = "\nLedge top: %.2f m" % float(_player.parkour.ledge["top"])
+		_debug_label.text = "FPS %d\nState: %s\nSpeed: %.2f m/s\nHealth: %.0f\nLast fall: %.2f m\nPosition: %s%s" % [
 			Engine.get_frames_per_second(),
 			Harry.State.keys()[_player.state],
 			_player.get_horizontal_speed(),
 			_player.health,
 			_last_fall,
 			str(_player.global_position.snapped(Vector3.ONE * 0.01)),
+			climb,
 		]
 
 

@@ -28,6 +28,8 @@ var _land_blend := 0.0
 var _death_blend := 0.0
 var _speed_smooth := 0.0
 var _breath := 0.0
+var _hang_blend := 0.0
+var _climb_phase := 0.0
 
 
 func _ready() -> void:
@@ -75,7 +77,10 @@ func _ready() -> void:
 		_elbow.append(elbow)
 
 
-func update_pose(state: Harry.State, speed: float, vertical_speed: float, delta: float) -> void:
+func update_pose(h: Harry, delta: float) -> void:
+	var state := h.state
+	var speed := h.get_horizontal_speed() if not h.is_climbing() else 0.0
+	var vertical_speed := h.velocity.y
 	var crouching := state == Harry.State.CROUCH_IDLE or state == Harry.State.CROUCH_WALK
 	var airborne := state == Harry.State.JUMP or state == Harry.State.FALL
 	var dead := state == Harry.State.DEAD
@@ -136,10 +141,89 @@ func update_pose(state: Harry.State, speed: float, vertical_speed: float, delta:
 	_head.rotation.x = -_spine.rotation.x * 0.6
 	_coat_skirt.rotation.x = -deg_to_rad(12.0) * run_t + deg_to_rad(25.0) * _crouch_blend + clampf(vertical_speed * 0.05, -0.3, 0.3) * _air_blend
 
+	_pose_parkour(h, delta)
+
 	# Death: collapse forward onto the ground.
 	rotation.x = -_death_blend * PI * 0.47
 	position.y = _death_blend * 0.12
 	position.z = -_death_blend * 0.4
+	if state == Harry.State.ROLL:
+		# Tuck and roll forward around the body's centre.
+		var t := 1.0 - clampf(h.get_roll_time_left() / h.roll_duration, 0.0, 1.0)
+		var angle := -smoothstep(0.0, 1.0, t) * TAU
+		var c := Vector3(0, 0.55, 0)
+		rotation.x = angle
+		position = c - Basis(Vector3.RIGHT, angle) * c
+		for i in 2:
+			_thigh[i].rotation.x = deg_to_rad(110.0)
+			_knee[i].rotation.x = -deg_to_rad(130.0)
+			_shoulder[i].rotation.x = deg_to_rad(70.0)
+			_elbow[i].rotation.x = deg_to_rad(90.0)
+		_hips.position.y = 0.55
+		_spine.rotation.x = -deg_to_rad(50.0)
+
+
+## Poses for hanging, shimmying, drainpipes, climbing up and vaulting.
+func _pose_parkour(h: Harry, delta: float) -> void:
+	var state := h.state
+	var p := h.parkour
+	var hanging := state == Harry.State.HANG or state == Harry.State.GRAB or state == Harry.State.PIPE
+	_hang_blend = move_toward(_hang_blend, 1.0 if hanging else 0.0, delta * 8.0)
+	if _hang_blend > 0.0:
+		var sway := 0.0
+		if state == Harry.State.PIPE:
+			_climb_phase += p.pipe_speed * delta * 5.0
+		elif state == Harry.State.HANG:
+			_climb_phase += absf(p.shimmy_speed) * delta * 7.0
+			sway = sin(_climb_phase) * deg_to_rad(10.0) * clampf(absf(p.shimmy_speed) / p.shimmy_speed_max, 0.0, 1.0)
+		for i in 2:
+			var ph := _climb_phase + (PI if i == 1 else 0.0)
+			var reach := deg_to_rad(165.0)
+			var thigh := deg_to_rad(12.0)
+			var knee := deg_to_rad(25.0)
+			if state == Harry.State.PIPE:
+				# Alternate hands and knees like climbing a ladder.
+				reach = deg_to_rad(150.0) + sin(ph) * deg_to_rad(15.0)
+				thigh = deg_to_rad(45.0) + sin(ph + PI) * deg_to_rad(25.0)
+				knee = deg_to_rad(70.0) + sin(ph + PI) * deg_to_rad(20.0)
+			_shoulder[i].rotation.x = lerpf(_shoulder[i].rotation.x, reach, _hang_blend)
+			_shoulder[i].rotation.z = lerpf(_shoulder[i].rotation.z, (1.0 if i == 1 else -1.0) * deg_to_rad(-8.0), _hang_blend)
+			_elbow[i].rotation.x = lerpf(_elbow[i].rotation.x, deg_to_rad(12.0), _hang_blend)
+			_thigh[i].rotation.x = lerpf(_thigh[i].rotation.x, thigh, _hang_blend)
+			_knee[i].rotation.x = lerpf(_knee[i].rotation.x, -knee, _hang_blend)
+		_hips.position.y = lerpf(_hips.position.y, HIP_HEIGHT, _hang_blend)
+		_hips.rotation.z = sway
+		_spine.rotation.x = lerpf(_spine.rotation.x, deg_to_rad(4.0), _hang_blend)
+		_head.rotation.x = lerpf(_head.rotation.x, deg_to_rad(18.0), _hang_blend) # look up at the hands
+	else:
+		_hips.rotation.z = 0.0
+
+	if state == Harry.State.CLIMB_UP:
+		# Pull up with the arms, bring a knee over the lip, then stand.
+		var t := p.progress
+		var pull := smoothstep(0.0, 0.5, t)
+		var knee_up := smoothstep(0.3, 0.65, t) * (1.0 - smoothstep(0.8, 1.0, t))
+		for i in 2:
+			_shoulder[i].rotation.x = lerpf(deg_to_rad(165.0), deg_to_rad(-15.0), pull)
+			_elbow[i].rotation.x = deg_to_rad(110.0) * sin(pull * PI)
+			var lead := 1.0 if i == 0 else 0.35
+			_thigh[i].rotation.x = deg_to_rad(95.0) * knee_up * lead
+			_knee[i].rotation.x = -deg_to_rad(120.0) * knee_up * lead
+		_spine.rotation.x = -deg_to_rad(35.0) * smoothstep(0.3, 0.6, t) * (1.0 - smoothstep(0.85, 1.0, t))
+		_hips.position.y = HIP_HEIGHT - 0.25 * knee_up
+	elif state == Harry.State.VAULT:
+		# Speed vault: one hand on the obstacle, legs swing through to the side.
+		var t := p.progress
+		var tuck := sin(t * PI)
+		_shoulder[0].rotation.x = deg_to_rad(40.0) * tuck
+		_elbow[0].rotation.x = 0.0
+		_shoulder[1].rotation.x = deg_to_rad(80.0) * tuck
+		_shoulder[1].rotation.z = deg_to_rad(40.0) * tuck
+		for i in 2:
+			_thigh[i].rotation.x = deg_to_rad(80.0) * tuck
+			_knee[i].rotation.x = -deg_to_rad(90.0) * tuck
+		_hips.rotation.z = deg_to_rad(25.0) * tuck
+		_spine.rotation.x = -deg_to_rad(20.0) * tuck
 
 
 func _pivot(parent: Node3D, pos: Vector3) -> Node3D:

@@ -131,6 +131,7 @@ func _build_terrace_west() -> void:
 func _build_row(z0: float, z1: float, east: bool, first_depth: float, last_depth: float) -> void:
 	var z := z0
 	var index := 0
+	var prev_height := -1.0
 	while z1 - z > 0.01:
 		var w := _rng.randf_range(5.4, 8.2)
 		if z1 - (z + w) < 5.0:
@@ -140,6 +141,8 @@ func _build_row(z0: float, z1: float, east: bool, first_depth: float, last_depth
 		b.width = w
 		b.depth = first_depth if index == 0 else (last_depth if z + w >= z1 - 0.01 else 10.0)
 		_style_building(b)
+		if b.depth > 10.0:
+			b.upper_floors = 2 # alley buildings: their roofs are reachable from the alley platform
 		if east:
 			b.rotation.y = -PI * 0.5
 			b.position = Vector3(FACADE_X, PAVE_TOP, z)
@@ -147,8 +150,39 @@ func _build_row(z0: float, z1: float, east: bool, first_depth: float, last_depth
 			b.rotation.y = PI * 0.5
 			b.position = Vector3(-FACADE_X, PAVE_TOP, z + w)
 		add_child(b)
+		# Where neighbouring roofs differ in height, a drainpipe on the taller building's
+		# exposed side wall lets Harry climb from the lower roof to the higher one.
+		var h := b.get_facade_height()
+		if prev_height > 0.0 and absf(h - prev_height) > 0.5:
+			var taller_is_current := h > prev_height
+			var pipe_z := z - 0.1 if taller_is_current else z + 0.1
+			var pipe_x := (FACADE_X + 0.6) * (1.0 if east else -1.0)
+			_add_roof_pipe(Vector3(pipe_x, PAVE_TOP + minf(h, prev_height), pipe_z), absf(h - prev_height))
+		prev_height = h
 		z += w
 		index += 1
+
+
+## A cast-iron rainwater pipe from `base` rising `height` metres (climbable, layer 5).
+func _add_roof_pipe(base: Vector3, height: float) -> void:
+	var pipe := StaticBody3D.new()
+	pipe.name = "RoofPipe"
+	pipe.collision_layer = 1 << 4
+	pipe.collision_mask = 0
+	pipe.add_to_group("climbable_pipe")
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 0.06
+	cyl.height = height
+	cs.shape = cyl
+	cs.position = base + Vector3.UP * height * 0.5
+	pipe.add_child(cs)
+	add_child(pipe)
+	var mb := MeshBuilder.new()
+	var iron := MaterialLibrary.get_material("iron")
+	mb.add_cylinder(0.045, 0.045, height, base + Vector3.UP * height * 0.5, iron, 8)
+	mb.add_box(Vector3(0.2, 0.22, 0.2), base + Vector3.UP * (height - 0.3), iron)
+	mb.build_into(self, "RoofPipeMesh").gi_mode = GeometryInstance3D.GI_MODE_STATIC
 
 
 func _style_building(b: BuildingFacade) -> void:
@@ -336,6 +370,10 @@ func _build_props() -> void:
 		var offset := Vector3(-0.8, 0, 0) if base.x > FACADE_X else Vector3(0, 0, 0.8 if i % 2 == 0 else -0.8)
 		barrel.position = base + Vector3(0, 0.43, 0) + offset
 		props.add_child(barrel)
+	# A granite horse trough at the kerb: a classic vault obstacle.
+	var trough := StreetProps.make_horse_trough()
+	trough.position = Vector3(-3.3, 0.0, 20.0)
+	props.add_child(trough)
 	var cart := StreetProps.make_handcart()
 	cart.position = Vector3(-2.7, 0.0, -8.0)
 	cart.rotation.y = 0.12

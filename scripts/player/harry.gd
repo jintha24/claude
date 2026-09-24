@@ -3,12 +3,12 @@ extends CharacterBody3D
 ## Harry Crane, "The Hill Fox". Third-person character controller.
 ##
 ## Responsibilities of this script: reading input, realistic movement (momentum,
-## acceleration, turning), jumping, crouching, steps and stairs, falling and fall
-## damage, pushing physics props, and the movement state machine.
-## Visuals and animation live in HarryAnimator; the camera lives in ThirdPersonCamera.
+## acceleration, turning), jumping, crouching, steps and stairs, falling, fall damage
+## and landing rolls, pushing physics props, and the movement state machine.
+## Climbing and parkour live in HarryParkour (child node "Parkour"), visuals and
+## animation in HarryAnimator ("Visual"), and the camera in ThirdPersonCamera.
 ##
-## Phase 2 adds the CLIMB, HANG, VAULT and ROLL states; later phases add RIDE, SWIM,
-## FISH, PICKPOCKET and LOCKPICK. Every state has enter/exit handling in _enter_state().
+## Later phases add RIDE, SWIM, FISH, PICKPOCKET and LOCKPICK states.
 
 signal state_changed(old_state: State, new_state: State)
 signal health_changed(health: float, max_health: float)
@@ -16,7 +16,10 @@ signal landed(fall_height: float)
 signal died
 signal respawned
 
-enum State { IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, DEAD }
+enum State {
+	IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, ROLL,
+	GRAB, HANG, CLIMB_UP, PIPE, VAULT, DEAD,
+}
 
 # --- Real-world body measurements ---------------------------------------------
 const HEIGHT := 1.88 # 6 ft 2 in
@@ -50,6 +53,13 @@ const CROUCH_CAPSULE_HEIGHT := 1.2
 ## Falls this high or higher are fatal.
 @export var fatal_fall_height: float = 11.0
 @export var hard_landing_height: float = 2.2
+## Moving at least this fast when landing from a big drop turns it into a parkour roll.
+@export var roll_min_speed: float = 2.0
+## Rolls only work up to this height; above it the impact is too great.
+@export var roll_max_height: float = 7.5
+## Fraction of fall damage still taken when rolling.
+@export_range(0.0, 1.0) var roll_damage_factor: float = 0.35
+@export var roll_duration: float = 0.8
 
 @export_group("Steps")
 ## Highest step Harry walks straight up without jumping (stairs, kerbs, stoops).
@@ -61,9 +71,8 @@ const CROUCH_CAPSULE_HEIGHT := 1.2
 @export var regen_per_second: float = 3.0
 
 @export_group("Physics")
-## Force Harry applies to crates and barrels he walks into (N per kg of his own mass).
-@export var push_strength: float = 2.0
-@export var body_mass: float = 82.0
+## Force Harry leans into crates and barrels he walks into (a strong push is 300-500 N).
+@export var push_force: float = 350.0
 
 @export_group("Scene links")
 @export var camera_path: NodePath
@@ -72,6 +81,7 @@ var state: State = State.IDLE
 var health: float
 var facing_yaw: float = 0.0
 var is_crouching: bool = false
+var parkour: HarryParkour
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -86,6 +96,9 @@ var _land_timer := 0.0
 var _regen_timer := 0.0
 var _spawn_transform: Transform3D
 var _stand_check_shape: CapsuleShape3D
+var _roll_timer := 0.0
+var _respawning := false
+var _wish_dir := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -108,6 +121,12 @@ func _ready() -> void:
 	_stand_check_shape.height = STAND_CAPSULE_HEIGHT
 
 	_animator = $Visual as HarryAnimator
+	parkour = get_node_or_null("Parkour") as HarryParkour
+	if parkour == null:
+		parkour = HarryParkour.new()
+		parkour.name = "Parkour"
+		add_child(parkour)
+	parkour.setup(self, CAPSULE_RADIUS, STAND_CAPSULE_HEIGHT, CROUCH_CAPSULE_HEIGHT)
 	if not camera_path.is_empty():
 		_camera = get_node(camera_path) as ThirdPersonCamera
 	health = max_health
@@ -135,6 +154,29 @@ func is_airborne() -> bool:
 	return state == State.JUMP or state == State.FALL
 
 
+func is_climbing() -> bool:
+	return parkour != null and parkour.is_busy()
+
+
+## Camera-relative movement input as a horizontal world direction (length 0..1).
+func get_wish_dir() -> Vector3:
+	return _wish_dir
+
+
+## The horizontal direction Harry's body is facing.
+func get_facing_dir() -> Vector3:
+	return Vector3(-sin(facing_yaw), 0.0, -cos(facing_yaw))
+
+
+func get_roll_time_left() -> float:
+	return _roll_timer
+
+
+func set_crouched(crouched: bool) -> void:
+	is_crouching = crouched
+	_set_capsule_height(CROUCH_CAPSULE_HEIGHT if crouched else STAND_CAPSULE_HEIGHT)
+
+
 func is_dead() -> bool:
 	return state == State.DEAD
 
@@ -147,9 +189,6 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var on_floor := is_on_floor()
-	_update_timers(delta, on_floor)
-
 	# ---- Input -------------------------------------------------------------
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var strength := minf(input.length(), 1.0)
@@ -157,11 +196,50 @@ func _physics_process(delta: float) -> void:
 	if strength > 0.05:
 		var yaw := _camera.get_yaw() if _camera else 0.0
 		wish_dir = Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw).normalized()
+	_wish_dir = wish_dir * strength
 
-	if Input.is_action_just_pressed("crouch") and on_floor:
+	# ---- Climbing / parkour actions own the body while they run --------------
+	if parkour.is_busy():
+		_update_timers(delta, false)
+		parkour.physics_update(delta)
+		_air_peak_y = global_position.y
+		_was_on_floor = false
+		_coyote_timer = 0.0
+		if not parkour.is_busy():
+			_jump_buffer = 0.0
+			if state == State.JUMP or state == State.FALL:
+				_air_peak_y = global_position.y
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
+
+	var on_floor := is_on_floor()
+	_update_timers(delta, on_floor)
+
+	if Input.is_action_just_pressed("crouch") and on_floor and state != State.ROLL:
 		_toggle_crouch()
 	if Input.is_action_just_pressed("jump"):
 		_jump_buffer = jump_buffer_time
+
+	# Parkour from the ground: vault, mantle, climb, jump-grab, drainpipe.
+	if _jump_buffer > 0.0 and on_floor and state != State.LAND and state != State.ROLL:
+		if parkour.try_ground_action(wish_dir, get_horizontal_speed()):
+			_jump_buffer = 0.0
+			if _animator:
+				_animator.update_animation(self, delta)
+			return
+	# Crouch-walking off an edge lowers Harry into a hang instead of dropping him.
+	if is_crouching and on_floor and wish_dir != Vector3.ZERO:
+		if parkour.try_drop_to_hang(wish_dir):
+			if _animator:
+				_animator.update_animation(self, delta)
+			return
+	# In the air: catch ledges and drainpipes within reach.
+	if not on_floor and (state == State.JUMP or state == State.FALL) and not Input.is_action_pressed("crouch"):
+		if parkour.try_air_grab(wish_dir):
+			if _animator:
+				_animator.update_animation(self, delta)
+			return
 
 	# ---- Choose a gait and target speed -----------------------------------
 	var wants_sprint := Input.is_action_pressed("sprint") and strength > 0.6 and not is_crouching
@@ -180,6 +258,10 @@ func _physics_process(delta: float) -> void:
 			target_speed = run_speed
 	if state == State.LAND:
 		target_speed *= 0.35 # recovering from a heavy landing
+	if state == State.ROLL:
+		# Keep the momentum through the roll, along the way Harry is facing.
+		wish_dir = get_facing_dir()
+		target_speed = maxf(get_horizontal_speed(), 3.2)
 
 	# ---- Horizontal momentum ---------------------------------------------
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
@@ -213,7 +295,7 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= _gravity * delta
 		_air_peak_y = maxf(_air_peak_y, global_position.y)
 
-	if _jump_buffer > 0.0 and _coyote_timer > 0.0 and state != State.LAND:
+	if _jump_buffer > 0.0 and _coyote_timer > 0.0 and state != State.LAND and state != State.ROLL:
 		if is_crouching:
 			_try_stand_up()
 		else:
@@ -227,11 +309,11 @@ func _physics_process(delta: float) -> void:
 	if on_floor and state != State.JUMP:
 		stepped = _try_step_up(delta)
 	move_and_slide()
-	_push_props()
+	_push_props(delta, wish_dir)
 
 	# ---- Facing ------------------------------------------------------------
 	var hspeed := get_horizontal_speed()
-	if hspeed > 0.2:
+	if hspeed > 0.2 and state != State.ROLL:
 		var target_yaw := atan2(-velocity.x, -velocity.z)
 		var rate := lerpf(turn_rate_slow, turn_rate_fast, clampf(hspeed / sprint_speed, 0.0, 1.0))
 		facing_yaw = rotate_toward(facing_yaw, target_yaw, rate * delta)
@@ -242,11 +324,16 @@ func _physics_process(delta: float) -> void:
 	var now_on_floor := is_on_floor()
 	if now_on_floor and not _was_on_floor and not stepped:
 		_on_landed()
+		if state == State.DEAD:
+			_was_on_floor = true
+			if _animator:
+				_animator.update_animation(self, delta)
+			return
 	_was_on_floor = now_on_floor
 	_update_state(now_on_floor, hspeed)
 
 	if _animator:
-		_animator.update_animation(state, hspeed, facing_yaw, velocity.y, delta)
+		_animator.update_animation(self, delta)
 
 
 func _update_timers(delta: float, on_floor: bool) -> void:
@@ -254,6 +341,10 @@ func _update_timers(delta: float, on_floor: bool) -> void:
 	_jump_buffer = maxf(_jump_buffer - delta, 0.0)
 	if _land_timer > 0.0:
 		_land_timer -= delta
+	if _roll_timer > 0.0:
+		_roll_timer -= delta
+		if _roll_timer <= 0.0 and is_crouching:
+			_try_stand_up()
 	_regen_timer += delta
 	if _regen_timer > regen_delay and health < max_health:
 		health = minf(health + regen_per_second * delta, max_health)
@@ -265,6 +356,9 @@ func _update_state(on_floor: bool, hspeed: float) -> void:
 		if state != State.JUMP or velocity.y < 0.0:
 			if _coyote_timer <= 0.0 or state == State.JUMP:
 				_set_state(State.FALL)
+		return
+	if _roll_timer > 0.0:
+		_set_state(State.ROLL)
 		return
 	if _land_timer > 0.0:
 		_set_state(State.LAND)
@@ -281,8 +375,15 @@ func _update_state(on_floor: bool, hspeed: float) -> void:
 		_set_state(State.SPRINT)
 
 
+func set_state(new_state: State) -> void:
+	_set_state(new_state)
+
+
 func _set_state(new_state: State) -> void:
 	if new_state == state:
+		return
+	# Once dead, only respawn() may bring Harry back.
+	if state == State.DEAD and not _respawning:
 		return
 	var old := state
 	state = new_state
@@ -307,12 +408,22 @@ func _on_landed() -> void:
 	var fall := _air_peak_y - global_position.y
 	_air_peak_y = global_position.y
 	landed.emit(fall)
-	if fall >= hard_landing_height:
-		# Knees absorb the impact: longer recovery for bigger drops.
-		_land_timer = clampf(0.25 + (fall - hard_landing_height) * 0.12, 0.25, 1.2)
+	var damage := 0.0
 	if fall > safe_fall_height:
 		var t := clampf((fall - safe_fall_height) / (fatal_fall_height - safe_fall_height), 0.0, 1.0)
-		apply_damage(pow(t, 1.4) * max_health * 1.02)
+		damage = pow(t, 1.4) * max_health * 1.02
+	if fall >= hard_landing_height:
+		if fall <= roll_max_height and get_horizontal_speed() >= roll_min_speed:
+			# Parkour roll: spread the impact over the roll and keep running.
+			_roll_timer = roll_duration
+			damage *= roll_damage_factor
+			if not is_crouching:
+				is_crouching = true
+				_set_capsule_height(CROUCH_CAPSULE_HEIGHT)
+		else:
+			# Knees absorb the impact: longer recovery for bigger drops.
+			_land_timer = clampf(0.25 + (fall - hard_landing_height) * 0.12, 0.25, 1.2)
+	apply_damage(damage)
 
 
 func apply_damage(amount: float) -> void:
@@ -322,6 +433,7 @@ func apply_damage(amount: float) -> void:
 	_regen_timer = 0.0
 	health_changed.emit(health, max_health)
 	if health <= 0.0:
+		parkour.cancel()
 		_set_state(State.DEAD)
 		died.emit()
 		get_tree().create_timer(3.5).timeout.connect(respawn)
@@ -336,8 +448,12 @@ func respawn() -> void:
 	_set_capsule_height(STAND_CAPSULE_HEIGHT)
 	_air_peak_y = global_position.y
 	_land_timer = 0.0
+	_roll_timer = 0.0
+	parkour.cancel()
 	reset_physics_interpolation()
+	_respawning = true
 	_set_state(State.IDLE)
+	_respawning = false
 	if _camera:
 		_camera.snap_behind(facing_yaw)
 	health_changed.emit(health, max_health)
@@ -417,7 +533,9 @@ func _try_step_up(delta: float) -> bool:
 	return true
 
 
-func _push_props() -> void:
+func _push_props(delta: float, wish_dir: Vector3) -> void:
+	if wish_dir == Vector3.ZERO:
+		return
 	for i in get_slide_collision_count():
 		var col := get_slide_collision(i)
 		var rb := col.get_collider() as RigidBody3D
@@ -427,6 +545,13 @@ func _push_props() -> void:
 		push_dir.y = 0.0
 		if push_dir.length_squared() < 0.001:
 			continue
-		var speed_into := maxf(Vector3(velocity.x, 0, velocity.z).dot(push_dir.normalized()), 0.3)
-		var mass_ratio := clampf(body_mass / rb.mass, 0.1, 2.0)
-		rb.apply_impulse(push_dir.normalized() * push_strength * speed_into * mass_ratio, col.get_position() - rb.global_position)
+		push_dir = push_dir.normalized()
+		var effort := clampf(wish_dir.dot(push_dir), 0.0, 1.0)
+		if effort <= 0.0:
+			continue
+		# Push where the body touches it, but no higher than just above its centre, so
+		# crates slide and tall barrels can rock without being flipped unrealistically.
+		var contact := col.get_position()
+		var point := Vector3(contact.x, minf(contact.y, rb.global_position.y + 0.2), contact.z)
+		rb.sleeping = false
+		rb.apply_impulse(push_dir * push_force * effort * delta, point - rb.global_position)
