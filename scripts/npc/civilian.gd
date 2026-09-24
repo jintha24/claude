@@ -1,6 +1,7 @@
 class_name Civilian
 extends NPCCharacter
-## Townsfolk: shoppers, passers-by and market traders.
+## Townsfolk: shoppers, passers-by and market traders (each one a resident of the town
+## following their daily routine; see DailyRoutine and Population).
 ##
 ## Behaviour: wander between points in their area, stop at stalls to browse, gather and
 ## gawk at commotions (a shout of "Thief!", breaking glass, a man going down), and react
@@ -39,6 +40,8 @@ var wary := false
 var suspicion: float = 0.0
 var stall_point: Vector3 = Vector3.ZERO
 var stall_look: Vector3 = Vector3.ZERO
+## Height of this person, when they are someone in particular (a resident); 0 = random.
+var fixed_height := 0.0
 
 var _target: Vector3
 var _timer := 0.0
@@ -63,14 +66,16 @@ func _ready() -> void:
 	add_to_group("civilians")
 	_rng.seed = hash(name) ^ hash(global_position)
 	walk_speed *= _rng.randf_range(0.85, 1.15)
-	_setup_npc(walk_speed * 3.0, 1.72 if outfit == NPCBody.Outfit.LADY else _rng.randf_range(1.66, 1.8))
+	var h := fixed_height if fixed_height > 0.0 else (1.72 if outfit == NPCBody.Outfit.LADY else _rng.randf_range(1.66, 1.8))
+	_setup_npc(walk_speed * 3.0, h)
+	far_glide = true
 	victim_class = "merchant" if is_merchant else LootTable.class_for_outfit(outfit)
 	pockets = LootTable.roll(victim_class, _rng)
 	Stealth.bus().noise_made.connect(_on_noise)
 	_cry_timer = _rng.randf_range(4.0, 15.0)
 	if drunk:
-		walk_speed *= 0.7
-		_sing_timer = _rng.randf_range(3.0, 10.0)
+		drunk = false
+		set_drunk(true)
 	if state == State.TRAVEL:
 		pass
 	elif is_merchant:
@@ -80,6 +85,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _far_skip(delta):
+		return
+	delta *= 2.0 if lod_level >= 2 else 1.0
 	_begin_frame(delta)
 	if not _nav_ready():
 		_apply_movement(delta)
@@ -300,6 +308,20 @@ func _react_to_rain(delta: float) -> void:
 			set_meta("dismissed", true)
 			walk_speed *= 1.35
 			go_to(door.global_position, "vanish")
+
+
+## Turned out of the pub: weaves as they walk, slower, and sings.
+func set_drunk(on: bool) -> void:
+	if on == drunk:
+		return
+	drunk = on
+	walk_speed *= 0.7 if on else 1.0 / 0.7
+	_sing_timer = _rng.randf_range(3.0, 10.0)
+
+
+## Starts strolling about their wander area (wander_center, wander_extent).
+func start_wandering() -> void:
+	_pick_wander_target()
 
 
 ## Walk to `target`, then do `then`: "vanish" (go indoors), "stall" (set up and trade),

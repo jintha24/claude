@@ -206,6 +206,10 @@ func run_tests() -> void:
 	check("body hit only stuns and alerts him", g.state == Guard.State.STUNNED and g.alertness >= 0.9)
 	await clear_guards()
 
+	# Townsfolk come to gawk at fallen constables: clear them out of the line of fire.
+	for c in get_nodes_in_group_safe("civilians"):
+		if (c as Node3D).global_position.distance_to(Vector3(-3.0, 0.0, 20.0)) < 15.0:
+			c.free()
 	g = spawn_guard(Vector3(0, 0, 20), 0.0)
 	var spot := Vector3(-3.0, 0.0, 14.0)
 	origin = Vector3(-6.0, 1.5, 28.0)

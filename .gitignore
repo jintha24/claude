@@ -23,3 +23,7 @@ desktop.ini
 .vscode/
 .idea/
 *.tmp
+
+# Character generator source data (fetched by tools/characters/fetch_data.sh)
+tools/characters/data/
+tools/characters/cache/

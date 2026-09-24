@@ -14,6 +14,12 @@ func _init() -> void:
 	out.append("=== Godot Engine ===")
 	out.append(Engine.get_license_text())
 	out.append("")
+	out.append("=== Character data ===")
+	out.append("The people in the game are built from the MakeHuman data (base mesh, shape")
+	out.append("targets, skeleton, skin weights and eyes), (c) MakeHuman Community, released")
+	out.append("under CC0 1.0 (public domain): https://github.com/makehumancommunity/mpfb2 and")
+	out.append("https://github.com/makehumancommunity/makehuman. With thanks.")
+	out.append("")
 	out.append("=== Components built into Godot ===")
 	for info: Dictionary in Engine.get_copyright_info():
 		out.append("")

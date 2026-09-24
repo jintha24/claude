@@ -25,6 +25,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
+=== Character data ===
+The people in the game are built from the MakeHuman data (base mesh, shape
+targets, skeleton, skin weights and eyes), (c) MakeHuman Community, released
+under CC0 1.0 (public domain): https://github.com/makehumancommunity/mpfb2 and
+https://github.com/makehumancommunity/makehuman. With thanks.
+
 === Components built into Godot ===
 
 - Godot Engine

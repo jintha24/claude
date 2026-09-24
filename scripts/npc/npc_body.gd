@@ -4,8 +4,11 @@ extends Node3D
 ##
 ## If `model_path` points to a rigged .glb with Mixamo-style clips (idle, walk, run and
 ## optionally look_around, alert, stunned, unconscious), it is scaled to `height` and
-## animated with an AnimationTree. Otherwise a procedural mannequin is built in the
-## silhouette of the chosen period outfit and posed in code.
+## animated with an AnimationTree. Otherwise the person is one of the realistic generated
+## characters (CharacterLook: a human body in period clothes, varied per person by
+## `variation_seed`), posed by an invisible procedural mannequin whose joints drive the
+## model's skeleton (CharacterRig). With `look` set to "none", or if the generated models
+## are missing, the mannequin itself is shown in the silhouette of the outfit.
 
 enum Pose { NORMAL, LOOK_AROUND, ALERT, RATTLE, STUNNED, UNCONSCIOUS, SHOUT, BROWSE, GUARD, WINDUP, PUNCH, SIT, TALK, WAVE }
 
@@ -16,6 +19,12 @@ enum Outfit { CONSTABLE, GENTLEMAN, WORKER, LADY, HOUSE_GUARD, PRIEST, RAGGED }
 @export var outfit: Outfit = Outfit.CONSTABLE
 @export var height: float = 1.78
 @export var model_yaw_offset_degrees: float = 180.0
+## Which generated character to wear: "" picks one from the outfit and height, "none"
+## shows the simple mannequin.
+@export var look: String = ""
+## Varies the build, face, skin, hair, beard, hat and colours. -1: taken from the node
+## path, so the same person looks the same every time the game runs.
+@export var variation_seed: int = -1
 
 var pose: Pose = Pose.NORMAL
 var head_yaw: float = 0.0
@@ -43,6 +52,9 @@ var _t := 0.0
 ## so a whole crowd shares a single material (few draw calls per person).
 var _pending := {}
 static var _shared_material: StandardMaterial3D
+## The realistic character, when there is one.
+var _look_model: Node3D
+var _rig: CharacterRig
 
 
 func _ready() -> void:
@@ -51,7 +63,15 @@ func _ready() -> void:
 		if scene:
 			_setup_model(scene.instantiate() as Node3D)
 	if not _has_model:
+		if look == "":
+			look = CharacterLook.for_outfit(outfit, height)
+		if look != "none" and CharacterLook.has_look(look):
+			if variation_seed < 0:
+				variation_seed = hash(str(get_path()) if is_inside_tree() else name)
+			_look_model = CharacterLook.instantiate(look, variation_seed)
 		_build_mannequin()
+		if _look_model:
+			_attach_look()
 	PerfTuning.set_visibility_range(self, PerfTuning.RANGE_PERSON)
 
 
@@ -99,6 +119,35 @@ func is_model() -> bool:
 	return _has_model
 
 
+## True when a realistic generated character is shown (see `look`).
+func is_realistic() -> bool:
+	return _rig != null
+
+
+func get_look_model() -> Node3D:
+	return _look_model
+
+
+func _attach_look() -> void:
+	var s := height / 1.78
+	_look_model.scale = Vector3.ONE * s
+	add_child(_look_model)
+	var skel := _look_model.find_children("*", "Skeleton3D", true, false)
+	if skel.is_empty():
+		_look_model.queue_free()
+		_look_model = null
+		return
+	_rig = CharacterRig.new()
+	var drivers := {
+		"pelvis": _hips, "spine_03": _spine, "head": _head,
+		"thigh_l": _thigh[0], "thigh_r": _thigh[1], "calf_l": _knee[0], "calf_r": _knee[1],
+		"upperarm_l": _shoulder[0], "upperarm_r": _shoulder[1], "lowerarm_l": _elbow[0], "lowerarm_r": _elbow[1],
+	}
+	_rig.setup(skel[0] as Skeleton3D, drivers, _hips, Vector3(0, 0.92, 0), _root_pivot)
+	_pose_mannequin(0.0)
+	_rig.update()
+
+
 ## Called by the owning NPC every physics frame.
 func update_body(speed: float, new_pose: Pose, delta: float) -> void:
 	pose = new_pose
@@ -108,6 +157,8 @@ func update_body(speed: float, new_pose: Pose, delta: float) -> void:
 		_drive_model()
 	else:
 		_pose_mannequin(delta)
+		if _rig:
+			_rig.update()
 
 
 # ---------------------------------------------------------------------------
@@ -462,6 +513,8 @@ func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
 
 
 func _add_part(parent: Node3D, mesh: PrimitiveMesh, xform: Transform3D, mat: Material) -> void:
+	if _look_model:
+		return # only the pivots are needed: the realistic body is shown instead
 	var color := (mat as StandardMaterial3D).albedo_color if mat is StandardMaterial3D else Color.WHITE
 	var arrays := mesh.get_mesh_arrays()
 	var count := (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()

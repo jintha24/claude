@@ -66,13 +66,73 @@ For Syndicate-style clouds, use a photographed sky:
 2. Put it in `assets/hdri/`. In `scenes/main/london_environment.tres` → **Sky → Sky Material**, choose **New PanoramaSkyMaterial**, then drag the HDRI onto **Panorama**.
 3. The day/night script only adjusts the physical sky, so keep the original too if you want nights. A mixed setup (HDRI by day) arrives with the Phase 10 art pass.
 
-## Part 4 — Realistic characters (the biggest step, and it's art, not code)
+## Part 4 — Realistic characters
 
-Harry and every NPC already have a **model slot**:
+### What's already in the game: generated human bodies
+
+Every person in the game (Harry, the townsfolk, constables, Ashcombe's men, Father Bernard,
+the rookery folk) is a real human body built from the **CC0 MakeHuman** data, dressed in
+period clothes, with a skeleton driven by the game's pose rig. The models are made by a
+Python tool and committed, so nothing needs installing to play:
+
+| Look | Who wears it |
+|---|---|
+| `gentleman` | frock coat, waistcoat, collar and cravat, top hat or bowler |
+| `worker` | shirt sleeves rolled, waistcoat, neckerchief, flat cap |
+| `ragged` | patched coat, rolled sleeves, neckerchief, cap (St Giles) |
+| `constable` | 1860s tunic, belt, custodian helmet with plate |
+| `house_guard` | Ashcombe livery with gold trim and kepi |
+| `priest` | cassock and clerical collar |
+| `lady` | fitted bodice, crinoline skirt, shawl, bonnet or hair in a bun |
+| `child` | jacket, short trousers, cap |
+| `harry` | leather greatcoat, waistcoat, riding boots, gloves, top hat, side whiskers |
+
+**Every person is different.** `CharacterLook.dress()` varies each one from a seed:
+build (heavy, thin, muscular), age (greying hair, an older face), three face shapes,
+skin tone, eye colour, hair colour, beard (full, moustache, side whiskers or none), hat
+choice, and garment colours from period palettes. Residents keep their seed, so the
+same baker's wife looks the same every morning.
+
+**How it works:**
+- `tools/characters/build_characters.py` builds each look: the MakeHuman base mesh shaped
+  by its macro targets (gender, age, muscle, weight, proportions), the game-engine skeleton
+  and skin weights, clothes made as layered shells over the body (smoothed so they hang
+  rather than cling, stacked shirt → trousers → waistcoat → coat so nothing shows
+  through), hats turned on a lathe, hair and beards with thinning hairlines, and morph
+  targets for the variety above. It also paints the skin (mottling, flushed cheeks, ears
+  and knuckles, lips, brows, a man's stubble), eye colours, cloth (wool, tweed, linen,
+  corduroy, leather, felt, silk) and hair textures.
+- `scripts/npc/character_look.gd` dresses a model as one particular person.
+- `scripts/npc/character_rig.gd` copies the tested procedural pose rig (walk, run, crouch,
+  climb, fight, sit, fall, ride...) onto the model's skeleton each frame, so every
+  animation that worked on the old mannequins works on the real bodies.
+- `NPCBody.look` picks the look (default: from the outfit and height; `"none"` shows the
+  old mannequin). `NPCBody.variation_seed` picks the person.
+
+**Rebuilding the models** (only needed if you change the generator):
+
+```
+tools/characters/fetch_data.sh                # once: downloads the CC0 MakeHuman data
+python3 tools/characters/build_characters.py  # all looks and textures (about a minute)
+python3 tools/characters/build_characters.py lady harry   # just these
+```
+
+Needs Python 3 with numpy and Pillow. Then open the project in Godot to re-import.
+Check a look close up with the preview renderer:
+
+```
+godot --path . --script res://tools/characters/preview.gd -- preview.png gentleman lady
+PREVIEW_CAM="-0.2,1.6,1.3,-0.2,1.5,0" godot --path . --script res://tools/characters/preview.gd -- face.png gentleman
+```
+
+### Going further: hand-made hero models
+
+Harry and every NPC also keep a **model slot** for bought or hand-made models, which
+replace the generated body when set:
 - **Harry:** `assets/characters/harry/harry.glb`, which is loaded automatically. See **PHASE_1_GUIDE, Part 6**.
-- **NPCs:** the `body_model_path` property on any NPC. Outfit-specific models arrive in Phase 10.
+- **NPCs:** the `body_model_path` property on any NPC.
 
-Ways to get Syndicate-quality people, from best to cheapest:
+Ways to get even more detailed people, from best to cheapest:
 
 | Tool / source | Quality | Cost and licence (check the current terms before buying) | Notes |
 |---|---|---|---|

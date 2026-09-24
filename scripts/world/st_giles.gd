@@ -46,6 +46,12 @@ const CRYPT_BED := Vector3(-58.6, CRYPT_FLOOR, 11.2)
 const BRIDGE_MID := Vector3(-37.0, BRIDGE_TOP, BRIDGE_Z)
 const SOUP_POINT := Vector3(-47.0, 0.0, -11.0)
 const POOR_BOX := Vector3(DOOR_X + 2.2, 0.0, NAVE_Z0 - 0.7)
+## The courts where rookery folk work by day: [centre, half-size].
+const YARDS: Array = [[Vector3(-25.0, 0.05, 22.0), Vector2(6, 9)], [Vector3(-25.0, 0.05, -25.0), Vector2(6, 8)], [Vector3(-56.0, 0.05, -22.0), Vector2(10, 8)]]
+## Beggars sit out in the lanes by day and go to the lodging houses at night.
+const BEGGING_HOURS := Vector2(7.0, 21.0)
+## The soup kitchen's queue forms before dinner and supper: [from, to] hours.
+const SOUP_HOURS: Array[Vector2] = [Vector2(10.0, 14.0), Vector2(16.5, 19.0)]
 
 var _rng := RandomNumberGenerator.new()
 var _mb: MeshBuilder
@@ -67,6 +73,7 @@ static func is_sanctuary(p: Vector3) -> bool:
 
 func _ready() -> void:
 	add_to_group("navigation_source")
+	add_to_group("st_giles")
 	_rng.seed = 1666
 	_mb = MeshBuilder.new()
 	_body = StaticBody3D.new()
@@ -89,6 +96,15 @@ func _ready() -> void:
 	_build_people()
 	_apply_wellbeing()
 	Progress.bus().legend_changed.connect(_on_legend_changed)
+	GameClock.bus().hour_passed.connect(func(_h: int) -> void: _apply_wellbeing())
+	GameClock.bus().time_jumped.connect(func(_h: float) -> void: _apply_wellbeing())
+	# The church door, for Sunday service (Population's residents walk to it).
+	var door := Marker3D.new()
+	door.name = "ChurchDoor"
+	door.position = Vector3(DOOR_X, 0.0, NAVE_Z0 - 1.6)
+	door.set_meta("kind", "church")
+	door.add_to_group("npc_doors")
+	add_child(door)
 
 
 func _on_legend_changed(_v: float, _d: float, reason: String) -> void:
@@ -731,18 +747,8 @@ func _build_people() -> void:
 	var folk := Node3D.new()
 	folk.name = "Folk"
 	add_child(folk)
-	# A few of the rookery's people about their business in the courts.
-	var spots: Array = [[Vector3(-25.0, 0.05, 22.0), Vector2(6, 9)], [Vector3(-25.0, 0.05, -25.0), Vector2(6, 8)], [Vector3(-56.0, 0.05, -22.0), Vector2(10, 8)]]
-	for i in spots.size():
-		var c := Civilian.new()
-		c.name = "RookeryFolk%d" % i
-		c.outfit = NPCBody.Outfit.RAGGED if i != 1 else NPCBody.Outfit.WORKER
-		c.display_name = ["Old Meg", "Dan Tully", "Widow Carey"][i]
-		c.wander_center = spots[i][0]
-		c.wander_extent = spots[i][1]
-		c.walk_speed = 1.0
-		c.position = spots[i][0]
-		folk.add_child(c)
+	# The rookery's own people (Old Meg, Dan Tully...) live in these tenements and keep
+	# their daily round from Population: their yards (YARDS), the soup kitchen, home.
 	# Beggars sitting in the lane and the soup queue (see _apply_wellbeing).
 	# [position, facing yaw] (yaw 0 faces -Z).
 	var beg_spots: Array = [[Vector3(-18.2, 0.0, -2.95), 0.0], [Vector3(-30.0, 0.0, -5.65), PI], [Vector3(-41.2, 0.0, -6.6), PI],
@@ -775,8 +781,12 @@ func _pose_bodies() -> void:
 		q.update_body(0.0, NPCBody.Pose.NORMAL, 0.1)
 
 
-## Shows how the district is doing: 0-100 from Progress.wellbeing.
+## Shows how the district is doing (0-100 from Progress.wellbeing), at this hour: beggars
+## are out by day, the soup queue forms at dinner and supper time.
 func _apply_wellbeing() -> void:
+	var h := GameClock.hours()
+	var begging := h >= BEGGING_HOURS.x and h < BEGGING_HOURS.y
+	var serving := SOUP_HOURS.any(func(w: Vector2) -> bool: return h >= w.x and h < w.y)
 	var wb := Progress.wellbeing
 	for f in _flowers:
 		f.visible = wb >= 15.0
@@ -784,10 +794,10 @@ func _apply_wellbeing() -> void:
 		_bunting.visible = wb >= 45.0
 	var beggars := 5 - int(wb / 20.0)
 	for i in _beggars.size():
-		_beggars[i].visible = i < beggars
+		_beggars[i].visible = begging and i < beggars
 	var queue := 2 + int(wb / 25.0)
 	for i in _queue.size():
-		_queue[i].visible = i < queue
+		_queue[i].visible = serving and i < queue
 
 
 ## For tests: what the district shows now.

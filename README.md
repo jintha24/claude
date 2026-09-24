@@ -126,7 +126,20 @@ and bite.
 - a columned bank front and a classically dressed Ashcombe House
 - Harry in a flared leather greatcoat and top hat
 
-Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md).
+**Realistic people:** everyone in the game is a real human body (from the CC0 MakeHuman
+data) in period clothes: gentlemen in frock coats and top hats, ladies in crinolines and
+bonnets, costermongers, constables, rookery folk and Harry himself, each one different
+in build, face, skin, hair, beard and colours. See [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md).
+
+**Daily routines:** the town is a roster of about 130 residents, each with a home, a trade
+and a day. Costermongers keep their stalls from half past six to half past six; clerks
+walk to work and come out to the market in their dinner hour; housewives shop at a
+different hour each day; labourers leave for the docks before six; gentlemen browse and
+retire to the club; pensioners take their morning turn; on Sunday morning the
+churchgoers walk to St Giles; in the evening the drinkers go to the pub and are turned
+out after midnight to stagger home. The rookery folk work in their yards and queue at
+the soup kitchen at midday; beggars sit out by day; constables and Ashcombe's men keep
+their shifts. Everyone comes out of their own front door and goes in through a real one.
 
 ## Getting started
 

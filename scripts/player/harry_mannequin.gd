@@ -1,9 +1,11 @@
 class_name HarryMannequin
 extends Node3D
-## Stand-in body for Harry shown until the real character model is imported.
-## Built at Harry's real proportions (1.88 m) with a procedural walk/run/sprint/crouch
-## cycle whose stride length matches ground speed, so movement can be judged for feel
-## and scale right away. Dressed in the silhouette of his Victorian working clothes.
+## Harry's procedural body: a rig of joints at his real proportions (1.88 m) with a
+## walk/run/sprint/crouch cycle whose stride length matches ground speed, plus poses for
+## parkour, combat, riding, rolling and dying. When the generated realistic Harry exists
+## (assets/characters/generated/harry.glb) the joints drive its skeleton (CharacterRig)
+## and the simple stand-in shapes are dropped; otherwise they are shown, dressed in the
+## silhouette of his Victorian working clothes.
 
 const HIP_HEIGHT := 0.97
 const THIGH := 0.46
@@ -33,6 +35,9 @@ var _aim_blend := 0.0
 var _bow_hand: Node3D
 var _bow_back: Node3D
 var _climb_phase := 0.0
+## The realistic Harry, when there is one.
+var _look: Node3D
+var _rig: CharacterRig
 
 
 func _ready() -> void:
@@ -127,6 +132,39 @@ func _ready() -> void:
 		_capsule(elbow, 0.045, 0.14, Vector3(0, -FOREARM - 0.04, 0), _mat(Color(0.09, 0.065, 0.05), 0.5)) # leather glove
 		_shoulder.append(shoulder)
 		_elbow.append(elbow)
+	if CharacterLook.has_look("harry"):
+		_use_realistic_body()
+
+
+## Swaps the stand-in shapes for the generated Harry, driven by this rig's joints.
+func _use_realistic_body() -> void:
+	var look := CharacterLook.instantiate("harry", 1)
+	var skel := look.find_children("*", "Skeleton3D", true, false) if look else []
+	if skel.is_empty():
+		if look:
+			look.free()
+		return
+	for mi in find_children("*", "MeshInstance3D", true, false):
+		mi.get_parent().remove_child(mi)
+		mi.free()
+	_look = look
+	var s := 1.88 / 1.78
+	_look.scale = Vector3.ONE * s
+	add_child(_look)
+	for mi: MeshInstance3D in _look.find_children("*", "MeshInstance3D", true, false):
+		mi.visibility_range_end = 0.0 # the player is always drawn
+	_rig = CharacterRig.new()
+	var drivers := {
+		"pelvis": _hips, "spine_03": _spine, "head": _head,
+		"thigh_l": _thigh[0], "thigh_r": _thigh[1], "calf_l": _knee[0], "calf_r": _knee[1], "foot_l": _foot[0], "foot_r": _foot[1],
+		"upperarm_l": _shoulder[0], "upperarm_r": _shoulder[1], "lowerarm_l": _elbow[0], "lowerarm_r": _elbow[1],
+	}
+	_rig.setup(skel[0] as Skeleton3D, drivers, _hips, Vector3(0, HIP_HEIGHT, 0), null, 1.0 / s)
+	_rig.update()
+
+
+func is_realistic() -> bool:
+	return _rig != null
 
 
 func _make_bow() -> Node3D:
@@ -364,6 +402,8 @@ func update_pose(h: Harry, delta: float) -> void:
 			_elbow[i].rotation.x = deg_to_rad(90.0)
 		_hips.position.y = 0.55
 		_spine.rotation.x = -deg_to_rad(50.0)
+	if _rig:
+		_rig.update()
 
 
 ## Poses for hanging, shimmying, drainpipes, climbing up and vaulting.

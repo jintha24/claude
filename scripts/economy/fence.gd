@@ -2,7 +2,7 @@ class_name Fence
 extends Interactable
 ## Mags Doyle, the market fence: buys stolen valuables, game and fish, no questions
 ## asked, for a fraction of their worth (see Upgrades.fence_price). She stands at her own
-## stall; keys and papers are no use to her.
+## stall by day and dozes behind it at night; keys and papers are no use to her.
 
 
 func _ready() -> void:
@@ -31,7 +31,15 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var b := get_node_or_null("Mags") as NPCBody
 	if b:
-		b.update_body(0.0, NPCBody.Pose.NORMAL, delta)
+		# Her day: at the stall from seven, haggling; after ten at night she dozes on her
+		# stool behind it (a fence keeps late hours: she'll still wake for business).
+		var h := GameClock.hours()
+		var pose := NPCBody.Pose.NORMAL
+		if h >= 22.0 or h < 7.0:
+			pose = NPCBody.Pose.SIT
+		elif fmod(Time.get_ticks_msec() / 1000.0, 30.0) > 21.0:
+			pose = NPCBody.Pose.TALK
+		b.update_body(0.0, pose, delta)
 
 
 func get_interact_point() -> Vector3:

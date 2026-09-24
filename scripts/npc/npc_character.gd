@@ -11,6 +11,9 @@ const LAYER_NPC := 1 << 2
 @export var outfit: NPCBody.Outfit = NPCBody.Outfit.WORKER
 @export_file("*.glb", "*.tscn") var body_model_path: String = ""
 @export var turn_speed: float = 5.0
+## The same face, build and clothes every time this person appears (NPCBody.variation_seed);
+## -1 lets the body pick from its node path.
+var look_seed: int = -1
 
 ## 0 = near (full detail), 1 = middle distance (animation at a lower rate),
 ## 2 = far (no animation, thinking slowed down). Updated twice a second.
@@ -63,6 +66,7 @@ func _setup_npc(max_speed: float, body_height: float = 1.76) -> void:
 	_body.outfit = outfit
 	_body.model_path = body_model_path
 	_body.height = body_height + 0.02
+	_body.variation_seed = look_seed
 	add_child(_body)
 	_yaw = rotation.y
 	rotation = Vector3.ZERO
@@ -76,6 +80,36 @@ func get_facing_dir() -> Vector3:
 
 func _nav_ready() -> bool:
 	return NavigationServer3D.map_get_iteration_id(get_world_3d().navigation_map) > 0
+
+
+## Far away (level of detail 2), townsfolk glide along their path without collision
+## tests (nobody can tell at 80 m, and it is most of a crowd's cost).
+var far_glide := false
+
+
+func _glide(h: Vector3, delta: float) -> void:
+	velocity = h
+	global_position += h * delta
+	if h != Vector3.ZERO:
+		# Keep to the navmesh's height (kerbs, steps) as they go.
+		var y := _agent.get_next_path_position().y
+		global_position.y = move_toward(global_position.y, y, delta * 1.5)
+	if not is_nan(_look_yaw):
+		_yaw = rotate_toward(_yaw, _look_yaw, turn_speed * delta)
+	_body.rotation.y = _yaw
+
+
+## Far away (level of detail 2) people only think and collide every other frame; in
+## between they just carry on the way they were going. Call first in _physics_process:
+## true means this frame is skipped.
+func _far_skip(delta: float) -> bool:
+	if lod_level < 2:
+		return false
+	_frame += 1
+	if _frame % 2 == 0:
+		global_position += Vector3(velocity.x, 0.0, velocity.z) * delta
+		return true
+	return false
 
 
 func _begin_frame(delta: float) -> void:
@@ -123,6 +157,9 @@ func _apply_movement(delta: float, frozen: bool = false) -> void:
 	if _moving and not frozen:
 		h = _safe_velocity if _has_safe_velocity else _agent.velocity
 		h.y = 0.0
+	if far_glide and lod_level >= 2:
+		_glide(h, delta)
+		return
 	var cur := Vector3(velocity.x, 0.0, velocity.z)
 	cur = cur.move_toward(h, 12.0 * delta)
 	velocity.x = cur.x

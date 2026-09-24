@@ -682,6 +682,8 @@ func _do_return(_delta: float) -> void:
 
 
 func _apply_movement(delta: float, frozen: bool = false) -> void:
+	# Far off and only walking his beat: no need for collision tests (see NPCCharacter).
+	far_glide = state in [State.PATROL, State.WAIT, State.RETURN, State.OFF_DUTY]
 	super._apply_movement(delta, frozen or state == State.UNCONSCIOUS or state == State.STUNNED)
 
 
