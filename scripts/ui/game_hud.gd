@@ -182,9 +182,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameClock.advance(60.0) # debug builds only: skip an hour
 	elif event.is_action_pressed("debug_overlay"):
 		_debug_label.visible = not _debug_label.visible
+	elif event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).physical_keycode == KEY_F12:
+		take_screenshot()
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed and not get_tree().paused:
 		# Clicking back into the window re-captures the mouse (e.g. after Alt+Tab).
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+## F12: saves the screen (without the HUD) to %APPDATA%/ThiefOfLondon/screenshots/.
+## Returns the file's path ("" if it couldn't be saved).
+func take_screenshot() -> String:
+	var hidden: Array[CanvasLayer] = []
+	for n in get_tree().root.find_children("*", "CanvasLayer", true, false):
+		var layer := n as CanvasLayer
+		if layer.visible:
+			layer.visible = false
+			hidden.append(layer)
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	for layer in hidden:
+		if is_instance_valid(layer):
+			layer.visible = true
+	if img == null or img.is_empty():
+		return ""
+	DirAccess.make_dir_recursive_absolute("user://screenshots")
+	var path := "user://screenshots/thief_of_london_%s.png" % Time.get_datetime_string_from_system().replace(":", "-")
+	if img.save_png(path) != OK:
+		return ""
+	Progress.bus().note.emit("Screenshot saved.")
+	return path
 
 
 func _set_paused(p: bool) -> void:

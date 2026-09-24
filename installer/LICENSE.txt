@@ -1,0 +1,28 @@
+THE THIEF OF LONDON - END USER LICENCE AGREEMENT
+
+By installing or playing The Thief of London ("the Game") you agree to these terms.
+
+1. Licence. You may install and play the Game for your own personal, non-commercial
+   use on computers you own or control.
+
+2. Restrictions. You may not sell, rent, lend or redistribute the Game or any part of
+   it. You may not remove copyright notices, or use the Game's contents (its code,
+   art, sounds or text) in other products, except where a part of the Game is covered
+   by its own licence (see below).
+
+3. Third-party components. The Game is made with the Godot Engine, (c) Juan Linietsky,
+   Ariel Manzur and contributors, used under the MIT licence
+   (https://godotengine.org/license). Other assets used in the Game are listed with
+   their licences in the file docs/ASSETS.md of the Game's source.
+
+4. Streaming and videos. You may stream the Game and publish videos and screenshots of
+   it, including for money.
+
+5. No warranty. The Game is provided "as is", without warranty of any kind. To the
+   extent the law allows, the developers are not liable for any loss or damage arising
+   from its use.
+
+6. Termination. This licence ends if you break its terms; you must then uninstall the
+   Game.
+
+(c) 2026 The Thief of London developers. All rights reserved.

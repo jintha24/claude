@@ -1,0 +1,17 @@
+"AppBuild"
+{
+	// Steam upload script for The Thief of London (SteamPipe).
+	// 1. In Steamworks, note your App ID and the Windows depot ID (usually App ID + 1).
+	// 2. Put them in tools/steam/steam_ids.txt (see docs/PHASE_11_GUIDE.md, Part 5);
+	//    tools/steam/upload.bat fills them in here and runs steamcmd.
+	"AppID" "__APP_ID__"
+	"Desc" "The Thief of London __VERSION__"
+	"ContentRoot" "..\..\builds\windows\"
+	"BuildOutput" "..\..\builds\steam_output\"
+	"Preview" "0"
+	"SetLive" ""
+	"Depots"
+	{
+		"__DEPOT_ID__" "depot_windows.vdf"
+	}
+}

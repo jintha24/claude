@@ -1,0 +1,5 @@
+# Your Steamworks numbers (from partner.steamgames.com > your app > SteamPipe > Depots).
+# One per line, NAME=VALUE. Keep this file private if you like; it isn't secret.
+APP_ID=
+DEPOT_ID=
+STEAM_USER=

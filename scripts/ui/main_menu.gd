@@ -16,6 +16,8 @@ func _ready() -> void:
 	GameSettings.apply(get_tree())
 	get_tree().paused = false
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if SmokeTest.requested():
+		get_tree().root.add_child.call_deferred(SmokeTest.new()) # build check: see SmokeTest
 	var title := UIKit.label("The Thief of London", 64)
 	title.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	title.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -114,3 +116,8 @@ func _draw() -> void:
 			var r := 10.0 + j * 7.0
 			draw_circle(Vector2(sx2 + j * 18.0 + sin(_t * 0.3 + k) * 6.0, base - 110 - j * 22.0), r, Color(0.2, 0.18, 0.17, 0.12))
 	draw_rect(Rect2(0, base, w, h - base), ink)
+	# Version, bottom right (from Project Settings: application/config/version).
+	var version := "v" + str(ProjectSettings.get_setting("application/config/version", ""))
+	var font := UIKit.font()
+	var vw := font.get_string_size(version, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+	draw_string(font, Vector2(w - vw - 16.0, h - 14.0), version, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.93, 0.88, 0.76, 0.45))

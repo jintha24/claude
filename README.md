@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–10 of 11 complete and playable
+## Status: all 11 phases complete: Act One is playable from start to finish, ready to ship
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -110,6 +110,15 @@ and bite.
   - drop-in replacements for real recordings
 - **Performance:** occlusion culling, draw distances, NPC level of detail and an F3 performance overlay.
 
+**Phase 11 — shipping:**
+- **Export presets:** Windows 64-bit (icon, version and company details in the .exe, and a console launcher for troubleshooting) and Linux.
+- **The Windows installer:** an Inno Setup script. It offers a desktop shortcut and a Direct3D 12 "safe mode" shortcut, keeps your saves on uninstall unless you ask, and ships the Read Me, the licence and Godot's third-party notices.
+- **One-command builds:**
+  - `tools\build_windows.bat` builds the game and installer on Windows.
+  - `tools/build_release.sh` builds Windows and Linux, runs the exported game's self-test (`--smoke-test`) and zips both for itch.io.
+- **Release helpers:** version bumping (`tools/set_version.sh`), Steam upload scripts (SteamPipe) and itch.io publishing (butler).
+- **In-game extras:** the title screen shows the version, and **F12** saves a screenshot without the HUD.
+
 **Visual pass (Syndicate-style mood):**
 - blue skies with cumulus, blue-grey aerial haze
 - a distant skyline with St Paul's, Westminster's Clock Tower, spires and smoking factory chimneys
@@ -121,7 +130,7 @@ Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](d
 
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)** **[docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md)** and **[docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)** **[docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md)** **[docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md)** and **[docs/PHASE_11_GUIDE.md](docs/PHASE_11_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -136,6 +145,7 @@ the recommended PC specs.
 - [docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md) — the hills: streaming world, cave, hunting, Cinder, travel
 - [docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md) — Steal and Give: fence, poor box, upgrades, Legend, notoriety, fishing, menus, settings, saving
 - [docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md) — Act One walkthrough, the mission system, the fist fight, St Giles, sound (and adding real recordings), performance, writing missions
+- [docs/PHASE_11_GUIDE.md](docs/PHASE_11_GUIDE.md) — building the Windows game and installer, testing a build, releasing on Steam and itch.io, code signing, release checklist
 - [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
@@ -151,4 +161,32 @@ the recommended PC specs.
 8. ✅ World streaming, wilderness, cave camp, animals, Cinder the horse
 9. ✅ Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
 10. ✅ Story missions (Act 1), the St Giles district, sound, performance
-11. Windows export and installer
+11. ✅ Windows export, installer, Steam and itch.io release pipeline
+
+### What's next: the rest of the story
+The systems for the whole story are in place (missions, cutscenes, choices, the band, the
+Legend, the ending logic), so the remaining work is mostly content:
+
+- **Act Two, "Steal from the Rich" (missions 7–13):**
+  - the rent-coach ambush on horseback
+  - Lady Evelyn
+  - the archery meeting in disguise
+  - the workhouse rescue
+  - the Bank of Ashcombe
+  - Nate revealed
+  - the rookery fire
+- **Act Three (missions 14–18):**
+  - the camp raid
+  - the fog lockdown
+  - the Newgate gallows rescue
+  - Graves's deal: the Ledger choice
+  - the band reunited
+- **Act Four (missions 19–22):**
+  - casing Ashcombe Palace
+  - the Winter Ball heist
+  - Nate on the rooftops
+  - the race to Westminster, and the three endings
+- **Smaller additions:** rope arrows, Old Jonah's river routes, Tobias's letters (collectibles), more districts (the docks, Westminster).
+- **Look and sound:** real character models and recorded sound (see [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) and Part 5 of the Phase 10 guide).
+
+Each mission is a short script (see "Writing a mission" in [docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md)).

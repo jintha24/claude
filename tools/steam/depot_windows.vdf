@@ -1,0 +1,13 @@
+"DepotBuild"
+{
+	// The Windows depot: everything in builds\windows except the console launcher.
+	"DepotID" "__DEPOT_ID__"
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"Recursive" "1"
+	}
+	"FileExclusion" "*.console.exe"
+	"FileExclusion" "*.log"
+}
