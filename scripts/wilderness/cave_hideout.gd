@@ -33,6 +33,8 @@ func _ready() -> void:
 	_build_rock()
 	_build_camp()
 	_mb.build_into(self, "RockMesh").gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	_show_improvements()
+	Progress.bus().upgrade_bought.connect(_on_upgrade_bought)
 	var v := InteriorVolume.new()
 	v.position = Vector3(-8.0, 0.0, -20.0)
 	v.size = Vector3(16.0, 4.2, 36.0)
@@ -171,10 +173,59 @@ func _build_camp() -> void:
 	bench.name = "Bench"
 	bench.position = Vector3(5.8, 0.8, -4.0)
 	add_child(bench)
+	# Plans for the camp (bought with stolen money; see Upgrades).
+	var plans := ShopCounter.new()
+	plans.name = "CampPlans"
+	plans.kind = "camp"
+	plans.shop_title = "The Camp"
+	plans.position = Vector3(-3.0, 0.0, -2.0)
+	add_child(plans)
+	_mb.add_box(Vector3(0.6, 0.9, 0.05), Vector3(-3.0, 1.1, -2.6), MaterialLibrary.get_tinted("plaster", Color(0.9, 0.85, 0.7)))
+	_mb.add_box(Vector3(0.06, 1.2, 0.06), Vector3(-3.0, 0.6, -2.64), wood)
 	# Firewood stack and a water butt by the mouth.
 	for k in 6:
 		_mb.add_cylinder(0.09, 0.09, 1.1, Vector3(-6.5, 0.1 + (k / 3) * 0.18, -2.0 + (k % 3) * 0.2), wood, 6, Basis(Vector3.BACK, PI * 0.5))
 	_solid(Vector3(0.6, 0.9, 0.6), Vector3(-6.8, 0.45, 2.0), wood)
+
+
+## What the camp has grown to (bunks and stove, smokehouse, paddock) is shown here.
+func _on_upgrade_bought(_id: String) -> void:
+	_show_improvements()
+
+
+func _show_improvements() -> void:
+	var old := get_node_or_null("Improvements")
+	if old:
+		remove_child(old)
+		old.queue_free()
+	var root := Node3D.new()
+	root.name = "Improvements"
+	add_child(root)
+	var mb := MeshBuilder.new()
+	var wood := MaterialLibrary.get_tinted("wood_planks", Color(0.52, 0.4, 0.28))
+	var blanket := MaterialLibrary.get_tinted("fabric", Color(0.35, 0.3, 0.22))
+	var iron := MaterialLibrary.get_material("iron")
+	if Progress.has_upgrade("camp_bunks"):
+		for k in 3:
+			var z := -18.5 + k * 2.2
+			mb.add_box(Vector3(2.0, 0.1, 0.9), Vector3(-6.4, 0.5, z), wood)
+			mb.add_box(Vector3(1.9, 0.12, 0.85), Vector3(-6.4, 0.6, z), blanket)
+			mb.add_box(Vector3(2.0, 0.1, 0.9), Vector3(-6.4, 1.6, z), wood)
+		mb.add_cylinder(0.35, 0.35, 0.9, Vector3(3.0, 0.45, -18.5), iron, 12) # the stove
+		mb.add_cylinder(0.08, 0.08, 3.6, Vector3(3.0, 2.7, -18.5), iron, 8)
+	if Progress.has_upgrade("camp_smokehouse"):
+		mb.add_box(Vector3(1.6, 2.2, 1.4), Vector3(6.5, 1.1, 1.5), wood)
+		for k in 4:
+			mb.add_box(Vector3(0.08, 0.4, 0.06), Vector3(6.0 + k * 0.3, 1.4, 0.75), MaterialLibrary.get_tinted("fabric", Color(0.4, 0.15, 0.1)))
+	if Progress.has_upgrade("camp_paddock"):
+		for k in 6:
+			var x := -12.0 + k * 2.4
+			mb.add_box(Vector3(0.12, 1.2, 0.12), Vector3(x, 0.6, 30.0), wood)
+			if k < 5:
+				mb.add_box(Vector3(2.4, 0.1, 0.06), Vector3(x + 1.2, 0.9, 30.0), wood)
+				mb.add_box(Vector3(2.4, 0.1, 0.06), Vector3(x + 1.2, 0.5, 30.0), wood)
+	if not mb.is_empty():
+		mb.build_into(root, "Mesh")
 
 
 func _process(delta: float) -> void:

@@ -12,6 +12,14 @@ static var stash: Array[Dictionary] = []
 static var spawn_at: String = ""
 ## Whether Harry arrived on horseback (Cinder comes with him).
 static var arrived_mounted: bool = false
+## A loaded game puts Harry back exactly where he was (INF = use a spawn point instead).
+static var spawn_position: Vector3 = Vector3.INF
+static var spawn_yaw: float = 0.0
+## Things changed in the world that must stay changed (e.g. loot taken from Ashcombe House:
+## "ashcombe_taken" -> [LootSpot names], "safe_emptied" -> true).
+static var world: Dictionary = {}
+## Set by a journey: the arriving scene autosaves once Harry is in place.
+static var autosave_on_arrival: bool = false
 
 
 static func capture(h: Harry) -> void:
@@ -41,6 +49,19 @@ static func restore(h: Harry) -> void:
 	h.combat.broadhead_arrows = int(arrows.get("broadhead", h.combat.broadhead_arrows))
 	h.health = clampf(float(player.get("health", h.max_health)), 1.0, h.max_health)
 	h.inventory.money_changed.emit(h.inventory.money)
+
+
+## Where Harry should appear in the scene now loading: an exact saved position, a named
+## spawn point, or null for the scene's default. Consumes the request.
+static func take_spawn(tree: SceneTree) -> Variant:
+	if spawn_position != Vector3.INF:
+		var t := Transform3D(Basis(Vector3.UP, spawn_yaw), spawn_position + Vector3.UP * 0.05)
+		spawn_position = Vector3.INF
+		spawn_at = ""
+		return t
+	var n := find_spawn(tree)
+	spawn_at = ""
+	return n.global_transform if n else null
 
 
 ## Finds the spawn point named `spawn_at` in the current scene, or null.

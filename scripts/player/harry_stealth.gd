@@ -22,6 +22,9 @@ var visibility: float = 1.0
 var conspicuousness: float = 0.0
 var hiding_spot: Node = null
 var surface: String = "stone"
+## Upgrades: soft-soled boots make footsteps quieter; a dark coat hides him better.
+var footstep_multiplier: float = 1.0
+var shadow_multiplier: float = 1.0
 ## Seconds left during which a witnessed crime makes Harry maximally suspicious.
 var crime_timer: float = 0.0
 
@@ -85,6 +88,8 @@ func _physics_process(delta: float) -> void:
 
 func _update_visibility() -> void:
 	var v := exposure
+	if exposure < 0.5:
+		v *= shadow_multiplier # a dark coat melts into the shadows (not into lamplight)
 	if _harry.is_crouching:
 		v *= 0.6
 	if _harry.get_horizontal_speed() < 0.2 and not _harry.is_climbing():
@@ -163,7 +168,7 @@ func _update_footsteps(delta: float) -> void:
 	if _stride_acc < STRIDE[gait]:
 		return
 	_stride_acc = 0.0
-	var radius: float = STEP_RADIUS[gait] * SURFACE_LOUDNESS.get(surface, 1.0)
+	var radius: float = STEP_RADIUS[gait] * SURFACE_LOUDNESS.get(surface, 1.0) * footstep_multiplier
 	footstep.emit(surface, radius)
 	Stealth.make_noise(_harry.global_position, radius, "footstep", conspicuousness >= 0.45, _harry)
 

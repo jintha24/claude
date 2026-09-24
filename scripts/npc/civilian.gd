@@ -224,6 +224,11 @@ func _on_noise(pos: Vector3, radius: float, kind: String, _suspicious: bool, sou
 	var d := global_position.distance_to(pos)
 	if d > minf(radius, 18.0):
 		return
+	# The poor love their Fox: with a high Legend, working folk look the other way.
+	if kind == "thief_shout" and victim_class == "worker" and _rng.randf() < Progress.witness_silence():
+		if _rng.randf() < 0.3:
+			Stealth.bark(self, "%s: \"%s\"" % [display_name, ["Didn't see a thing, me.", "Run for it, Fox!", "Serves the old skinflint right."][_rng.randi() % 3]])
+		return
 	if d < 4.0 and kind in ["scuffle", "body_fall"] and _rng.randf() < 0.5:
 		state = State.FLEE
 		_flee_from = pos

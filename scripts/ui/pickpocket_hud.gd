@@ -26,6 +26,7 @@ func _ready() -> void:
 func bind(p: Harry) -> void:
 	player = p
 	p.inventory.item_added.connect(_on_item_added)
+	Progress.bus().note.connect(func(text: String) -> void: _toast(text, BRASS))
 	p.inventory.money_changed.connect(func(_m: int) -> void:
 		_purse_timer = 5.0)
 	p.thievery.attempt_finished.connect(func(success: bool, loot: Array) -> void:

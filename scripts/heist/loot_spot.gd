@@ -32,6 +32,11 @@ var _noticed := false
 
 func _ready() -> void:
 	add_to_group("loot_spots")
+	# Already stolen in this game (a saved game remembers)?
+	if (GameState.world.get("taken_loot", []) as Array).has(String(get_path())):
+		is_taken = true
+		_noticed = true
+		_hide_visuals.call_deferred()
 
 
 func get_prompt(_harry: Harry) -> String:
@@ -65,10 +70,18 @@ func _take(harry: Harry) -> void:
 	harry.inventory.receive_loot(loot)
 	if kind != "key":
 		harry.stealth.commit_crime(2.0)
+	_hide_visuals()
+	var gone: Array = GameState.world.get("taken_loot", [])
+	if not gone.has(String(get_path())):
+		gone.append(String(get_path()))
+	GameState.world["taken_loot"] = gone
+	taken.emit(item)
+
+
+func _hide_visuals() -> void:
 	for c in get_children():
 		if c is Node3D:
 			(c as Node3D).visible = false
-	taken.emit(item)
 
 
 func _physics_process(delta: float) -> void:

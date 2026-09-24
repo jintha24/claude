@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–8 of 11 complete and playable
+## Status: Phases 1–9 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -80,6 +80,13 @@ and bite.
 - **Cinder:** his horse walks, trots, canters and gallops, and has stamina. He jumps logs, fences and walls, refuses what's too high, and comes when whistled.
 - **Travel:** finger-posts link London and the hills, and Harry's belongings come with him.
 
+**Phase 9 — Steal and Give:**
+- **Economy:** real £sd money. Sell loot to Mags Doyle the fence, give at the poor box, and buy picks, arrows and better kit at T. Wren, Ironmonger.
+- **The Legend and notoriety:** giving raises the Legend (from *Nobody* to *The Legend of London*) and makes witnesses keep quiet. Crowe's notoriety brings wanted posters, a reward and extra constables, and fades while you lie low.
+- **Upgrades and camp:** soft boots, a dark greatcoat, kid gloves, a yew war-bow, and a paddock, smokehouse and bunks for the cave.
+- **Fishing:** cast, wait for the bite, strike, and play roach, perch, tench and pike on the tension line.
+- **Menus and saving:** title screen, pause menu, the Ledger (Tab), save slots with autosave, and full settings with Low–Ultra presets, audio buses and key/pad rebinding.
+
 **Visual pass (Syndicate-style mood):**
 - blue skies with cumulus, blue-grey aerial haze
 - a distant skyline with St Paul's, Westminster's Clock Tower, spires and smoking factory chimneys
@@ -91,7 +98,7 @@ Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](d
 
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** and **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)** and **[docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -104,6 +111,7 @@ the recommended PC specs.
 - [docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md) — dynamic weather and its effects
 - [docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md) — Ashcombe House: routes in, lockpicking, the safe, dogs
 - [docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md) — the hills: streaming world, cave, hunting, Cinder, travel
+- [docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md) — Steal and Give: fence, poor box, upgrades, Legend, notoriety, fishing, menus, settings, saving
 - [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
@@ -117,6 +125,6 @@ the recommended PC specs.
 6. ✅ Dynamic weather and its gameplay effects
 7. ✅ First palace infiltration (Ashcombe House)
 8. ✅ World streaming, wilderness, cave camp, animals, Cinder the horse
-9. Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
+9. ✅ Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
 10. Story missions (Act 1 first), full districts, sound, performance
 11. Windows export and installer

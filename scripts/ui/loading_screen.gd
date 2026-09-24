@@ -23,6 +23,8 @@ static func travel(tree: SceneTree, path: String, spawn: String, card_title: Str
 		GameState.capture(harry)
 		GameState.arrived_mounted = harry.is_riding()
 	GameState.spawn_at = spawn
+	GameState.spawn_position = Vector3.INF
+	GameState.autosave_on_arrival = true
 	var ls := LoadingScreen.new()
 	ls.scene_path = path
 	ls.title = card_title

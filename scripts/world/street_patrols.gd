@@ -17,6 +17,8 @@ const SHIFT_START_NIGHT := 18
 const RELIEF_DELAY_MINUTES := 6.0
 
 var on_night_shift := false
+## Extra constables Captain Crowe puts on the beat as the Hill Fox's notoriety grows.
+var extra: Array[Guard] = []
 var _routes := {}
 var _relief_pending := false
 var _relief_timer := 0.0
@@ -42,6 +44,28 @@ func _ready() -> void:
 	_spawn_shift(on_night_shift, true)
 	GameClock.bus().hour_passed.connect(_on_hour)
 	GameClock.bus().time_jumped.connect(_on_time_jumped)
+	Progress.bus().notoriety_changed.connect(func(_v: float, _d: float, _r: String) -> void: update_escalation())
+	update_escalation()
+
+
+## Escalation 2: one extra constable on the pavements; 3: another on the market beat.
+func update_escalation() -> void:
+	extra = extra.filter(func(g: Guard) -> bool: return is_instance_valid(g) and not g.is_queued_for_deletion())
+	var want := clampi(Progress.escalation() - 1, 0, 2)
+	while extra.size() > want:
+		var g: Guard = extra.pop_back()
+		g.go_off_duty(STATION)
+	var beats := ["pavements", "market"]
+	while extra.size() < want:
+		var i := extra.size()
+		var g := Guard.new()
+		g.name = "ConstableExtra%d" % (i + 1)
+		g.display_name = "Constable (extra duty)"
+		g.has_lantern = on_night_shift
+		g.position = STATION + Vector3(randf_range(-1.0, 1.0), 0.0, -1.0)
+		add_child(g)
+		g.set_route(_routes[beats[i]])
+		extra.append(g)
 
 
 func _process(delta: float) -> void:

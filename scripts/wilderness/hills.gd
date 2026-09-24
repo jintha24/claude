@@ -17,21 +17,82 @@ func _ready() -> void:
 	for m: Node3D in [$CaveClearing, $LondonRoad, $ToLondon]:
 		m.position.y = gen.height(m.position.x, m.position.z) + 0.05
 	_build_jump_course(gen)
-	var spawn := GameState.find_spawn(get_tree())
-	if spawn == null:
-		spawn = $CaveClearing
+	_build_fishing(gen)
+	GameSettings.apply(get_tree())
+	var spawn_v: Variant = GameState.take_spawn(get_tree())
+	var spawn_t: Transform3D = spawn_v if spawn_v != null else ($CaveClearing as Node3D).global_transform
+	var spawn := Marker3D.new()
+	spawn.name = "ArrivalPoint"
+	add_child(spawn)
+	spawn.global_transform = spawn_t
 	streamer.prime(spawn.global_position)
 	harry.set_spawn(spawn.global_transform)
 	# After a fall or a mauling he wakes at the spawn: make sure its ground is there.
 	harry.respawned.connect(func() -> void: streamer.prime(harry.global_position))
 	GameState.restore(harry)
-	GameState.spawn_at = ""
 	cinder.global_position = spawn.global_position + spawn.global_basis.x * 3.0 + Vector3.UP * 0.2
 	cinder.global_position.y = gen.height(cinder.global_position.x, cinder.global_position.z) + 0.1
 	if GameState.arrived_mounted:
 		GameState.arrived_mounted = false
 		cinder.global_position = spawn.global_position + Vector3.UP * 0.1
 		harry.try_mount()
+	if GameState.autosave_on_arrival:
+		GameState.autosave_on_arrival = false
+		SaveGame.save.call_deferred(get_tree(), 0)
+
+
+## An anglers' jetty on the lake's north shore, and two quiet spots on the bank.
+func _build_fishing(gen: TerrainGenerator) -> void:
+	var lake := Vector3(TerrainGenerator.LAKE.x, 0.0, TerrainGenerator.LAKE.y)
+	var dirs: Array[Vector3] = [Vector3(-0.6, 0, -0.8).normalized(), Vector3(0.9, 0, -0.3).normalized(), Vector3(-0.2, 0, 1.0).normalized()]
+	for i in dirs.size():
+		# Walk out from the middle of the lake until the ground rises out of the water.
+		var shore := lake
+		for k in 400:
+			var p := lake + dirs[i] * (k * 0.5)
+			if gen.height(p.x, p.z) > TerrainGenerator.WATER_Y + 0.15:
+				shore = p
+				break
+		var spot := FishingSpot.new()
+		spot.cast_dir = -dirs[i]
+		if i == 0:
+			# The jetty: planks on posts running 8 m out over the water.
+			spot.name = "Jetty"
+			spot.spot_name = "Fish from the jetty"
+			var deck_y := TerrainGenerator.WATER_Y + 0.55
+			var body := StaticBody3D.new()
+			body.name = "JettyDeck"
+			body.collision_layer = 1
+			body.collision_mask = 0
+			body.set_meta("surface", "wood")
+			add_child(body)
+			var start := shore + dirs[i] * 2.0
+			var end := shore - dirs[i] * 8.0
+			var mid := (start + end) * 0.5
+			var length := start.distance_to(end)
+			var basis := Basis(Vector3.UP, atan2(dirs[i].x, dirs[i].z))
+			var mb := MeshBuilder.new()
+			var wood := MaterialLibrary.get_tinted("wood_planks", Color(0.55, 0.46, 0.36))
+			mb.add_box(Vector3(1.6, 0.12, length), Vector3(mid.x, deck_y - 0.06, mid.z), wood, basis)
+			var cs := CollisionShape3D.new()
+			var box := BoxShape3D.new()
+			box.size = Vector3(1.6, 0.3, length)
+			cs.shape = box
+			cs.transform = Transform3D(basis, Vector3(mid.x, deck_y - 0.15, mid.z))
+			body.add_child(cs)
+			for k in 5:
+				var pp := start.lerp(end, k / 4.0)
+				for side: float in [-0.7, 0.7]:
+					var q := pp + basis.x * side
+					mb.add_cylinder(0.08, 0.08, 2.4, Vector3(q.x, deck_y - 1.2, q.z), wood, 6)
+			mb.build_into(self, "JettyMesh")
+			spot.position = Vector3(end.x, deck_y, end.z) + dirs[i] * 0.8
+		else:
+			spot.name = "Bank%d" % i
+			spot.spot_name = "Fish from the bank"
+			var land := shore + dirs[i] * 1.5
+			spot.position = Vector3(land.x, gen.height(land.x, land.z), land.z)
+		add_child(spot)
 
 
 ## Aldous's old paddock at the edge of the clearing: a log, a rail fence, a dry-stone wall

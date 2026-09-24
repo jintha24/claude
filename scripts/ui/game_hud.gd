@@ -4,7 +4,7 @@ extends CanvasLayer
 ##  * health bar that only appears when Harry is hurt, then fades away
 ##  * red vignette flash on damage, fade to black on death
 ##  * F3 debug overlay (FPS, state, speed, fall height) for tuning
-##  * Esc pause menu (Resume / Quit)
+##  * Esc opens the pause menu (PauseMenu); holding Tab shows the Ledger (LedgerPanel)
 ## The full Victorian HUD, menus and settings arrive in Phase 9.
 
 @export var player_path: NodePath
@@ -23,12 +23,12 @@ var _health_show_timer := 0.0
 var _damage_flash: ColorRect
 var _death_fade: ColorRect
 var _death_label: Label
-var _pause_root: Control
 var _last_fall := 0.0
 var _last_health := 100.0
 var _flash := 0.0
 var _stealth_hud: StealthHUD
 var _pickpocket_hud: PickpocketHUD
+var _ledger: LedgerPanel
 var _interaction_hud: InteractionHUD
 var _clock_label: Label
 var _clock_alpha := 0.0
@@ -63,7 +63,9 @@ func _ready() -> void:
 	GameClock.bus().hour_passed.connect(func(_h: int) -> void: _clock_timer = 6.0)
 	GameClock.bus().time_jumped.connect(func(_h: float) -> void: _clock_timer = 6.0)
 	Weather.bus().kind_changed.connect(func(_k: Weather.Kind) -> void: _clock_timer = 6.0)
-	_build_pause_menu()
+	_ledger = LedgerPanel.new()
+	_ledger.visible = false
+	add_child(_ledger)
 	if not player_path.is_empty():
 		_player = get_node(player_path) as Harry
 	if _player:
@@ -72,6 +74,7 @@ func _ready() -> void:
 		_player.arrested.connect(_on_arrested)
 		_stealth_hud.player = _player
 		_pickpocket_hud.bind(_player)
+		_ledger.player = _player
 		_interaction_hud.bind(_player)
 		_player.respawned.connect(_on_respawned)
 		_player.landed.connect(func(h: float) -> void: _last_fall = h)
@@ -144,49 +147,6 @@ func _build_debug() -> void:
 	add_child(_debug_label)
 
 
-func _build_pause_menu() -> void:
-	_pause_root = Control.new()
-	_pause_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_pause_root.visible = false
-	add_child(_pause_root)
-	var dim := ColorRect.new()
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.55)
-	_pause_root.add_child(dim)
-
-	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = PANEL
-	style.border_color = BRASS
-	style.set_border_width_all(2)
-	style.set_content_margin_all(36)
-	style.set_corner_radius_all(2)
-	panel.add_theme_stylebox_override("panel", style)
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_pause_root.add_child(panel)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
-	box.custom_minimum_size = Vector2(340, 0)
-	panel.add_child(box)
-	var title := _make_label("The Thief of London", 34)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title)
-	var sub := _make_label("~ Paused ~", 18)
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.modulate = BRASS
-	box.add_child(sub)
-	box.add_child(HSeparator.new())
-	var resume := _make_button("Resume")
-	resume.pressed.connect(_set_paused.bind(false))
-	box.add_child(resume)
-	var quit := _make_button("Quit to Desktop")
-	quit.pressed.connect(func() -> void: get_tree().quit())
-	box.add_child(quit)
-
-
 func _make_label(text: String, size: int) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -215,8 +175,9 @@ func _make_button(text: String) -> Button:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
-		_set_paused(not get_tree().paused)
-		get_viewport().set_input_as_handled()
+		if not get_tree().paused:
+			PauseMenu.open(get_tree())
+			get_viewport().set_input_as_handled()
 	elif OS.is_debug_build() and event is InputEventKey and (event as InputEventKey).pressed and (event as InputEventKey).physical_keycode == KEY_F6:
 		GameClock.advance(60.0) # debug builds only: skip an hour
 	elif event.is_action_pressed("debug_overlay"):
@@ -227,14 +188,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _set_paused(p: bool) -> void:
-	get_tree().paused = p
-	_pause_root.visible = p
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if p else Input.MOUSE_MODE_CAPTURED
 	if p:
-		(_pause_root.find_children("*", "Button", true, false)[0] as Button).grab_focus()
+		PauseMenu.open(get_tree())
+	else:
+		for m in get_tree().get_nodes_in_group("pause_menu"):
+			(m as PauseMenu).resume()
 
 
 func _process(delta: float) -> void:
+	if not get_tree().paused:
+		SaveGame.playtime += delta
+	_ledger.visible = Input.is_action_pressed("inventory") and not get_tree().paused
 	# Pocket-watch clock: shown on the hour, and while holding Tab.
 	_clock_timer = maxf(_clock_timer - delta, 0.0)
 	var show_clock := _clock_timer > 0.0 or Input.is_action_pressed("inventory")

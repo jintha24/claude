@@ -27,7 +27,7 @@ func _ready() -> void:
 
 
 func _on_spoke(speaker: Node3D, line: String) -> void:
-	if player == null or speaker == null:
+	if player == null or speaker == null or not bool(GameSettings.get_value("gameplay/subtitles")):
 		return
 	if speaker.global_position.distance_to(player.global_position) > 30.0:
 		return

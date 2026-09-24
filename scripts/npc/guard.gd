@@ -272,7 +272,8 @@ func _physics_process(delta: float) -> void:
 	_begin_frame(delta)
 	_state_time += delta
 	_bark_cooldown = maxf(_bark_cooldown - delta, 0.0)
-	alertness = move_toward(alertness, 0.0, delta / 120.0)
+	# On edge after an incident, and never quite relaxed while the Hill Fox is wanted.
+	alertness = move_toward(alertness, Progress.escalation() * 0.15, delta / 120.0)
 	if state != State.STUNNED:
 		_pose = NPCBody.Pose.NORMAL
 

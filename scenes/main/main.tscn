@@ -17,6 +17,7 @@
 [ext_resource type="Script" path="res://scripts/world/london_skyline.gd" id="17_skyln"]
 [ext_resource type="Script" path="res://scripts/horse/horse.gd" id="18_horse"]
 [ext_resource type="Script" path="res://scripts/wilderness/travel_point.gd" id="19_travel"]
+[ext_resource type="Script" path="res://scripts/economy/london_trade.gd" id="20_trade"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -78,6 +79,9 @@ script = ExtResource("10_patrl")
 
 [node name="AshcombeStaff" type="Node3D" parent="."]
 script = ExtResource("16_ashst")
+
+[node name="Trade" type="Node3D" parent="."]
+script = ExtResource("20_trade")
 
 [node name="Cinder" type="CharacterBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0.1, -106)

@@ -30,6 +30,10 @@ func _ready() -> void:
 	add_to_group("safes")
 	lock = LeverLock.make(levers, gate, key_id, safe_name, true)
 	_build()
+	if GameState.world.get("safe_" + String(get_path()), false):
+		is_open = true
+		is_empty = true
+		lock.locked = false
 
 
 func _build() -> void:
@@ -111,6 +115,7 @@ func _open() -> void:
 
 func _empty(harry: Harry) -> void:
 	is_empty = true
+	GameState.world["safe_" + String(get_path())] = true
 	harry.inventory.receive_loot(contents)
 	harry.stealth.commit_crime(2.0)
 	emptied.emit(contents)

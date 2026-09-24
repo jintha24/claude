@@ -20,7 +20,7 @@ signal action_finished(kind: String, success: bool)
 ## "lever", "slip", "pick_broke", "jammed", "opened", "no_picks"
 signal lock_event(event: String)
 
-enum Mode { NONE, HOLD, LOCKPICK, TRAVERSE }
+enum Mode { NONE, HOLD, LOCKPICK, TRAVERSE, FISH }
 
 ## Improved by upgrades in Phase 9.
 @export var lock_skill: float = 1.0
@@ -60,6 +60,9 @@ var _to := Vector3.ZERO
 var _duration := 1.0
 var _elapsed := 0.0
 var _crouch_after := false
+## The cast in progress while fishing (see FishingSession).
+var fishing: FishingSession = null
+signal fish_caught(item: Dictionary)
 
 
 func setup(harry: Harry) -> void:
@@ -173,6 +176,15 @@ func begin_traverse(who: Interactable, to: Vector3, seconds: float, on_done: Cal
 	_harry.set_state(Harry.State.VAULT)
 
 
+## Fishing from a FishingSpot: one cast per go (see FishingSession for the controls).
+func begin_fishing(spot: FishingSpot) -> void:
+	_start(spot, Mode.FISH)
+	fishing = FishingSession.new(_rng)
+	var d := spot.cast_dir
+	_harry.facing_yaw = atan2(-d.x, -d.z)
+	_harry.set_state(Harry.State.LOCKPICK)
+
+
 func _start(who: Interactable, m: Mode) -> void:
 	active = who
 	mode = m
@@ -194,7 +206,7 @@ func _kneel_or_stand(kneel: bool) -> void:
 
 
 func _mode_name() -> String:
-	return ["none", "hold", "lockpick", "traverse"][mode]
+	return ["none", "hold", "lockpick", "traverse", "fish"][mode]
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +216,7 @@ func physics_update(delta: float) -> void:
 	if active == null or not is_instance_valid(active):
 		_finish(false)
 		return
-	if mode in [Mode.HOLD, Mode.LOCKPICK] and _harry.state != Harry.State.LOCKPICK:
+	if mode in [Mode.HOLD, Mode.LOCKPICK, Mode.FISH] and _harry.state != Harry.State.LOCKPICK:
 		_harry.set_state(Harry.State.LOCKPICK)
 	match mode:
 		Mode.HOLD:
@@ -213,6 +225,8 @@ func physics_update(delta: float) -> void:
 			_update_lock(delta)
 		Mode.TRAVERSE:
 			_update_traverse(delta)
+		Mode.FISH:
+			_update_fish(delta)
 
 
 func _wants_out() -> bool:
@@ -279,6 +293,28 @@ func _update_lock(delta: float) -> void:
 func _new_lever() -> void:
 	zone_width = clampf(lock.gate_width * lock_skill, 0.05, 0.5)
 	zone_center = _rng.randf_range(0.1 + zone_width * 0.5, 0.9 - zone_width * 0.5)
+
+
+func _update_fish(delta: float) -> void:
+	_harry.velocity = Vector3.ZERO
+	var spot := active as FishingSpot
+	if _wants_out() or fishing == null:
+		spot.show_float(null, delta)
+		fishing = null
+		_finish(false)
+		return
+	fishing.step(delta, Input.is_action_just_pressed("interact"), Input.is_action_pressed("interact"))
+	spot.show_float(fishing, delta)
+	if fishing.is_over():
+		var s := fishing
+		spot.show_float(null, delta)
+		if s.phase == FishingSession.Phase.LANDED:
+			_harry.inventory.add_item(s.catch_item)
+			spot.caught.emit(s.catch_item)
+			fish_caught.emit(s.catch_item)
+		Progress.bus().note.emit(s.message)
+		_finish(s.phase == FishingSession.Phase.LANDED)
+		fishing = s # kept so the HUD and tests can read how it ended
 
 
 func _update_traverse(delta: float) -> void:

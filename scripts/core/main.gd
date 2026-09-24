@@ -7,18 +7,22 @@ extends Node3D
 func _ready() -> void:
 	var street := $LondonStreet as LondonStreet
 	var harry := $Harry as Harry
-	# Arriving from the hills (or a save): use the named spawn and bring his things.
-	var spawn := GameState.find_spawn(get_tree())
-	harry.set_spawn(spawn.global_transform if spawn else street.get_spawn_transform())
+	GameSettings.apply(get_tree())
+	# Arriving from the hills or from a save: the right spot, and his things with him.
+	var spawn: Variant = GameState.take_spawn(get_tree())
+	harry.set_spawn(spawn if spawn != null else street.get_spawn_transform())
 	GameState.restore(harry)
-	GameState.spawn_at = ""
 	var cinder := get_node_or_null("Cinder") as Horse
-	if cinder and spawn:
-		cinder.global_position = spawn.global_position + spawn.global_basis.x * 2.5 + Vector3.UP * 0.1
+	if cinder and spawn != null:
+		var t: Transform3D = spawn
+		cinder.global_position = t.origin + t.basis.x * 2.5 + Vector3.UP * 0.1
 		if GameState.arrived_mounted:
-			cinder.global_position = spawn.global_position + Vector3.UP * 0.1
+			cinder.global_position = t.origin + Vector3.UP * 0.1
 			harry.try_mount()
 	GameState.arrived_mounted = false
+	if GameState.autosave_on_arrival:
+		GameState.autosave_on_arrival = false
+		SaveGame.save.call_deferred(get_tree(), 0)
 	var nav := get_node_or_null("Navigation") as NavigationRegion3D
 	if nav:
 		nav.bake_navigation_mesh(false)

@@ -100,6 +100,9 @@ var _animator: HarryAnimator
 var _coyote_timer := 0.0
 var _jump_buffer := 0.0
 var _air_peak_y := 0.0
+## Where the last physics step left him: a bigger jump than that is a teleport (spawn,
+## load, travel), and the fall height starts again from there.
+var _last_step_pos := Vector3.ZERO
 var _was_on_floor := true
 var _land_timer := 0.0
 var _regen_timer := 0.0
@@ -145,6 +148,9 @@ func _ready() -> void:
 	inventory = _ensure_child("Inventory", PlayerInventory) as PlayerInventory
 	interaction = _ensure_child("Interaction", HarryInteraction) as HarryInteraction
 	interaction.setup(self)
+	inventory.stolen.connect(Progress.on_stolen)
+	Progress.bus()
+	Upgrades.apply.call_deferred(self)
 	if not camera_path.is_empty():
 		_camera = get_node(camera_path) as ThirdPersonCamera
 	health = max_health
@@ -232,11 +238,15 @@ func arrest(by: Node) -> void:
 		dismount()
 	velocity = Vector3.ZERO
 	_set_state(State.ARRESTED)
+	Progress.on_arrested(self)
 	arrested.emit(by)
 	get_tree().create_timer(4.0).timeout.connect(respawn)
 
 
 func _physics_process(delta: float) -> void:
+	if global_position.distance_squared_to(_last_step_pos) > 9.0:
+		_air_peak_y = global_position.y
+	_last_step_pos = global_position
 	if state == State.DEAD or state == State.ARRESTED:
 		velocity.x = move_toward(velocity.x, 0.0, ground_deceleration * delta)
 		velocity.z = move_toward(velocity.z, 0.0, ground_deceleration * delta)

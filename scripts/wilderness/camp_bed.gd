@@ -25,4 +25,7 @@ func sleep(harry: Harry) -> void:
 	GameClock.set_time(18.0 if h >= 6.0 and h < 17.0 else 6.0, true)
 	harry.health = harry.max_health
 	harry.health_changed.emit(harry.health, harry.max_health)
+	if Progress.has_upgrade("camp_bunks"):
+		harry.inventory.add_lockpicks(maxi(6 - harry.inventory.lockpicks, 0)) # the lads make him new ones
+	SaveGame.save(harry.get_tree(), 0) # autosave
 	slept.emit(GameClock.day * 24.0 + GameClock.hours() - before)

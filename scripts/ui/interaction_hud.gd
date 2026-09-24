@@ -11,6 +11,7 @@ const INK := Color(0.93, 0.88, 0.76)
 const BRASS := Color(0.72, 0.56, 0.3)
 const GOOD := Color(0.45, 0.7, 0.35)
 const RED := Color(0.85, 0.15, 0.1)
+const INK_DIM_C := Color(0.93, 0.88, 0.76, 0.75)
 const NOTES := {
 	"slip": ["The lever slipped back.", Color(0.93, 0.88, 0.76)],
 	"pick_broke": ["A pick snapped!", Color(0.85, 0.15, 0.1)],
@@ -61,6 +62,8 @@ func _draw() -> void:
 			_draw_lock(f, it, center)
 		HarryInteraction.Mode.HOLD:
 			_draw_hold(f, it, center)
+		HarryInteraction.Mode.FISH:
+			_draw_fish(f, it, center)
 		HarryInteraction.Mode.NONE:
 			if it.prompt != "" and player.thievery.prompt_target == null and not player.is_aiming():
 				_text(f, "[E] " + it.prompt, center, 20, INK, true)
@@ -75,6 +78,36 @@ func _draw_hold(f: Font, it: HarryInteraction, center: Vector2) -> void:
 	draw_rect(bar, BRASS, false, 1.5)
 	_text(f, it.hold_label + "...", center + Vector2(0, -22), 18, INK, true)
 	_text(f, "Keep holding E", center + Vector2(0, 30), 14, Color(INK, 0.7), true)
+
+
+func _draw_fish(f: Font, it: HarryInteraction, center: Vector2) -> void:
+	var s := it.fishing
+	if s == null:
+		return
+	match s.phase:
+		FishingSession.Phase.CAST:
+			_text(f, "Hold E to swing the rod back, release to cast", center + Vector2(0, -30), 18, INK, true)
+			var bar := Rect2(center - Vector2(120, 0), Vector2(240, 10))
+			draw_rect(bar.grow(3), Color(0, 0, 0, 0.6))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * s.power, bar.size.y)), BRASS)
+		FishingSession.Phase.WAIT:
+			_text(f, "Watch the float...  (E to reel in)", center, 18, INK_DIM_C, true)
+		FishingSession.Phase.BITE:
+			_text(f, "Bite! Strike - E!", center, 26, RED, true)
+		FishingSession.Phase.FIGHT:
+			_text(f, "Hold E to reel, let go to give line", center + Vector2(0, -40), 18, INK, true)
+			var bar := Rect2(center - Vector2(160, 8), Vector2(320, 16))
+			draw_rect(bar.grow(3), Color(0, 0, 0, 0.6))
+			var lo := bar.position.x + bar.size.x * FishingSession.TENSION_LOW
+			var hi := bar.position.x + bar.size.x * FishingSession.TENSION_HIGH
+			draw_rect(Rect2(Vector2(lo, bar.position.y), Vector2(hi - lo, bar.size.y)), Color(GOOD, 0.45))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(s.tension, 0.0, 1.0), bar.size.y)), RED if s.tension > FishingSession.TENSION_HIGH else INK)
+			draw_rect(bar, BRASS, false, 1.5)
+			_text(f, "Line tension", bar.position + Vector2(bar.size.x * 0.5, -6), 13, INK_DIM_C, true)
+			var sb := Rect2(bar.position + Vector2(0, 30), Vector2(bar.size.x * s.fish_stamina, 5))
+			draw_rect(Rect2(bar.position + Vector2(0, 30), Vector2(bar.size.x, 5)), Color(0, 0, 0, 0.5))
+			draw_rect(sb, BRASS)
+			_text(f, "The fish's strength", bar.position + Vector2(bar.size.x * 0.5, 52), 13, INK_DIM_C, true)
 
 
 func _draw_lock(f: Font, it: HarryInteraction, center: Vector2) -> void:
