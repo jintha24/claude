@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="18" fill="#1b1a17"/>
+  <circle cx="64" cy="64" r="50" fill="none" stroke="#b08d4a" stroke-width="4"/>
+  <!-- flat cap -->
+  <path d="M34 58 Q40 36 66 34 Q92 34 96 52 L100 56 Q70 50 34 60 Z" fill="#3a332b" stroke="#b08d4a" stroke-width="2"/>
+  <!-- scarf-covered face -->
+  <path d="M42 62 Q64 56 88 60 L86 90 Q64 100 44 90 Z" fill="#26221d"/>
+  <path d="M42 74 Q64 70 88 74 L88 84 Q64 80 42 86 Z" fill="#5a1f1f"/>
+  <!-- eyes -->
+  <ellipse cx="55" cy="66" rx="5" ry="2.4" fill="#d8c79a"/>
+  <ellipse cx="75" cy="66" rx="5" ry="2.4" fill="#d8c79a"/>
+</svg>

@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/core/main.gd" id="1_b1x3f"]
+[ext_resource type="Environment" path="res://scenes/main/london_environment.tres" id="2_a8run"]
+[ext_resource type="CameraAttributesPractical" path="res://scenes/main/camera_attributes.tres" id="3_ouso4"]
+[ext_resource type="Script" path="res://scripts/world/london_street.gd" id="4_blune"]
+[ext_resource type="PackedScene" path="res://scenes/player/harry.tscn" id="5_th5th"]
+[ext_resource type="PackedScene" path="res://scenes/camera/third_person_camera.tscn" id="7_raeie"]
+[ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="9_nvumn"]
+
+[node name="Main" type="Node3D" unique_id=193345690]
+script = ExtResource("1_b1x3f")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=612421811]
+environment = ExtResource("2_a8run")
+camera_attributes = ExtResource("3_ouso4")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=902957692]
+transform = Transform3D(-0.9396926, 0.09427353, -0.32877088, 0, 0.9612617, 0.27563736, 0.34202015, 0.2590144, -0.9032905, 0, 0, 0)
+light_color = Color(1, 0.8, 0.6, 1)
+light_energy = 2.2
+light_volumetric_fog_energy = 1.2
+light_angular_distance = 0.5
+shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.0
+directional_shadow_blend_splits = true
+directional_shadow_max_distance = 150.0
+
+[node name="LondonStreet" type="Node3D" parent="." unique_id=1353735113]
+script = ExtResource("4_blune")
+
+[node name="Harry" type="CharacterBody3D" parent="." unique_id=1192760808 instance=ExtResource("5_th5th")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 38)
+camera_path = NodePath("../ThirdPersonCamera")
+
+[node name="ThirdPersonCamera" type="Node3D" parent="." unique_id=543163285 instance=ExtResource("7_raeie")]
+target_path = NodePath("../Harry")
+
+[node name="GameHUD" type="CanvasLayer" parent="." unique_id=1779020971]
+script = ExtResource("9_nvumn")
+player_path = NodePath("../Harry")

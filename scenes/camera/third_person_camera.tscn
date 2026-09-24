@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/camera/third_person_camera.gd" id="1_5a5qu"]
+
+[node name="ThirdPersonCamera" type="Node3D" unique_id=543163285]
+script = ExtResource("1_5a5qu")

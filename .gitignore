@@ -1,0 +1,25 @@
+# Godot 4 cache and editor data (regenerated automatically - never commit)
+.godot/
+.import/
+*.translation
+
+# Export output (the built game and installer are produced locally)
+builds/
+installer/Output/
+*.exe
+*.pck
+*.zip
+
+# Blender backups
+*.blend1
+*.blend2
+
+# Operating system junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.tmp
