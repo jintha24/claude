@@ -9,9 +9,13 @@ signal item_added(item: Dictionary)
 signal item_removed(item: Dictionary)
 ## Fired for every theft so the Legend system (Phase 9) can judge who was robbed.
 signal stolen(victim_class: String, value: int)
+signal lockpicks_changed(count: int)
 
 var money: int = 0
 var items: Array[Dictionary] = []
+## Bent-wire picks and a tension wrench. One can snap when a lever slips.
+var lockpicks: int = 6
+@export var max_lockpicks: int = 12
 
 
 func add_money(pence: int) -> void:
@@ -39,6 +43,30 @@ func receive_loot(loot: Array[Dictionary]) -> void:
 			add_item(item)
 
 
+func add_lockpicks(n: int) -> void:
+	lockpicks = clampi(lockpicks + n, 0, max_lockpicks)
+	lockpicks_changed.emit(lockpicks)
+
+
+## True if Harry carries the key with this id (keys are items of kind "key").
+func has_key(key_id: String) -> bool:
+	if key_id == "":
+		return false
+	for i in items:
+		if i.get("kind", "") == "key" and i.get("key_id", "") == key_id:
+			return true
+	return false
+
+
+func count_kind(kind: String) -> int:
+	var n := 0
+	for i in items:
+		if i.get("kind", "") == kind:
+			n += 1
+	return n
+
+
+## Total worth of the stolen goods (keys and papers are worth nothing to a fence).
 func total_value() -> int:
 	var v := 0
 	for i in items:

@@ -107,7 +107,9 @@ func _build_buildings() -> void:
 	_row_along_x(X0, X1, Z_NORTH, 0.0, 10.0)
 	# West row (facing east) and east row (facing west).
 	_row_along_z(Z_NORTH, Z_SOUTH, X0, PI * 0.5)
-	_row_along_z(Z_NORTH, Z_SOUTH, X1, -PI * 0.5)
+	# East row, with a gap for Ashcombe Row (the lane to Ashcombe House, Phase 7).
+	_row_along_z(Z_NORTH, AshcombeHouse.LANE_Z0, X1, -PI * 0.5)
+	_row_along_z(AshcombeHouse.LANE_Z1, Z_SOUTH, X1, -PI * 0.5)
 
 
 ## Buildings whose facades lie on the line z = z_line between x0 and x1.

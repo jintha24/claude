@@ -8,7 +8,8 @@ extends CharacterBody3D
 ## Climbing and parkour live in HarryParkour (child node "Parkour"), visuals and
 ## animation in HarryAnimator ("Visual"), and the camera in ThirdPersonCamera.
 ##
-## Later phases add RIDE, SWIM, FISH, PICKPOCKET and LOCKPICK states.
+## LOCKPICK covers kneeling at a lock and other hands-busy actions (HarryInteraction).
+## Later phases add RIDE, SWIM and FISH states.
 
 signal state_changed(old_state: State, new_state: State)
 signal health_changed(health: float, max_health: float)
@@ -19,7 +20,7 @@ signal respawned
 
 enum State {
 	IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, ROLL,
-	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, PICKPOCKET, ARRESTED, DEAD,
+	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, PICKPOCKET, LOCKPICK, ARRESTED, DEAD,
 }
 
 # --- Real-world body measurements ---------------------------------------------
@@ -87,6 +88,7 @@ var stealth: HarryStealth
 var combat: HarryCombat
 var thievery: HarryThievery
 var inventory: PlayerInventory
+var interaction: HarryInteraction
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -109,7 +111,7 @@ var _wish_dir := Vector3.ZERO
 func _ready() -> void:
 	add_to_group("player")
 	collision_layer = 1 << 1
-	collision_mask = 1 | (1 << 2) | (1 << 3) # world + NPCs + props
+	collision_mask = 1 | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 7) # world, NPCs, props, glass, doors
 	floor_max_angle = deg_to_rad(46.0)
 	floor_snap_length = 0.4
 	floor_constant_speed = true
@@ -139,6 +141,8 @@ func _ready() -> void:
 	thievery = _ensure_child("Thievery", HarryThievery) as HarryThievery
 	thievery.setup(self)
 	inventory = _ensure_child("Inventory", PlayerInventory) as PlayerInventory
+	interaction = _ensure_child("Interaction", HarryInteraction) as HarryInteraction
+	interaction.setup(self)
 	if not camera_path.is_empty():
 		_camera = get_node(camera_path) as ThirdPersonCamera
 	health = max_health
@@ -217,6 +221,7 @@ func arrest(by: Node) -> void:
 	parkour.cancel()
 	combat.cancel()
 	thievery.cancel()
+	interaction.cancel()
 	velocity = Vector3.ZERO
 	_set_state(State.ARRESTED)
 	arrested.emit(by)
@@ -244,6 +249,16 @@ func _physics_process(delta: float) -> void:
 	if thievery.is_busy():
 		_update_timers(delta, true)
 		thievery.physics_update(delta)
+		if _animator:
+			_animator.update_animation(self, delta)
+		return
+
+	# ---- Doors, locks, windows and valuables own the body while in use ----------
+	if interaction.is_busy():
+		_update_timers(delta, true)
+		interaction.physics_update(delta)
+		if not interaction.is_busy():
+			_air_peak_y = global_position.y
 		if _animator:
 			_animator.update_animation(self, delta)
 		return
@@ -280,8 +295,9 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer = jump_buffer_time
 	if on_floor:
 		thievery.update_prompt(delta)
+		interaction.update_prompt(delta)
 	combat.handle_input(delta, on_floor)
-	if combat.is_busy() or thievery.is_busy():
+	if combat.is_busy() or thievery.is_busy() or interaction.is_busy():
 		if _animator:
 			_animator.update_animation(self, delta)
 		return
@@ -517,6 +533,7 @@ func apply_damage(amount: float) -> void:
 		return
 	health = maxf(health - amount, 0.0)
 	_regen_timer = 0.0
+	interaction.cancel() # a blow makes him drop what he's doing
 	health_changed.emit(health, max_health)
 	if health <= 0.0:
 		parkour.cancel()
@@ -538,6 +555,7 @@ func respawn() -> void:
 	parkour.cancel()
 	combat.cancel()
 	thievery.cancel()
+	interaction.cancel()
 	reset_physics_interpolation()
 	_respawning = true
 	_set_state(State.IDLE)
@@ -566,7 +584,7 @@ func _try_stand_up() -> void:
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = _stand_check_shape
 	query.transform = Transform3D(Basis.IDENTITY, global_position + Vector3(0, STAND_CAPSULE_HEIGHT * 0.5 + 0.03, 0))
-	query.collision_mask = 1 | (1 << 3)
+	query.collision_mask = 1 | (1 << 3) | (1 << 6) | (1 << 7)
 	var exclude: Array[RID] = [get_rid()]
 	query.exclude = exclude
 	if get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty():

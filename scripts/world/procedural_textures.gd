@@ -39,6 +39,16 @@ static func get_set(kind: String) -> Dictionary:
 			images = _planks(Color(0.42, 0.31, 0.21))
 		"wood_painted":
 			images = _render(Color(0.92, 0.92, 0.92), 0.55, 59)
+		"grass":
+			images = _render(Color(0.22, 0.31, 0.12), 0.95, 71)
+		"gravel":
+			images = _render(Color(0.62, 0.57, 0.47), 0.95, 83)
+		"plaster":
+			images = _render(Color(0.9, 0.87, 0.8), 0.9, 97)
+		"marble":
+			images = _render(Color(0.9, 0.89, 0.86), 0.2, 101)
+		"floorboards":
+			images = _planks(Color(0.34, 0.2, 0.1))
 		_:
 			images = _render(Color(0.5, 0.5, 0.5), 0.8, 1)
 	_save_cached(kind, images)

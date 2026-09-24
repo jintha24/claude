@@ -96,14 +96,14 @@ func _build_rig() -> void:
 	_shoulder_arm = SpringArm3D.new()
 	_shoulder_arm.name = "ShoulderArm"
 	_shoulder_arm.shape = probe
-	_shoulder_arm.collision_mask = 1 | (1 << 3) # world + props
+	_shoulder_arm.collision_mask = 1 | (1 << 3) | (1 << 6) | (1 << 7) # world, props, glass, doors
 	_shoulder_arm.margin = 0.05
 	_pitch_node.add_child(_shoulder_arm)
 
 	_boom_arm = SpringArm3D.new()
 	_boom_arm.name = "BoomArm"
 	_boom_arm.shape = probe
-	_boom_arm.collision_mask = 1 | (1 << 3)
+	_boom_arm.collision_mask = 1 | (1 << 3) | (1 << 6) | (1 << 7)
 	_boom_arm.margin = 0.08
 	_shoulder_arm.add_child(_boom_arm)
 

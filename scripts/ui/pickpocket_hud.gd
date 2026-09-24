@@ -25,8 +25,7 @@ func _ready() -> void:
 
 func bind(p: Harry) -> void:
 	player = p
-	p.inventory.item_added.connect(func(item: Dictionary) -> void:
-		_toast("Stolen: %s (worth about %s)" % [item["name"], Money.format(int(item["value"]))]))
+	p.inventory.item_added.connect(_on_item_added)
 	p.inventory.money_changed.connect(func(_m: int) -> void:
 		_purse_timer = 5.0)
 	p.thievery.attempt_finished.connect(func(success: bool, loot: Array) -> void:
@@ -41,6 +40,16 @@ func bind(p: Harry) -> void:
 				_toast("Empty pockets.")
 		else:
 			_toast("Caught in the act!", RED))
+
+
+func _on_item_added(item: Dictionary) -> void:
+	match String(item.get("kind", "")):
+		"key":
+			_toast("Taken: %s" % item["name"], BRASS)
+		"document":
+			_toast("Papers: %s" % item["name"], BRASS)
+		_:
+			_toast("Stolen: %s (worth about %s)" % [item["name"], Money.format(int(item["value"]))])
 
 
 func _toast(text: String, color: Color = INK) -> void:

@@ -12,6 +12,8 @@
 [ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="12_daynt"]
 [ext_resource type="Script" path="res://scripts/npc/population.gd" id="13_popul"]
 [ext_resource type="Script" path="res://scripts/world/weather_effects.gd" id="14_wthr"]
+[ext_resource type="Script" path="res://scripts/world/ashcombe_house.gd" id="15_ashhs"]
+[ext_resource type="Script" path="res://scripts/world/ashcombe_staff.gd" id="16_ashst"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -23,7 +25,7 @@ cell_height = 0.1
 agent_height = 1.8
 agent_radius = 0.4
 agent_max_climb = 0.2
-agent_max_slope = 30.0
+agent_max_slope = 34.0
 
 [node name="Main" type="Node3D" unique_id=193345690]
 script = ExtResource("1_b1x3f")
@@ -50,6 +52,9 @@ script = ExtResource("4_blune")
 [node name="MarketSquare" type="Node3D" parent="."]
 script = ExtResource("11_markt")
 
+[node name="AshcombeHouse" type="Node3D" parent="."]
+script = ExtResource("15_ashhs")
+
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavigationMesh_street")
 
@@ -64,6 +69,9 @@ script = ExtResource("13_popul")
 
 [node name="Patrols" type="Node3D" parent="."]
 script = ExtResource("10_patrl")
+
+[node name="AshcombeStaff" type="Node3D" parent="."]
+script = ExtResource("16_ashst")
 
 [node name="Harry" type="CharacterBody3D" parent="." unique_id=1192760808 instance=ExtResource("5_th5th")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 38)

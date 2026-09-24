@@ -15,7 +15,7 @@ signal footstep(surface: String, loudness: float)
 ## Hearing radius (m) of one footstep on stone for each gait.
 const STEP_RADIUS := {"crouch": 1.5, "walk": 4.0, "run": 9.0, "sprint": 15.0}
 const STRIDE := {"crouch": 0.5, "walk": 0.75, "run": 1.2, "sprint": 1.8}
-const SURFACE_LOUDNESS := {"stone": 1.0, "wood": 1.25, "slate": 1.3, "metal": 1.4, "grass": 0.45, "mud": 0.6}
+const SURFACE_LOUDNESS := {"stone": 1.0, "wood": 1.25, "slate": 1.3, "metal": 1.4, "grass": 0.45, "mud": 0.6, "gravel": 1.5, "carpet": 0.35}
 
 var exposure: float = 1.0
 var visibility: float = 1.0
@@ -104,6 +104,8 @@ func _update_conspicuousness() -> void:
 		c = maxf(c, 0.5)
 	if _harry.thievery and _harry.thievery.is_busy():
 		c = maxf(c, 0.6) # hand in a stranger's pocket
+	if _harry.interaction and _harry.interaction.mode in [HarryInteraction.Mode.HOLD, HarryInteraction.Mode.LOCKPICK]:
+		c = maxf(c, 0.8) # fiddling with a lock, prising at a frame
 	if _harry.is_climbing() or surface == "slate":
 		c = maxf(c, 0.9)
 	if is_in_restricted_zone():

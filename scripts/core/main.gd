@@ -12,4 +12,5 @@ func _ready() -> void:
 	if nav:
 		nav.bake_navigation_mesh(false)
 	harry.respawned.connect(func() -> void:
-		get_tree().call_group("guards", "reset_after_player_respawn"))
+		get_tree().call_group("guards", "reset_after_player_respawn")
+		get_tree().call_group("guard_dogs", "reset_after_player_respawn"))

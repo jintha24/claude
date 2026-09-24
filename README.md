@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–6 of 11 complete and playable
+## Status: Phases 1–7 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -56,9 +56,26 @@ wet and glossy and puddles form, then dry out slowly. Wind moves smoke and washi
 masks footsteps, fog blinds the constables, and wet slate roofs are slippery. Fewer people are out
 in bad weather, and they shelter or carry umbrellas.
 
+**Phase 7 — Ashcombe House:** Lord Ashcombe's walled mansion east of the market, the first great
+break-in. There are seven ways in:
+- the gates
+- the tradesmen's door
+- the servants' entrance
+- a drainpipe to the wing roof
+- the garden wall
+- sash windows
+- an old sewer
+
+Inside are two floors of furnished rooms with hinged doors that guards open as they pass. You pick
+locks in a lever-lock minigame, and the study safe has a Chubb detector lock that jams for good if
+you slip. There are paintings to cut from their frames and silver to steal. Watch for creaky
+floorboards, dim rooms and gaslight, and for servants who notice an open door or an empty frame.
+Two mastiffs are let loose at night: they track you by scent according to the wind, outrun you,
+and bite.
+
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** and **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** and **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -69,6 +86,7 @@ the recommended PC specs.
 - [docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md) — the market, crowds and pickpocketing
 - [docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md) — day and night, routines, police shifts
 - [docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md) — dynamic weather and its effects
+- [docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md) — Ashcombe House: routes in, lockpicking, the safe, dogs
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
 
@@ -79,7 +97,7 @@ the recommended PC specs.
 4. ✅ Market crowds and pickpocketing
 5. ✅ NPC daily schedules and the day/night cycle
 6. ✅ Dynamic weather and its gameplay effects
-7. First palace infiltration
+7. ✅ First palace infiltration (Ashcombe House)
 8. World streaming, wilderness, cave camp, animals, Cinder the horse
 9. Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
 10. Story missions (Act 1 first), full districts, sound, performance

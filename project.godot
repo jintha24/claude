@@ -177,6 +177,8 @@ cycle_arrow={
 3d_physics/layer_4="props"
 3d_physics/layer_5="climbable"
 3d_physics/layer_6="interactable"
+3d_physics/layer_7="glass"
+3d_physics/layer_8="doors"
 
 [navigation]
 

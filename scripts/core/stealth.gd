@@ -41,7 +41,7 @@ static func bus() -> Stealth:
 			tree.root.add_child.call_deferred(_bus)
 	return _bus
 
-const MASK_OCCLUDERS := 1 | (1 << 3) # world + props
+const MASK_OCCLUDERS := 1 | (1 << 3) | (1 << 7) # world, props, closed doors
 
 
 ## Broadcast a sound. `radius` is how far (m) a guard can hear it in the open.
@@ -69,9 +69,12 @@ static func light_exposure_at(point: Vector3, world: World3D, exclude: Array[RID
 	var tree := Engine.get_main_loop() as SceneTree
 	var total := 0.0
 
-	# Sun and sky.
+	# Sun and sky (only a little daylight reaches indoors).
+	var daylight := InteriorVolume.daylight_at(point)
 	var sun := tree.get_first_node_in_group("sun") as DirectionalLight3D
-	if sun and sun.visible:
+	if daylight < 1.0:
+		total += ambient_light * shade_factor * daylight
+	elif sun and sun.visible:
 		var to_sun := sun.global_transform.basis.z.normalized()
 		var sun_up := clampf(to_sun.y * 4.0, 0.0, 1.0)
 		var q := PhysicsRayQueryParameters3D.create(point, point + to_sun * 150.0, MASK_OCCLUDERS, exclude)

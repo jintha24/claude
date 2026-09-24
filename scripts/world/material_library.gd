@@ -29,6 +29,11 @@ const DEFS := {
 	"wood_planks": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "world"},
 	"wood_planks_local": {"folder": "wood_planks", "tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "local"},
 	"wood_painted": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.0, "mode": "world"},
+	"grass": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 2.0, "mode": "world"},
+	"gravel": {"tile_proc": Vector2(1.2, 1.2), "tile_real": 1.5, "mode": "world"},
+	"plaster": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 2.0, "mode": "world"},
+	"marble": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world"},
+	"floorboards": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "world"},
 }
 
 static var _cache: Dictionary = {}
@@ -57,6 +62,16 @@ static func get_material(key: String) -> StandardMaterial3D:
 			mat = _lamp_glass()
 		"gilt_letters":
 			mat = _simple(Color(0.85, 0.66, 0.3), 0.35, 1.0)
+		"carpet":
+			mat = _simple(Color(0.42, 0.08, 0.07), 0.98, 0.0)
+		"fabric":
+			mat = _simple(Color(0.3, 0.1, 0.12), 0.95, 0.0)
+		"gilt":
+			mat = _simple(Color(0.8, 0.6, 0.28), 0.35, 1.0)
+		"oil_paint":
+			mat = _simple(Color(0.3, 0.22, 0.12), 0.5, 0.0)
+		"water":
+			mat = _simple(Color(0.06, 0.07, 0.05), 0.05, 0.0)
 		_:
 			mat = _textured(key)
 	_cache[key] = mat

@@ -154,6 +154,13 @@ func _pose_combat(h: Harry, delta: float) -> void:
 			_elbow[1].rotation.x = deg_to_rad(55.0)
 			_spine.rotation.x = -deg_to_rad(12.0)
 			_head.rotation.x = deg_to_rad(15.0)
+		Harry.State.LOCKPICK:
+			# Hands up at the lock or the work in front of him, head bent close to listen.
+			for i in 2:
+				_shoulder[i].rotation.x = deg_to_rad(62.0)
+				_shoulder[i].rotation.z = (1.0 if i == 0 else -1.0) * deg_to_rad(-12.0)
+				_elbow[i].rotation.x = deg_to_rad(70.0)
+			_head.rotation.x = deg_to_rad(18.0)
 		Harry.State.ARRESTED:
 			# On his knees, hands behind his back.
 			for i in 2:
@@ -169,7 +176,7 @@ func update_pose(h: Harry, delta: float) -> void:
 	var state := h.state
 	var speed := h.get_horizontal_speed() if not h.is_climbing() else 0.0
 	var vertical_speed := h.velocity.y
-	var crouching := state == Harry.State.CROUCH_IDLE or state == Harry.State.CROUCH_WALK
+	var crouching := state == Harry.State.CROUCH_IDLE or state == Harry.State.CROUCH_WALK or (state == Harry.State.LOCKPICK and h.is_crouching)
 	var airborne := state == Harry.State.JUMP or state == Harry.State.FALL
 	var dead := state == Harry.State.DEAD
 	_crouch_blend = move_toward(_crouch_blend, 1.0 if crouching else 0.0, delta * 5.0)

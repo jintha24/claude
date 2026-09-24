@@ -29,6 +29,7 @@ var _last_health := 100.0
 var _flash := 0.0
 var _stealth_hud: StealthHUD
 var _pickpocket_hud: PickpocketHUD
+var _interaction_hud: InteractionHUD
 var _clock_label: Label
 var _clock_alpha := 0.0
 var _clock_timer := 6.0
@@ -46,6 +47,9 @@ func _ready() -> void:
 	_pickpocket_hud = PickpocketHUD.new()
 	_pickpocket_hud.font = _font
 	add_child(_pickpocket_hud)
+	_interaction_hud = InteractionHUD.new()
+	_interaction_hud.font = _font
+	add_child(_interaction_hud)
 	_build_overlays()
 	_build_debug()
 	_clock_label = _make_label("", 20)
@@ -68,6 +72,7 @@ func _ready() -> void:
 		_player.arrested.connect(_on_arrested)
 		_stealth_hud.player = _player
 		_pickpocket_hud.bind(_player)
+		_interaction_hud.bind(_player)
 		_player.respawned.connect(_on_respawned)
 		_player.landed.connect(func(h: float) -> void: _last_fall = h)
 		_last_health = _player.max_health

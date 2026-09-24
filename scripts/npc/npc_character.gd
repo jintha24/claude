@@ -32,7 +32,7 @@ var _frame := 0
 
 func _setup_npc(max_speed: float, body_height: float = 1.76) -> void:
 	collision_layer = LAYER_NPC
-	collision_mask = 1 | (1 << 1) | (1 << 3) | LAYER_NPC
+	collision_mask = 1 | (1 << 1) | (1 << 3) | LAYER_NPC | (1 << 6) | (1 << 7) # + glass, doors
 	floor_snap_length = 0.35
 	floor_max_angle = deg_to_rad(46.0)
 	var cs := CollisionShape3D.new()

@@ -11,7 +11,7 @@ extends Node3D
 ##               where it lands: a distraction.
 ## After landing, arrows lie where they fell and can be picked up again (E).
 
-const MASK_HIT := 1 | (1 << 2) | (1 << 3) # world, NPCs, props
+const MASK_HIT := 1 | (1 << 2) | (1 << 3) | (1 << 6) | (1 << 7) # world, NPCs, props, glass, doors
 const GRAVITY := 9.81
 const DRAG := 0.004
 
@@ -126,9 +126,9 @@ func _on_hit(hit: Dictionary) -> void:
 	var noise_radius := 6.0 if kind == "blunt" else 22.0
 	var noise_kind := "thud" if kind == "blunt" else "whistle"
 
-	var guard := _find_guard(collider)
-	if guard:
-		guard.on_arrow_hit(kind, point, velocity)
+	var target := _find_arrow_target(collider)
+	if target:
+		target.call("on_arrow_hit", kind, point, velocity)
 	elif collider is GasLamp:
 		var lamp := collider as GasLamp
 		if point.y > lamp.global_position.y + GasLamp.LANTERN_HEIGHT - 0.4 and lamp.lit:
@@ -141,9 +141,10 @@ func _on_hit(hit: Dictionary) -> void:
 	_settle()
 
 
-func _find_guard(n: Node) -> Guard:
+## The guard, dog or other creature (anything with on_arrow_hit) that owns `n`.
+func _find_arrow_target(n: Node) -> Node:
 	while n != null:
-		if n is Guard:
+		if n.has_method("on_arrow_hit"):
 			return n
 		n = n.get_parent()
 	return null

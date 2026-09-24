@@ -8,7 +8,7 @@ extends RefCounted
 ##   normal - horizontal direction pointing OUT of the wall, towards Harry
 ##   top    - world-space height of the ledge's upper surface
 
-const MASK_SOLID := 1 | (1 << 3) # world + props
+const MASK_SOLID := 1 | (1 << 3) | (1 << 6) | (1 << 7) # world, props, glass, doors
 const MASK_CLIMBABLE := 1 << 4
 
 ## Height of Harry's hands above his feet while hanging (arms slightly bent), for a 1.88 m man.

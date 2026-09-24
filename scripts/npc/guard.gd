@@ -17,7 +17,7 @@ signal state_changed(guard: Guard, old_state: State, new_state: State)
 
 enum State { PATROL, WAIT, SUSPICIOUS, INVESTIGATE, SEARCH, CHASE, RETURN, STUNNED, UNCONSCIOUS, OFF_DUTY }
 
-const MASK_SIGHT := 1 | (1 << 3)
+const MASK_SIGHT := 1 | (1 << 3) | (1 << 7) # world, props, closed doors (not glass)
 
 @export var patrol_route_path: NodePath
 ## Night constables carry a bullseye lantern: a real beam that lights up whatever it points at.
@@ -81,6 +81,7 @@ var _found_bodies: Array[Node] = []
 var _off_duty_target := Vector3.ZERO
 var _going_off_duty := false
 var lantern: SpotLight3D
+var _lantern_mesh: MeshInstance3D
 
 
 func _init() -> void:
@@ -152,6 +153,50 @@ func on_arrow_hit(kind: String, point: Vector3, from_dir: Vector3) -> void:
 	_pause = stun_time
 
 
+## True if this guard, awake and on his feet, has a clear view of `point` within `max_range`.
+func can_see_point(point: Vector3, max_range: float, exclude: Array[RID] = []) -> bool:
+	if is_down() or state == State.OFF_DUTY:
+		return false
+	var eye := global_position + Vector3.UP * eye_height
+	var d := eye.distance_to(point)
+	if d > max_range * maxf(Stealth.visibility_multiplier, 0.3):
+		return false
+	var flat := Vector3(point.x - eye.x, 0.0, point.z - eye.z)
+	if flat.length() > 0.5 and rad_to_deg(get_facing_dir().angle_to(flat)) > fov_degrees * 0.5:
+		return false
+	var ex: Array[RID] = [get_rid()]
+	ex.append_array(exclude)
+	if _harry:
+		ex.append(_harry.get_rid())
+	var q := PhysicsRayQueryParameters3D.create(eye, point, MASK_SIGHT, ex)
+	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
+
+## The first guard who can see `point` (for things left out of place), or null.
+static func find_witness(point: Vector3, max_range: float, exclude: Array[RID] = []) -> Guard:
+	var tree := Engine.get_main_loop() as SceneTree
+	for node in tree.get_nodes_in_group("guards"):
+		var g := node as Guard
+		if g and g.can_process() and g.can_see_point(point, max_range, exclude):
+			return g
+	return null
+
+
+## Something is out of place (a door left open, an empty picture frame): go and look.
+## `alarm` = it's proof of a burglary, so he raises the alarm and searches hard.
+func notice_disturbance(pos: Vector3, line: String, alarm: bool) -> void:
+	if is_down() or state == State.CHASE:
+		return
+	last_known = pos
+	alertness = 1.0 if alarm else maxf(alertness, 0.6)
+	awareness = maxf(awareness, investigate_at if alarm else suspicious_at + 0.1)
+	Stealth.bark(self, "%s: \"%s\"" % [display_name, line])
+	_bark_cooldown = 4.0
+	if alarm:
+		Stealth.raise_alarm(global_position, self)
+	_enter(State.INVESTIGATE)
+
+
 ## Where this constable's post is (for fixed posts and returning after an incident).
 func set_home(xform: Transform3D) -> void:
 	_home = xform
@@ -195,6 +240,14 @@ func _add_lantern() -> void:
 	mi.position = lantern.position + Vector3(0, 0, 0.08)
 	mi.rotation_degrees = Vector3(90, 0, 0)
 	_body.add_child(mi)
+	_lantern_mesh = mi
+
+
+## Light or shutter the bullseye lantern (house guards carry theirs by day too).
+func set_lantern_lit(on: bool) -> void:
+	if lantern:
+		lantern.visible = on
+		_lantern_mesh.visible = on
 
 
 ## After Harry respawns (arrested or died), everyone goes back to their beat.

@@ -79,7 +79,9 @@ func _build_ground() -> void:
 	ground.collision_layer = 1
 	ground.collision_mask = 0
 	add_child(ground)
-	_box_collider(ground, Vector3(160, 2, 160), Vector3(0, -1, 0))
+	# Solid ground under the whole neighbourhood, stopping short of the mews (x = 35),
+	# where Ashcombe House has its own ground with a sewer beneath.
+	_box_collider(ground, Vector3(114, 2, 160), Vector3(-23, -1, 0))
 
 	var road := MeshInstance3D.new()
 	road.name = "Carriageway"
