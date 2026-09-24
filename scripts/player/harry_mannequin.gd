@@ -287,6 +287,21 @@ func update_pose(h: Harry, delta: float) -> void:
 
 	_pose_parkour(h, delta)
 	_pose_combat(h, delta)
+	if state == Harry.State.RIDE:
+		# In the saddle: thighs forward and apart round the horse, knees bent, heels down,
+		# hands low holding the reins, rising a little with the horse's stride.
+		var gait := h.horse.gait if h.horse else Horse.Gait.STAND
+		var post := absf(sin(_breath * 3.0 + (h.horse.speed if h.horse else 0.0))) * 0.03 * float(gait >= Horse.Gait.TROT)
+		for i in 2:
+			var side := -1.0 if i == 0 else 1.0
+			_thigh[i].rotation = Vector3(deg_to_rad(70.0), 0.0, side * deg_to_rad(-22.0))
+			_knee[i].rotation.x = -deg_to_rad(75.0)
+			_foot[i].rotation.x = deg_to_rad(10.0)
+			_shoulder[i].rotation = Vector3(deg_to_rad(35.0), 0.0, side * deg_to_rad(-8.0))
+			_elbow[i].rotation.x = deg_to_rad(55.0)
+		_hips.position.y = HIP_HEIGHT + post
+		_spine.rotation.x = -deg_to_rad(8.0 + 10.0 * float(gait >= Horse.Gait.CANTER))
+		_coat_skirt.rotation.x = deg_to_rad(40.0)
 
 	# Death: collapse forward onto the ground.
 	rotation.x = -_death_blend * PI * 0.47

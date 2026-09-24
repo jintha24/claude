@@ -34,6 +34,8 @@ const DEFS := {
 	"plaster": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 2.0, "mode": "world"},
 	"marble": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world"},
 	"floorboards": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "world"},
+	"rock": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 3.0, "mode": "world"},
+	"dirt": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world"},
 }
 
 static var _cache: Dictionary = {}

@@ -15,6 +15,8 @@
 [ext_resource type="Script" path="res://scripts/world/ashcombe_house.gd" id="15_ashhs"]
 [ext_resource type="Script" path="res://scripts/world/ashcombe_staff.gd" id="16_ashst"]
 [ext_resource type="Script" path="res://scripts/world/london_skyline.gd" id="17_skyln"]
+[ext_resource type="Script" path="res://scripts/horse/horse.gd" id="18_horse"]
+[ext_resource type="Script" path="res://scripts/wilderness/travel_point.gd" id="19_travel"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -76,6 +78,21 @@ script = ExtResource("10_patrl")
 
 [node name="AshcombeStaff" type="Node3D" parent="."]
 script = ExtResource("16_ashst")
+
+[node name="Cinder" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 0.1, -106)
+script = ExtResource("18_horse")
+
+[node name="HillsRoad" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -19.5, 0.05, -85)
+
+[node name="ToHills" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.6, 0.15, -88.6)
+script = ExtResource("19_travel")
+destination_name = "the hills"
+destination_scene = "res://scenes/wilderness/hills.tscn"
+arrive_at = "LondonRoad"
+card_title = "North, to the hills"
 
 [node name="Harry" type="CharacterBody3D" parent="." unique_id=1192760808 instance=ExtResource("5_th5th")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 38)

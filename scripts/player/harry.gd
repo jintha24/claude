@@ -9,7 +9,7 @@ extends CharacterBody3D
 ## animation in HarryAnimator ("Visual"), and the camera in ThirdPersonCamera.
 ##
 ## LOCKPICK covers kneeling at a lock and other hands-busy actions (HarryInteraction).
-## Later phases add RIDE, SWIM and FISH states.
+## RIDE: on horseback (Cinder, see Horse). Later phases add SWIM and FISH states.
 
 signal state_changed(old_state: State, new_state: State)
 signal health_changed(health: float, max_health: float)
@@ -20,7 +20,7 @@ signal respawned
 
 enum State {
 	IDLE, WALK, RUN, SPRINT, CROUCH_IDLE, CROUCH_WALK, JUMP, FALL, LAND, ROLL,
-	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, PICKPOCKET, LOCKPICK, ARRESTED, DEAD,
+	GRAB, HANG, CLIMB_UP, PIPE, VAULT, TAKEDOWN, PICKPOCKET, LOCKPICK, RIDE, ARRESTED, DEAD,
 }
 
 # --- Real-world body measurements ---------------------------------------------
@@ -89,6 +89,8 @@ var combat: HarryCombat
 var thievery: HarryThievery
 var inventory: PlayerInventory
 var interaction: HarryInteraction
+## The horse Harry is riding (null on foot).
+var horse: Horse = null
 
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
 var _camera: ThirdPersonCamera
@@ -210,6 +212,10 @@ func is_arrested() -> bool:
 	return state == State.ARRESTED
 
 
+func is_riding() -> bool:
+	return state == State.RIDE and horse != null and is_instance_valid(horse)
+
+
 func is_aiming() -> bool:
 	return combat != null and combat.is_aiming()
 
@@ -222,6 +228,8 @@ func arrest(by: Node) -> void:
 	combat.cancel()
 	thievery.cancel()
 	interaction.cancel()
+	if is_riding():
+		dismount()
 	velocity = Vector3.ZERO
 	_set_state(State.ARRESTED)
 	arrested.emit(by)
@@ -251,6 +259,11 @@ func _physics_process(delta: float) -> void:
 		thievery.physics_update(delta)
 		if _animator:
 			_animator.update_animation(self, delta)
+		return
+
+	# ---- On horseback the horse carries him ----------------------------------------
+	if state == State.RIDE:
+		_ride(delta)
 		return
 
 	# ---- Doors, locks, windows and valuables own the body while in use ----------
@@ -296,6 +309,12 @@ func _physics_process(delta: float) -> void:
 	if on_floor:
 		thievery.update_prompt(delta)
 		interaction.update_prompt(delta)
+		if Input.is_action_just_pressed("mount_horse") and try_mount():
+			if _animator:
+				_animator.update_animation(self, delta)
+			return
+	if Input.is_action_just_pressed("whistle_horse"):
+		whistle()
 	combat.handle_input(delta, on_floor)
 	if combat.is_busy() or thievery.is_busy() or interaction.is_busy():
 		if _animator:
@@ -342,6 +361,7 @@ func _physics_process(delta: float) -> void:
 			target_speed = run_speed
 	if state == State.LAND:
 		target_speed *= 0.35 # recovering from a heavy landing
+	target_speed *= _wading_factor()
 	if aiming:
 		target_speed = minf(target_speed, walk_speed * 0.8) # walking with a drawn bow
 	if state == State.ROLL:
@@ -536,6 +556,8 @@ func apply_damage(amount: float) -> void:
 	interaction.cancel() # a blow makes him drop what he's doing
 	health_changed.emit(health, max_health)
 	if health <= 0.0:
+		if is_riding():
+			dismount()
 		parkour.cancel()
 		_set_state(State.DEAD)
 		died.emit()
@@ -556,6 +578,10 @@ func respawn() -> void:
 	combat.cancel()
 	thievery.cancel()
 	interaction.cancel()
+	if horse:
+		horse.clear_rider()
+		horse = null
+	_collision.disabled = false
 	reset_physics_interpolation()
 	_respawning = true
 	_set_state(State.IDLE)
@@ -564,6 +590,112 @@ func respawn() -> void:
 		_camera.snap_behind(facing_yaw)
 	health_changed.emit(health, max_health)
 	respawned.emit()
+
+
+## Wading through water (the lake in the hills) slows him down.
+func _wading_factor() -> float:
+	var s := get_tree().get_first_node_in_group("world_streamer") as WorldStreamer
+	if s == null:
+		return 1.0
+	var depth := s.generator.water_depth(global_position.x, global_position.z)
+	if depth > 0.25:
+		if Engine.get_physics_frames() % 40 == 0 and get_horizontal_speed() > 0.5:
+			Stealth.make_noise(global_position, 6.0, "splash", stealth.conspicuousness >= 0.45, self)
+		return clampf(1.0 - depth * 0.55, 0.3, 1.0)
+	return 1.0
+
+
+# ---------------------------------------------------------------------------
+# Horseback
+# ---------------------------------------------------------------------------
+## Mounts the horse within reach (F). Returns true if he got up.
+func try_mount() -> bool:
+	var best: Horse = null
+	var best_d := 2.8
+	for n in get_tree().get_nodes_in_group("player_horse"):
+		var hz := n as Horse
+		if hz == null or hz.rider != null or hz.is_jumping:
+			continue
+		var d := Vector2(hz.global_position.x - global_position.x, hz.global_position.z - global_position.z).length()
+		if d < best_d and absf(hz.global_position.y - global_position.y) < 1.5:
+			best_d = d
+			best = hz
+	if best == null:
+		return false
+	parkour.cancel()
+	combat.cancel()
+	interaction.cancel()
+	set_crouched(false)
+	horse = best
+	_collision.disabled = true
+	velocity = Vector3.ZERO
+	best.set_rider(self)
+	_set_state(State.RIDE)
+	global_transform = best.rider_transform()
+	facing_yaw = best.get_yaw()
+	reset_physics_interpolation()
+	return true
+
+
+## Gets down on whichever side has room (left first, as riders always have).
+func dismount() -> void:
+	if horse == null:
+		return
+	var h := horse
+	var fwd := h.get_facing_dir()
+	var left := fwd.cross(Vector3.DOWN).normalized()
+	var spots: Array[Vector3] = [h.global_position + left * 1.1, h.global_position - left * 1.1, h.global_position - fwd * 2.2]
+	var chosen := spots[0]
+	for p in spots:
+		if _space_free(p + Vector3.UP * 0.2):
+			chosen = p
+			break
+	h.clear_rider()
+	horse = null
+	_collision.disabled = false
+	global_position = chosen + Vector3.UP * 0.2
+	velocity = h.velocity * 0.3
+	_air_peak_y = global_position.y
+	reset_physics_interpolation()
+	_set_state(State.FALL)
+
+
+## Calls his horse with a whistle (H).
+func whistle() -> void:
+	Stealth.make_noise(global_position, 30.0, "whistle_call", false, self)
+	for n in get_tree().get_nodes_in_group("player_horse"):
+		(n as Horse).call_to(global_position, _camera)
+
+
+func _space_free(p: Vector3) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = _stand_check_shape
+	q.transform = Transform3D(Basis.IDENTITY, p + Vector3.UP * (STAND_CAPSULE_HEIGHT * 0.5 + 0.05))
+	q.collision_mask = 1 | (1 << 3) | (1 << 6) | (1 << 7)
+	var ex: Array[RID] = [get_rid()]
+	if horse:
+		ex.append(horse.get_rid())
+	q.exclude = ex
+	return get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
+func _ride(delta: float) -> void:
+	if not is_riding():
+		_collision.disabled = false
+		_set_state(State.FALL)
+		return
+	global_transform = horse.rider_transform()
+	facing_yaw = horse.get_yaw()
+	velocity = horse.velocity
+	_air_peak_y = global_position.y
+	_update_timers(delta, true)
+	interaction.update_prompt(delta)
+	if Input.is_action_just_pressed("interact"):
+		interaction.try_start()
+	elif Input.is_action_just_pressed("mount_horse") and absf(horse.speed) < 2.0:
+		dismount()
+	if _animator:
+		_animator.update_animation(self, delta)
 
 
 # ---------------------------------------------------------------------------

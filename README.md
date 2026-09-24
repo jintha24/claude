@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–7 of 11 complete and playable
+## Status: Phases 1–8 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -73,6 +73,13 @@ floorboards, dim rooms and gaslight, and for servants who notice an open door or
 Two mastiffs are let loose at night: they track you by scent according to the wind, outrun you,
 and bite.
 
+**Phase 8 — the hills:** 2 km × 2 km of downs and woods north of London:
+- **Streaming:** the land streams in 64 m chunks on background threads, with levels of detail.
+- **Harry's cave:** loaded on a background thread when he nears it. It has a fire, a bed (sleep), a loot chest and a fletching bench.
+- **Wildlife:** red deer and rabbits with sight, hearing and wind-borne scent. Hunt them with broadhead arrows (never at a man: the Outlaw's Code).
+- **Cinder:** his horse walks, trots, canters and gallops, and has stamina. He jumps logs, fences and walls, refuses what's too high, and comes when whistled.
+- **Travel:** finger-posts link London and the hills, and Harry's belongings come with him.
+
 **Visual pass (Syndicate-style mood):**
 - blue skies with cumulus, blue-grey aerial haze
 - a distant skyline with St Paul's, Westminster's Clock Tower, spires and smoking factory chimneys
@@ -84,7 +91,7 @@ Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](d
 
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** and **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)** and **[docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -96,6 +103,7 @@ the recommended PC specs.
 - [docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md) — day and night, routines, police shifts
 - [docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md) — dynamic weather and its effects
 - [docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md) — Ashcombe House: routes in, lockpicking, the safe, dogs
+- [docs/PHASE_8_GUIDE.md](docs/PHASE_8_GUIDE.md) — the hills: streaming world, cave, hunting, Cinder, travel
 - [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
@@ -108,7 +116,7 @@ the recommended PC specs.
 5. ✅ NPC daily schedules and the day/night cycle
 6. ✅ Dynamic weather and its gameplay effects
 7. ✅ First palace infiltration (Ashcombe House)
-8. World streaming, wilderness, cave camp, animals, Cinder the horse
+8. ✅ World streaming, wilderness, cave camp, animals, Cinder the horse
 9. Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving
 10. Story missions (Act 1 first), full districts, sound, performance
 11. Windows export and installer

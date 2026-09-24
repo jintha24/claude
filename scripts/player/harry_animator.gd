@@ -378,6 +378,9 @@ func _drive_tree(h: Harry) -> void:
 			time_scale = _fit("takedown", h.combat.takedown_time)
 		Harry.State.ARRESTED:
 			target = "arrested"
+		Harry.State.RIDE:
+			target = "crouch"
+			time_scale = 0.0
 		Harry.State.LOCKPICK:
 			target = "crouch" if h.is_crouching else "locomotion"
 			time_scale = 0.0

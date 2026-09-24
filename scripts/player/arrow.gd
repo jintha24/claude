@@ -7,6 +7,8 @@ extends Node3D
 ## Kinds (the Hill Fox never kills):
 ##   "blunt"   - a padded blunt head. Knocks out an unwary guard hit in the head, stuns
 ##               elsewhere, and smashes gas-lamp glass to put the light out.
+##   "broadhead" - a steel hunting head, for game in the hills (Harry never looses one at a
+##               person; see HarryCombat).
 ##   "whistle" - a bone whistle behind the head. Shrieks in flight and makes a loud noise
 ##               where it lands: a distraction.
 ## After landing, arrows lie where they fell and can be picked up again (E).
@@ -41,7 +43,7 @@ func _ready() -> void:
 	feather.albedo_color = Color(0.85, 0.82, 0.75)
 	feather.roughness = 0.9
 	var tip := StandardMaterial3D.new()
-	tip.albedo_color = Color(0.25, 0.18, 0.12) if kind == "blunt" else Color(0.9, 0.87, 0.78)
+	tip.albedo_color = Color(0.25, 0.18, 0.12) if kind == "blunt" else (Color(0.55, 0.56, 0.58) if kind == "broadhead" else Color(0.9, 0.87, 0.78))
 	tip.roughness = 0.8
 	# Arrow points along -Z.
 	_add_mesh(_cyl(0.004, 0.004, 0.76), Vector3(0, 0, 0), Vector3(90, 0, 0), wood)
@@ -123,8 +125,8 @@ func _on_hit(hit: Dictionary) -> void:
 	global_position = point
 	flying = false
 	hit_node = collider
-	var noise_radius := 6.0 if kind == "blunt" else 22.0
-	var noise_kind := "thud" if kind == "blunt" else "whistle"
+	var noise_radius := 22.0 if kind == "whistle" else 6.0
+	var noise_kind := "whistle" if kind == "whistle" else "thud"
 
 	var target := _find_arrow_target(collider)
 	if target:

@@ -1,0 +1,79 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/wilderness/hills.gd" id="1_hills"]
+[ext_resource type="Environment" path="res://scenes/main/london_environment.tres" id="2_env"]
+[ext_resource type="CameraAttributesPractical" path="res://scenes/main/camera_attributes.tres" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/wilderness/world_streamer.gd" id="4_strm"]
+[ext_resource type="Script" path="res://scripts/wilderness/streamed_scene.gd" id="5_strsc"]
+[ext_resource type="Script" path="res://scripts/wilderness/animal_spawner.gd" id="6_anim"]
+[ext_resource type="Script" path="res://scripts/horse/horse.gd" id="7_horse"]
+[ext_resource type="Script" path="res://scripts/wilderness/travel_point.gd" id="8_travel"]
+[ext_resource type="PackedScene" path="res://scenes/player/harry.tscn" id="9_harry"]
+[ext_resource type="PackedScene" path="res://scenes/camera/third_person_camera.tscn" id="10_tpc"]
+[ext_resource type="Script" path="res://scripts/ui/game_hud.gd" id="11_hud"]
+[ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="12_dn"]
+[ext_resource type="Script" path="res://scripts/world/weather_effects.gd" id="13_wfx"]
+
+[node name="Hills" type="Node3D"]
+script = ExtResource("1_hills")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("2_env")
+camera_attributes = ExtResource("3_cam")
+
+[node name="Sun" type="DirectionalLight3D" parent="." groups=["sun"]]
+transform = Transform3D(-0.9396926, 0.09427353, -0.32877088, 0, 0.9612617, 0.27563736, 0.34202015, 0.2590144, -0.9032905, 0, 0, 0)
+light_color = Color(1, 0.8, 0.6, 1)
+light_energy = 2.2
+light_volumetric_fog_energy = 1.2
+light_angular_distance = 0.5
+shadow_enabled = true
+shadow_bias = 0.03
+shadow_normal_bias = 1.0
+directional_shadow_blend_splits = true
+directional_shadow_max_distance = 220.0
+
+[node name="DayNight" type="Node" parent="."]
+script = ExtResource("12_dn")
+
+[node name="WeatherFX" type="Node3D" parent="."]
+script = ExtResource("13_wfx")
+
+[node name="Streamer" type="Node3D" parent="."]
+script = ExtResource("4_strm")
+target_path = NodePath("../Harry")
+
+[node name="Cave" type="Node3D" parent="."]
+script = ExtResource("5_strsc")
+scene_path = "res://scenes/wilderness/cave.tscn"
+
+[node name="Animals" type="Node3D" parent="."]
+script = ExtResource("6_anim")
+
+[node name="CaveClearing" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -120, 0, 96)
+
+[node name="LondonRoad" type="Marker3D" parent="." groups=["spawn_points"]]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 972, 0, 540)
+
+[node name="ToLondon" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 985, 0, 536)
+script = ExtResource("8_travel")
+destination_name = "London"
+destination_scene = "res://scenes/main/main.tscn"
+arrive_at = "HillsRoad"
+card_title = "The road to London"
+
+[node name="Cinder" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -116, 60, 96)
+script = ExtResource("7_horse")
+
+[node name="Harry" type="CharacterBody3D" parent="." instance=ExtResource("9_harry")]
+camera_path = NodePath("../ThirdPersonCamera")
+
+[node name="ThirdPersonCamera" type="Node3D" parent="." instance=ExtResource("10_tpc")]
+target_path = NodePath("../Harry")
+
+[node name="GameHUD" type="CanvasLayer" parent="."]
+script = ExtResource("11_hud")
+player_path = NodePath("../Harry")

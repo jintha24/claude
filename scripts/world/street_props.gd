@@ -376,23 +376,11 @@ static func make_tree(seed_value: int, height: float = 14.0, leaf: Color = Color
 	var trunk_mi := mb.build_into(body, "Trunk")
 	trunk_mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
 	var leaves := MeshBuilder.new()
-	var mat := foliage_material(leaf)
-	for k in 11:
-		var r := height * rng.randf_range(0.14, 0.22)
-		var s := SphereMesh.new()
-		s.radius = r
-		s.height = r * 1.6
-		s.radial_segments = 14
-		s.rings = 7
-		var off := Vector3(rng.randf_range(-1.0, 1.0) * height * 0.2, rng.randf_range(-0.12, 0.2) * height, rng.randf_range(-1.0, 1.0) * height * 0.2)
-		leaves.add_mesh(s, Transform3D(Basis.IDENTITY, crown_c + off), mat)
-		# A second, smaller shell inside so the crown has depth.
-		var s2 := SphereMesh.new()
-		s2.radius = r * 0.7
-		s2.height = r * 1.1
-		s2.radial_segments = 10
-		s2.rings = 5
-		leaves.add_mesh(s2, Transform3D(Basis.IDENTITY, crown_c + off * 0.9), mat)
+	# Several overlapping lobes of leaf cards make an irregular, open crown.
+	for k in 5:
+		var off := Vector3(rng.randf_range(-1.0, 1.0) * height * 0.14, rng.randf_range(-0.08, 0.16) * height, rng.randf_range(-1.0, 1.0) * height * 0.14)
+		var rr := height * rng.randf_range(0.17, 0.24)
+		Foliage.add_crown(leaves, crown_c + off, Vector3(rr, rr * 0.75, rr), 70, height * 0.13, leaf, seed_value * 31 + k)
 	var crown := leaves.build_into(body, "Crown")
 	crown.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	return body

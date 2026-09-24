@@ -34,6 +34,9 @@ extends Node3D
 @export var climb_distance: float = 3.1
 ## Tight over-the-shoulder framing while aiming the longbow.
 @export var aim_distance: float = 1.7
+## On horseback: further back and a little higher, to see the horse and the ground ahead.
+@export var ride_distance: float = 5.2
+@export var ride_extra_height: float = 0.35
 @export var aim_shoulder_offset: float = 0.8
 @export var aim_fov: float = 48.0
 @export var shoulder_offset: float = 0.55
@@ -185,6 +188,10 @@ func _process(delta: float) -> void:
 		want_fov = aim_fov
 		want_shoulder = aim_shoulder_offset
 		want_height = stand_pivot_height - 0.05 if not _target.is_crouching else crouch_pivot_height
+	elif _target.is_riding():
+		want_distance = ride_distance + (1.2 if _target.horse.gait >= Horse.Gait.CANTER else 0.0)
+		want_height = stand_pivot_height + ride_extra_height
+		want_fov = sprint_fov if _target.horse.gait == Horse.Gait.GALLOP else base_fov
 	elif _target.is_climbing():
 		want_distance = climb_distance
 	elif _target.is_crouching:
@@ -211,7 +218,7 @@ func _process(delta: float) -> void:
 	# Subtle head bob, only while running or sprinting on the ground.
 	var bob := Vector3.ZERO
 	var speed := _target.get_horizontal_speed()
-	if head_bob_enabled and not _target.is_airborne() and speed > 2.5:
+	if head_bob_enabled and not _target.is_airborne() and not _target.is_riding() and speed > 2.5:
 		_bob_phase += delta * speed / 1.3 * PI
 		var amt := head_bob_amount * clampf((speed - 2.5) / 3.5, 0.0, 1.0)
 		bob = Vector3(cos(_bob_phase * 0.5) * amt * 0.5, absf(sin(_bob_phase)) * amt, 0.0)

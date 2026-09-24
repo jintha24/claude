@@ -7,15 +7,21 @@ extends Node
 ##   a chokehold; after `takedown_time` the guard is unconscious for several minutes.
 ## Longbow: hold right mouse / left trigger to aim over the shoulder, hold left mouse /
 ##   right trigger to draw (a full draw takes ~0.9 s and shoots farther), release to loose.
-##   R / D-pad right switches between blunt and whistle arrows.
+##   R / D-pad right cycles blunt, whistle and broadhead (hunting) arrows.
+## The Outlaw's Code: Harry will not loose a broadhead at a person. If one is under the
+##   sights he lowers the bow ("code_refused").
 
 signal ammo_changed(kind: String, count: int)
 signal arrow_type_changed(kind: String)
 
-const KINDS: Array[String] = ["blunt", "whistle"]
+signal code_refused
+
+const KINDS: Array[String] = ["blunt", "whistle", "broadhead"]
 
 @export var blunt_arrows: int = 12
 @export var whistle_arrows: int = 5
+## Steel hunting heads, for deer and rabbits in the hills (never for men).
+@export var broadhead_arrows: int = 6
 @export var max_arrows_per_kind: int = 20
 @export var draw_time: float = 0.9
 ## Arrow speed at full draw. A 1860s-style yew longbow launches ~50-55 m/s.
@@ -26,6 +32,8 @@ const KINDS: Array[String] = ["blunt", "whistle"]
 var arrow_kind: String = "blunt"
 var draw: float = 0.0
 var takedown_target: Guard = null
+## What the crosshair was on when the last arrow was loosed (for the HUD and tests).
+var last_aim_target: Node = null
 
 var _harry: Harry
 var _aiming := false
@@ -48,14 +56,24 @@ func is_busy() -> bool:
 
 
 func get_ammo(kind: String) -> int:
-	return blunt_arrows if kind == "blunt" else whistle_arrows
+	match kind:
+		"blunt":
+			return blunt_arrows
+		"whistle":
+			return whistle_arrows
+		"broadhead":
+			return broadhead_arrows
+	return 0
 
 
 func add_ammo(kind: String, amount: int) -> void:
-	if kind == "blunt":
-		blunt_arrows = clampi(blunt_arrows + amount, 0, max_arrows_per_kind)
-	else:
-		whistle_arrows = clampi(whistle_arrows + amount, 0, max_arrows_per_kind)
+	match kind:
+		"blunt":
+			blunt_arrows = clampi(blunt_arrows + amount, 0, max_arrows_per_kind)
+		"whistle":
+			whistle_arrows = clampi(whistle_arrows + amount, 0, max_arrows_per_kind)
+		"broadhead":
+			broadhead_arrows = clampi(broadhead_arrows + amount, 0, max_arrows_per_kind)
 	ammo_changed.emit(kind, get_ammo(kind))
 
 
@@ -166,6 +184,11 @@ func _shoot() -> void:
 		var q := PhysicsRayQueryParameters3D.create(cam_from, cam_from + cam_dir * 250.0, Arrow.MASK_HIT, exclude)
 		var hit := _harry.get_world_3d().direct_space_state.intersect_ray(q)
 		aim_point = hit["position"] if not hit.is_empty() else cam_from + cam_dir * 250.0
+		last_aim_target = hit.get("collider") as Node
+		if arrow_kind == "broadhead" and not hit.is_empty() and _is_person(hit["collider"]):
+			code_refused.emit()
+			Stealth.bark(_harry, "Harry lowers the bow. The Hill Fox doesn't kill.")
+			return
 	var speed := lerpf(min_arrow_speed, max_arrow_speed, draw)
 	var dir := _ballistic_direction(origin, aim_point, speed)
 	var arrow := Arrow.create(arrow_kind)
@@ -173,6 +196,14 @@ func _shoot() -> void:
 	arrow.launch(origin, dir * speed, _harry)
 	add_ammo(arrow_kind, -1)
 	Stealth.make_noise(origin, 4.0, "bow", true, _harry)
+
+
+static func _is_person(n: Node) -> bool:
+	while n != null:
+		if n is NPCCharacter:
+			return true
+		n = n.get_parent()
+	return false
 
 
 ## Launch direction that makes an arrow at `speed` drop onto `target` (the low, flat arc
