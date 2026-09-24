@@ -378,10 +378,13 @@ func vision_score() -> float:
 	# People rarely look up: something high above is noticed less.
 	var up_angle := rad_to_deg(asin(clampf(to_chest.y / maxf(dist, 0.01), -1.0, 1.0)))
 	var vertical_factor := 1.0 if up_angle < 20.0 else lerpf(1.0, 0.35, clampf((up_angle - 20.0) / 40.0, 0.0, 1.0))
+	if _harry.stealth.is_hidden():
+		return 0.0
 	var vis := _harry.stealth.visibility
-	if dist <= close_range and not _harry.stealth.is_hidden():
+	if dist <= close_range:
 		vis = maxf(vis, 0.6) # you can't miss someone right next to you
-	var eff_range := vision_range * lerpf(0.15, 1.0, vis) * Stealth.visibility_multiplier
+	# Daylight (even in shade) gives full sight range; only real darkness shrinks it.
+	var eff_range := vision_range * (0.15 + 0.85 * smoothstep(0.02, 0.35, vis)) * Stealth.visibility_multiplier
 	if dist > eff_range:
 		return 0.0
 	var dist_factor := 1.0 - pow(dist / maxf(eff_range, 0.01), 2.0) * 0.85

@@ -266,7 +266,14 @@ func _build_shopfront(mb: MeshBuilder, body: StaticBody3D, paint: Material, whit
 	mb.add_box(Vector3(door_w, 0.3, 0.02), Vector3(door_x, 2.6, 0.0), glass)
 	mb.add_box(Vector3(0.05, 0.05, 0.05), Vector3(door_x + 0.38 * (1.0 if door_on_left else -1.0), 1.05, 0.02), MaterialLibrary.get_material("brass"))
 
-	# Canvas awning over the pavement.
+	# Canvas awning over the pavement (townsfolk shelter under it when it rains).
+	if has_awning and not Engine.is_editor_hint():
+		for off: float in [-1.0, 1.0]:
+			var m := Marker3D.new()
+			m.name = "Shelter"
+			m.position = Vector3(clampf(width * 0.5 + off * width * 0.25, 0.6, width - 0.6), 0.0, 0.65)
+			m.add_to_group("shelters")
+			add_child(m)
 	if has_awning:
 		var out := 1.5
 		var drop := 0.55

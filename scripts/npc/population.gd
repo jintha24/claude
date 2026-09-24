@@ -97,8 +97,9 @@ func _rebuild() -> void:
 func _update(immediate: bool) -> void:
 	var h := GameClock.hours()
 	_update_traders(h, immediate)
-	_update_crowd("shopper", roundi(curve_value(SHOPPER_CURVE, h) * density), immediate)
-	_update_crowd("passer", roundi(curve_value(PASSER_CURVE, h) * density), immediate)
+	var weather := Weather.population_factor() # fewer people out in the rain, fog or snow
+	_update_crowd("shopper", roundi(curve_value(SHOPPER_CURVE, h) * density * weather), immediate)
+	_update_crowd("passer", roundi(curve_value(PASSER_CURVE, h) * density * weather), immediate)
 	_update_pubs(h, immediate)
 
 
@@ -162,6 +163,8 @@ func _update_crowd(kind: String, target: int, immediate: bool) -> void:
 
 func _spawn_crowd_member(kind: String, immediate: bool) -> void:
 	var roll := _rng.randf()
+	if Weather.rain > 0.3 or Weather.snow > 0.4:
+		roll *= 0.55 # in foul weather only those with umbrellas venture out
 	var outfit := NPCBody.Outfit.GENTLEMAN if roll < 0.25 else (NPCBody.Outfit.LADY if roll < 0.55 else NPCBody.Outfit.WORKER)
 	var c := _make_person(kind, outfit, _random_name(outfit))
 	if kind == "shopper" and _market:

@@ -6,7 +6,7 @@ Jolt Physics) and GDScript.
 
 > *"Take from those who won't miss it. Give to those who can't live without it."*
 
-## Status: Phases 1–5 of 11 complete and playable
+## Status: Phases 1–6 of 11 complete and playable
 
 - Project set up with the Forward+ renderer, Jolt Physics, physics interpolation, TAA, 16× anisotropic filtering,
   the full keyboard/mouse and controller input map, and Git + Git LFS rules.
@@ -50,9 +50,15 @@ follows the clock: traders open and close, crowds rise and fall by the hour, peo
 pub and drunks stagger home at closing time. Constables change shift at 6 am and 6 pm, and the
 night watch carries bullseye lanterns.
 
+**Phase 6 — weather:** clear, overcast, rain, thunderstorms, pea-souper fog and winter snow,
+changing on their own and always blending smoothly. Rain stops at roofs and splashes. Streets turn
+wet and glossy and puddles form, then dry out slowly. Wind moves smoke and washing lines. Rain
+masks footsteps, fog blinds the constables, and wet slate roofs are slippery. Fewer people are out
+in bad weather, and they shelter or carry umbrellas.
+
 ## Getting started
 
-Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** and **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)**. It covers installing Godot, Git and
+Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** and **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)**. It covers installing Godot, Git and
 Blender, opening the project, controls, tuning, downloading textures, building Harry's model, and
 the recommended PC specs.
 
@@ -62,6 +68,7 @@ the recommended PC specs.
 - [docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md) — stealth rules, guards, takedowns, the longbow, building stealth spaces
 - [docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md) — the market, crowds and pickpocketing
 - [docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md) — day and night, routines, police shifts
+- [docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md) — dynamic weather and its effects
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
 
@@ -71,7 +78,7 @@ the recommended PC specs.
 3. ✅ Stealth: guards, vision, hearing, light, noise, search; non-lethal takedowns; longbow
 4. ✅ Market crowds and pickpocketing
 5. ✅ NPC daily schedules and the day/night cycle
-6. Dynamic weather and its gameplay effects
+6. ✅ Dynamic weather and its gameplay effects
 7. First palace infiltration
 8. World streaming, wilderness, cave camp, animals, Cinder the horse
 9. Fishing, economy (Steal and Give), Legend and notoriety, menus, settings, saving

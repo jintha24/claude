@@ -183,6 +183,7 @@ func _build_stalls() -> Array[Node3D]:
 				m.global_position = stall.global_position + front * 1.25 + stall.global_transform.basis.x * off
 				m.set_meta("look_at", stall.global_position + Vector3.UP * 0.9)
 				m.add_to_group("browse_points")
+				m.add_to_group("shelters") # under the stall's awning
 			i += 1
 	# A couple of heaps of sacks beside stalls: somewhere to duck out of sight.
 	for p: Vector3 in [Vector3(-13.3, 0.0, -70.5), Vector3(13.3, 0.0, -70.5)]:

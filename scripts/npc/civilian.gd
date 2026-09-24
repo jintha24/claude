@@ -7,7 +7,7 @@ extends NPCCharacter
 ## to pickpockets. Merchants stay at their stall and cry their wares.
 ## Every person has real pocket contents rolled from LootTable for their class.
 
-enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE, TRAVEL, CHAT }
+enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE, TRAVEL, CHAT, SHELTER }
 
 const CHATTER: Array[String] = [
 	"Did you hear about the Hill Fox?", "Terrible price of bread these days.", "Looks like rain again.",
@@ -55,6 +55,8 @@ var drunk := false
 var leaving := false
 var _chat_partner: Civilian = null
 var _sing_timer := 0.0
+var _shelter: Node3D = null
+var _rain_check := 0.0
 
 
 func _ready() -> void:
@@ -89,7 +91,17 @@ func _physics_process(delta: float) -> void:
 		_discover_timer -= delta
 		if _discover_timer <= 0.0:
 			_discover_theft()
+	_react_to_rain(delta)
 	match state:
+		State.SHELTER:
+			if _shelter == null or not is_instance_valid(_shelter):
+				_resume()
+			elif _move_to(_shelter.global_position, walk_speed * 1.4):
+				_face_point(_shelter.global_position + _shelter.global_basis.z * 3.0)
+				if Weather.rain < 0.15:
+					_shelter.set_meta("taken", false)
+					_shelter = null
+					_resume()
 		State.WANDER:
 			if _move_to(_target, walk_speed):
 				if _browse_on_arrival:
@@ -244,6 +256,45 @@ func _cry() -> void:
 	var harry := get_tree().get_first_node_in_group("player") as Node3D
 	if harry and harry.global_position.distance_to(global_position) < 14.0:
 		Stealth.bark(self, "%s: \"%s\"" % [display_name, CRIES[_rng.randi() % CRIES.size()]])
+
+
+## Rain: ladies and gentlemen put up umbrellas; working people hurry for shelter under an
+## awning (or go indoors) and come out again when it eases.
+func _react_to_rain(delta: float) -> void:
+	_rain_check -= delta
+	if _rain_check > 0.0:
+		return
+	_rain_check = 1.0 + _rng.randf()
+	var wet := Weather.rain > 0.3 or Weather.snow > 0.4
+	var has_umbrella := outfit in [NPCBody.Outfit.GENTLEMAN, NPCBody.Outfit.LADY]
+	_body.set_umbrella(wet and has_umbrella and not is_merchant)
+	if not wet or has_umbrella or is_merchant or state not in [State.WANDER, State.BROWSE, State.CHAT]:
+		return
+	var best: Node3D = null
+	var best_d := 25.0
+	for node in get_tree().get_nodes_in_group("shelters"):
+		var m := node as Node3D
+		var d := m.global_position.distance_to(global_position)
+		if d < best_d and not m.get_meta("taken", false):
+			best_d = d
+			best = m
+	if best:
+		best.set_meta("taken", true)
+		_shelter = best
+		state = State.SHELTER
+	elif not leaving:
+		# Nowhere to shelter: hurry home through the nearest door.
+		var door: Node3D = null
+		var dd := INF
+		for node in get_tree().get_nodes_in_group("npc_doors"):
+			var d := (node as Node3D).global_position.distance_to(global_position)
+			if d < dd:
+				dd = d
+				door = node
+		if door:
+			set_meta("dismissed", true)
+			walk_speed *= 1.35
+			go_to(door.global_position, "vanish")
 
 
 ## Walk to `target`, then do `then`: "vanish" (go indoors), "stall" (set up and trade),

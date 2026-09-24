@@ -354,7 +354,19 @@ func _physics_process(delta: float) -> void:
 		if absf(angle) < deg_to_rad(135.0):
 			var step := clampf(angle, -turn_rate * delta, turn_rate * delta)
 			horizontal = horizontal.rotated(Vector3.UP, step)
+	# Wet roofs are slippery: on a wet slope Harry loses grip and slides downhill.
+	var slip := _wet_slip() if on_floor else 0.0
+	if slip > 0.0:
+		accel *= 1.0 - 0.6 * slip
 	horizontal = horizontal.move_toward(target_vel, accel * delta)
+	if slip > 0.0:
+		var n := get_floor_normal()
+		var downhill := Vector3(n.x, 0.0, n.z).normalized()
+		horizontal += downhill * _gravity * sqrt(1.0 - n.y * n.y) * slip * 1.15 * delta
+		# Sprinting across wet slates is asking for trouble.
+		if state == State.SPRINT and randf() < slip * 0.35 * delta:
+			_land_timer = 0.6
+			horizontal += downhill * 2.5
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
@@ -565,6 +577,19 @@ func _try_stand_up() -> void:
 func _set_capsule_height(h: float) -> void:
 	_capsule.height = h
 	_collision.position = Vector3(0, h * 0.5, 0)
+
+
+## 0 (dry or flat) .. 1 (soaking wet slate at a steep pitch).
+func _wet_slip() -> float:
+	if Weather.wetness < 0.2 and Weather.snow_cover < 0.3:
+		return 0.0
+	var n := get_floor_normal()
+	var slope := acos(clampf(n.y, -1.0, 1.0))
+	if slope < deg_to_rad(10.0):
+		return 0.0
+	var slick: float = {"slate": 1.0, "metal": 1.0, "wood": 0.8, "stone": 0.6}.get(stealth.surface, 0.5)
+	var wet := maxf(Weather.wetness, Weather.snow_cover * 0.8)
+	return clampf(wet * slick * (slope - deg_to_rad(10.0)) / deg_to_rad(25.0), 0.0, 1.0)
 
 
 # ---------------------------------------------------------------------------

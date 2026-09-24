@@ -66,7 +66,7 @@ func update_now() -> void:
 	if _sun:
 		_sun.global_basis = Basis.looking_at(-to_sun, Vector3.UP if absf(to_sun.y) < 0.99 else Vector3.FORWARD)
 		var e := sun_elevation
-		var energy := smoothstep(-2.0, 12.0, e) * max_sun_energy
+		var energy := smoothstep(-2.0, 12.0, e) * max_sun_energy * Weather.sun_factor()
 		_sun.light_energy = energy
 		_sun.visible = e > -3.0
 		var low := Color(1.0, 0.42, 0.18)
@@ -81,15 +81,25 @@ func update_now() -> void:
 	_moon.light_energy = moon_energy * moon_up
 	_moon.visible = moon_up > 0.01
 
+	_moon.light_energy *= 1.0 - Weather.cloud * 0.85
 	var daylight := smoothstep(-8.0, 15.0, sun_elevation)
-	Stealth.ambient_light = clampf(daylight * 0.85 + moon_up * 0.06, 0.03, 0.85)
+	var overcast := 1.0 - Weather.cloud * 0.3 - Weather.fog * 0.15
+	Stealth.ambient_light = clampf((daylight * 0.85 + moon_up * 0.06 * (1.0 - Weather.cloud)) * overcast, 0.03, 0.85)
 	Stealth.shade_factor = 0.5
 	if _env:
 		var fog := _night_fog.lerp(_day_fog, daylight)
 		# A touch of warm glow in the haze at sunrise and sunset.
 		fog = fog.lerp(Color(0.62, 0.42, 0.3), (1.0 - absf(sun_elevation - 3.0) / 10.0) * 0.35 if absf(sun_elevation - 3.0) < 10.0 else 0.0)
+		# A London "pea-souper": thick, yellow-grey coal-smoke fog.
+		fog = fog.lerp(Color(0.5, 0.47, 0.35) * maxf(daylight, 0.12), Weather.fog * 0.7)
 		_env.fog_light_color = fog
 		_env.volumetric_fog_albedo = Color(0.88, 0.84, 0.78).lerp(Color(0.5, 0.55, 0.65), 1.0 - daylight)
+		_env.volumetric_fog_density = 0.012 + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
+		_env.fog_density = 0.0035 + Weather.fog * 0.028 + Weather.rain * 0.004
+		if _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
+			var sky := _env.sky.sky_material as PhysicalSkyMaterial
+			sky.energy_multiplier = lerpf(1.0, 0.4, Weather.cloud * Weather.cloud)
+			sky.mie_coefficient = 0.012 + Weather.cloud * 0.03 + Weather.fog * 0.05
 	_update_windows(h)
 
 

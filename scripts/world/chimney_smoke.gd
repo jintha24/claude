@@ -15,6 +15,7 @@ static var _shared_draw_mesh: QuadMesh
 
 func _init() -> void:
 	name = "ChimneySmoke"
+	add_to_group("chimney_smoke")
 	amount = 28
 	lifetime = 9.0
 	preprocess = 9.0

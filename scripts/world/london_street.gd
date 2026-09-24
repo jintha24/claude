@@ -309,12 +309,72 @@ func _build_alley() -> void:
 
 	mb.build_into(self, "AlleyMesh").gi_mode = GeometryInstance3D.GI_MODE_STATIC
 
+	_build_laundry()
+
 	# The alley is a private yard: anyone seen in it is trespassing.
 	var zone := RestrictedZone.new()
 	zone.name = "PrivateYard"
 	zone.zone_name = "Hargreaves' yard"
 	zone.set_box(Vector3(ALLEY_END_X - FACADE_X, 12.0, width_z), Vector3((FACADE_X + ALLEY_END_X) * 0.5, 6.0, zc))
 	add_child(zone)
+
+
+## Washing lines strung across the yard. The linen sways with the wind (global shader
+## parameters set by WeatherEffects).
+func _build_laundry() -> void:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode cull_disabled;
+global uniform float wind_strength;
+uniform vec3 cloth_color : source_color = vec3(0.85);
+void vertex() {
+	float t = TIME * (1.2 + wind_strength * 3.0) + NODE_POSITION_WORLD.z * 1.7 + VERTEX.x * 2.0;
+	float sway = sin(t) * 0.6 + sin(t * 2.3 + 1.0) * 0.4;
+	VERTEX.z += sway * (0.04 + wind_strength * 0.35) * UV.y;
+	VERTEX.x += sin(t * 1.7) * wind_strength * 0.04 * UV.y;
+}
+void fragment() {
+	ALBEDO = cloth_color;
+	ROUGHNESS = 0.92;
+}
+"""
+	var line_mat := MaterialLibrary.get_tinted("wood_painted", Color(0.55, 0.5, 0.42))
+	var colors: Array[Color] = [Color(0.86, 0.84, 0.78), Color(0.8, 0.8, 0.76), Color(0.55, 0.12, 0.1), Color(0.3, 0.33, 0.45), Color(0.9, 0.88, 0.82)]
+	var sizes: Array[Vector2] = [Vector2(0.9, 0.7), Vector2(0.5, 0.75), Vector2(0.6, 0.85), Vector2(0.45, 0.55), Vector2(0.8, 0.6)]
+	var laundry := Node3D.new()
+	laundry.name = "Laundry"
+	add_child(laundry)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	for line_x: float in [9.6, 18.4]:
+		var y := 3.7 if line_x < 12.0 else 3.1
+		var cord := CylinderMesh.new()
+		cord.top_radius = 0.006
+		cord.bottom_radius = 0.006
+		cord.height = ALLEY_Z1 - ALLEY_Z0
+		var cmi := MeshInstance3D.new()
+		cmi.mesh = cord
+		cmi.material_override = line_mat
+		cmi.position = Vector3(line_x, y, (ALLEY_Z0 + ALLEY_Z1) * 0.5)
+		cmi.rotation_degrees = Vector3(90, 0, 0)
+		laundry.add_child(cmi)
+		var z := ALLEY_Z0 + 0.25
+		while z < ALLEY_Z1 - 0.5:
+			var i := rng.randi() % colors.size()
+			var q := QuadMesh.new()
+			q.size = sizes[i]
+			q.center_offset = Vector3(0, -sizes[i].y * 0.5, 0)
+			var m := ShaderMaterial.new()
+			m.shader = shader
+			m.set_shader_parameter("cloth_color", colors[i])
+			var g := MeshInstance3D.new()
+			g.mesh = q
+			g.material_override = m
+			g.position = Vector3(line_x, y, z + sizes[i].x * 0.5)
+			g.rotation.y = PI * 0.5
+			laundry.add_child(g)
+			z += sizes[i].x + rng.randf_range(0.08, 0.2)
 
 
 func _add_stringer(mb: MeshBuilder, mat: Material, from: Vector3, to: Vector3) -> void:

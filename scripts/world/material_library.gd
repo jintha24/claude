@@ -83,6 +83,36 @@ static func _set_glass_glow(mat: StandardMaterial3D, lit: bool, color: Color, en
 	mat.albedo_color = Color(0.12, 0.07, 0.04) if lit else Color(0.045, 0.05, 0.055)
 
 
+## How much each surface darkens and shines when wet (porous lime render soaks it up,
+## slate and cobbles turn glassy), and which ones collect lying snow.
+const WET_RESPONSE := {
+	"cobblestone": 1.0, "slate_roof": 1.0, "pavement": 0.9, "curb_granite": 0.9, "brick_red": 0.6,
+	"brick_yellow": 0.6, "stone_trim": 0.7, "wood_planks": 0.7, "wood_planks_local": 0.6,
+	"wood_painted": 0.5, "stucco": 0.4,
+}
+const SNOW_SURFACES: Array[String] = ["cobblestone", "slate_roof", "pavement", "curb_granite"]
+
+
+## Rain-soaked or snow-covered: darker and glossier, or whitened (WeatherEffects calls this).
+static func set_wetness(wetness: float, snow_cover: float = 0.0) -> void:
+	for key: String in _cache:
+		var mat := _cache[key] as StandardMaterial3D
+		if mat == null or not WET_RESPONSE.has(mat.resource_name):
+			continue
+		var response: float = WET_RESPONSE[mat.resource_name]
+		if not mat.has_meta("base_albedo"):
+			mat.set_meta("base_albedo", mat.albedo_color)
+			mat.set_meta("base_roughness", mat.roughness)
+		var base: Color = mat.get_meta("base_albedo")
+		var w := clampf(wetness * response, 0.0, 1.0)
+		mat.roughness = lerpf(float(mat.get_meta("base_roughness")), 0.22, w)
+		var c := base.lerp(base * 0.62, w)
+		if mat.resource_name in SNOW_SURFACES:
+			c = c.lerp(Color(0.92, 0.93, 0.96), clampf(snow_cover * 0.75, 0.0, 0.75))
+		c.a = base.a
+		mat.albedo_color = c
+
+
 ## A copy of a textured material multiplied by a colour (e.g. painted woodwork).
 static func get_tinted(key: String, tint: Color) -> StandardMaterial3D:
 	var cache_key := "%s#%s" % [key, tint.to_html(false)]

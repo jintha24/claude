@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/world/market_square.gd" id="11_markt"]
 [ext_resource type="Script" path="res://scripts/world/day_night_cycle.gd" id="12_daynt"]
 [ext_resource type="Script" path="res://scripts/npc/population.gd" id="13_popul"]
+[ext_resource type="Script" path="res://scripts/world/weather_effects.gd" id="14_wthr"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -54,6 +55,9 @@ navigation_mesh = SubResource("NavigationMesh_street")
 
 [node name="DayNight" type="Node" parent="."]
 script = ExtResource("12_daynt")
+
+[node name="WeatherFX" type="Node3D" parent="."]
+script = ExtResource("14_wthr")
 
 [node name="Population" type="Node3D" parent="."]
 script = ExtResource("13_popul")

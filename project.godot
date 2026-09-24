@@ -198,3 +198,14 @@ textures/default_filters/anisotropic_filtering_level=4
 environment/volumetric_fog/volume_size=128
 environment/volumetric_fog/volume_depth=128
 anti_aliasing/quality/use_taa=true
+
+[shader_globals]
+
+wind_strength={
+"type": "float",
+"value": 0.2
+}
+wind_direction={
+"type": "vec3",
+"value": Vector3(1, 0, 0)
+}

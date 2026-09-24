@@ -54,6 +54,46 @@ func _ready() -> void:
 		_build_mannequin()
 
 
+var _umbrella: Node3D
+
+
+## A black umbrella held up in the rain (ladies and gentlemen carry them).
+func set_umbrella(open: bool) -> void:
+	if open and _umbrella == null:
+		_umbrella = Node3D.new()
+		var cloth := StandardMaterial3D.new()
+		cloth.albedo_color = Color(0.03, 0.03, 0.035)
+		cloth.roughness = 0.6
+		cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var canopy := CylinderMesh.new()
+		canopy.top_radius = 0.02
+		canopy.bottom_radius = 0.55
+		canopy.height = 0.28
+		canopy.radial_segments = 8
+		canopy.cap_bottom = false
+		var mi := MeshInstance3D.new()
+		mi.mesh = canopy
+		mi.material_override = cloth
+		mi.position = Vector3(-0.2, 2.0, 0.0)
+		_umbrella.add_child(mi)
+		var stick := CylinderMesh.new()
+		stick.top_radius = 0.01
+		stick.bottom_radius = 0.01
+		stick.height = 0.9
+		var smi := MeshInstance3D.new()
+		smi.mesh = stick
+		smi.material_override = cloth
+		smi.position = Vector3(-0.2, 1.5, 0.0)
+		_umbrella.add_child(smi)
+		add_child(_umbrella)
+	if _umbrella:
+		_umbrella.visible = open
+
+
+func has_umbrella_open() -> bool:
+	return _umbrella != null and _umbrella.visible
+
+
 func is_model() -> bool:
 	return _has_model
 
@@ -201,6 +241,10 @@ func _pose_mannequin(delta: float) -> void:
 				_shoulder[i].rotation.x = deg_to_rad(150.0)
 				_elbow[i].rotation.x = deg_to_rad(120.0)
 			_spine.rotation.x = deg_to_rad(10.0) + sin(_t * 3.0) * deg_to_rad(6.0)
+	if has_umbrella_open():
+		_shoulder[0].rotation.x = deg_to_rad(70.0)
+		_shoulder[0].rotation.z = deg_to_rad(-15.0)
+		_elbow[0].rotation.x = deg_to_rad(80.0)
 	# Unconscious: collapse onto his back.
 	_root_pivot.rotation.x = _down * deg_to_rad(88.0)
 	_root_pivot.position = Vector3(0, _down * 0.12, _down * 0.35)

@@ -58,6 +58,7 @@ func _ready() -> void:
 	add_child(_clock_label)
 	GameClock.bus().hour_passed.connect(func(_h: int) -> void: _clock_timer = 6.0)
 	GameClock.bus().time_jumped.connect(func(_h: float) -> void: _clock_timer = 6.0)
+	Weather.bus().kind_changed.connect(func(_k: Weather.Kind) -> void: _clock_timer = 6.0)
 	_build_pause_menu()
 	if not player_path.is_empty():
 		_player = get_node(player_path) as Harry
@@ -235,7 +236,7 @@ func _process(delta: float) -> void:
 	_clock_alpha = move_toward(_clock_alpha, 1.0 if show_clock else 0.0, delta * 2.0)
 	_clock_label.modulate.a = _clock_alpha
 	if _clock_alpha > 0.0:
-		_clock_label.text = "%s\n%s" % [GameClock.clock_string(), GameClock.date_string()]
+		_clock_label.text = "%s\n%s\n%s" % [GameClock.clock_string(), GameClock.date_string(), Weather.display_name()]
 	# Health bar fades in when hurt and out again a few seconds after.
 	_health_show_timer = maxf(_health_show_timer - delta, 0.0)
 	var want := 1.0 if _health_show_timer > 0.0 or (_player and _player.health < _player.max_health * 0.35) else 0.0
