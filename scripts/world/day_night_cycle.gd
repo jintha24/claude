@@ -24,7 +24,9 @@ var sun_azimuth: float = 0.0 # degrees from north, clockwise
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
 var _env: Environment
-var _day_fog := Color(0.58, 0.54, 0.48)
+var _stars: Texture2D
+## Daytime haze: the pale blue-grey of distance over a coal-burning city.
+var _day_fog := Color(0.68, 0.73, 0.8)
 var _night_fog := Color(0.05, 0.06, 0.09)
 var _lamp_timer := 0.0
 var _lamp_delays := {}
@@ -37,7 +39,7 @@ func _ready() -> void:
 	if we:
 		_env = we.environment
 		if _env and _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
-			(_env.sky.sky_material as PhysicalSkyMaterial).night_sky = _make_starfield()
+			_stars = _make_starfield()
 	_moon = DirectionalLight3D.new()
 	_moon.name = "Moon"
 	_moon.light_color = Color(0.62, 0.72, 0.95)
@@ -93,13 +95,17 @@ func update_now() -> void:
 		# A London "pea-souper": thick, yellow-grey coal-smoke fog.
 		fog = fog.lerp(Color(0.5, 0.47, 0.35) * maxf(daylight, 0.12), Weather.fog * 0.7)
 		_env.fog_light_color = fog
-		_env.volumetric_fog_albedo = Color(0.88, 0.84, 0.78).lerp(Color(0.5, 0.55, 0.65), 1.0 - daylight)
+		_env.volumetric_fog_albedo = Color(0.88, 0.88, 0.9).lerp(Color(0.5, 0.55, 0.65), 1.0 - daylight)
 		_env.volumetric_fog_density = 0.012 + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
-		_env.fog_density = 0.0035 + Weather.fog * 0.028 + Weather.rain * 0.004
+		_env.fog_density = 0.0024 + Weather.fog * 0.028 + Weather.rain * 0.004
 		if _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
 			var sky := _env.sky.sky_material as PhysicalSkyMaterial
 			sky.energy_multiplier = lerpf(1.0, 0.4, Weather.cloud * Weather.cloud)
-			sky.mie_coefficient = 0.012 + Weather.cloud * 0.03 + Weather.fog * 0.05
+			sky.mie_coefficient = 0.009 + Weather.cloud * 0.03 + Weather.fog * 0.05
+			# Stars only once the sky is dark (the sky shader adds them over the daylight too).
+			var want_stars := daylight < 0.12 and Weather.cloud < 0.85
+			if want_stars != (sky.night_sky != null):
+				sky.night_sky = _stars if want_stars else null
 	_update_windows(h)
 
 

@@ -286,3 +286,140 @@ static func make_market_stall(goods: String, awning: Color, seed_value: int) -> 
 	cs.position = Vector3(0, (h + 0.1) * 0.5, 0)
 	body.add_child(cs)
 	return body
+
+
+# ---------------------------------------------------------------------------
+# Trees
+# ---------------------------------------------------------------------------
+static var _foliage_mats: Dictionary = {}
+
+
+## Leafy crowns: noisy cut-out shells that sway with the wind (global shader parameter
+## `wind_strength`, set by WeatherEffects). One material per leaf colour, shared.
+static func foliage_material(leaf: Color) -> ShaderMaterial:
+	var key := leaf.to_html(false)
+	if _foliage_mats.has(key):
+		return _foliage_mats[key]
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode cull_disabled, depth_prepass_alpha;
+global uniform float wind_strength;
+uniform vec3 leaf_color : source_color = vec3(0.3, 0.42, 0.18);
+uniform sampler2D noise_tex : repeat_enable, filter_linear_mipmap;
+varying vec3 world_pos;
+void vertex() {
+	vec3 o = NODE_POSITION_WORLD;
+	float sway = sin(TIME * 1.1 + o.x * 0.37 + o.z * 0.21) * 0.6 + sin(TIME * 2.7 + VERTEX.y * 1.3) * 0.25;
+	VERTEX.xz += vec2(sway, sway * 0.6) * 0.05 * (0.25 + wind_strength) * max(VERTEX.y, 0.0) * 0.25;
+	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	// Leaf-sized holes: fine noise cut-outs over broader clumps.
+	float n = texture(noise_tex, world_pos.xz * 1.6 + world_pos.y * 0.9).r;
+	float m = texture(noise_tex, world_pos.zy * 2.6 + vec2(0.3)).r;
+	if (n * 0.55 + m * 0.45 < 0.45) {
+		discard;
+	}
+	float shade = 0.65 + 0.55 * m;
+	ALBEDO = leaf_color * shade * (FRONT_FACING ? 1.0 : 0.6);
+	ROUGHNESS = 0.8;
+	BACKLIGHT = leaf_color * 0.35;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = shader
+	mat.set_shader_parameter("leaf_color", leaf)
+	var tex := NoiseTexture2D.new()
+	var fnl := FastNoiseLite.new()
+	fnl.frequency = 0.09
+	fnl.fractal_octaves = 3
+	tex.noise = fnl
+	tex.seamless = true
+	tex.width = 256
+	tex.height = 256
+	tex.generate_mipmaps = true
+	mat.set_shader_parameter("noise_tex", tex)
+	_foliage_mats[key] = mat
+	return mat
+
+
+## A London plane (or lime, with `leaf` tinted): mottled trunk, spreading branches and a
+## crown of leafy clusters. `height` is to the top of the crown. The trunk is solid.
+static func make_tree(seed_value: int, height: float = 14.0, leaf: Color = Color(0.3, 0.44, 0.17)) -> StaticBody3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var body := StaticBody3D.new()
+	body.name = "Tree"
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	var trunk_r := height * 0.028
+	var trunk_h := height * 0.45
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = trunk_r
+	cyl.height = trunk_h
+	cs.shape = cyl
+	cs.position = Vector3(0, trunk_h * 0.5, 0)
+	body.add_child(cs)
+	var bark := MaterialLibrary.get_tinted("stucco", Color(0.55, 0.5, 0.42)) # plane bark: grey-olive, flaking
+	var mb := MeshBuilder.new()
+	mb.add_cylinder(trunk_r * 0.8, trunk_r * 1.25, trunk_h, Vector3(0, trunk_h * 0.5, 0), bark, 10)
+	var crown_c := Vector3(0, height * 0.66, 0)
+	for k in 5:
+		var a := TAU * k / 5.0 + rng.randf() * 0.5
+		var tip := crown_c + Vector3(cos(a) * height * 0.22, rng.randf_range(-0.5, 1.5), sin(a) * height * 0.22)
+		var from := Vector3(0, trunk_h * 0.9, 0)
+		var d := tip - from
+		var basis := Basis(Vector3.UP.cross(d.normalized()).normalized(), Vector3.UP.angle_to(d.normalized())) if Vector3.UP.cross(d.normalized()).length() > 0.01 else Basis.IDENTITY
+		mb.add_cylinder(trunk_r * 0.25, trunk_r * 0.55, d.length(), from + d * 0.5, bark, 6, basis)
+	var trunk_mi := mb.build_into(body, "Trunk")
+	trunk_mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+	var leaves := MeshBuilder.new()
+	var mat := foliage_material(leaf)
+	for k in 11:
+		var r := height * rng.randf_range(0.14, 0.22)
+		var s := SphereMesh.new()
+		s.radius = r
+		s.height = r * 1.6
+		s.radial_segments = 14
+		s.rings = 7
+		var off := Vector3(rng.randf_range(-1.0, 1.0) * height * 0.2, rng.randf_range(-0.12, 0.2) * height, rng.randf_range(-1.0, 1.0) * height * 0.2)
+		leaves.add_mesh(s, Transform3D(Basis.IDENTITY, crown_c + off), mat)
+		# A second, smaller shell inside so the crown has depth.
+		var s2 := SphereMesh.new()
+		s2.radius = r * 0.7
+		s2.height = r * 1.1
+		s2.radial_segments = 10
+		s2.rings = 5
+		leaves.add_mesh(s2, Transform3D(Basis.IDENTITY, crown_c + off * 0.9), mat)
+	var crown := leaves.build_into(body, "Crown")
+	crown.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	return body
+
+
+## A cast-iron bollard (many were made from old cannon): keeps carts off the pavement.
+static func make_bollard() -> StaticBody3D:
+	var body := StaticBody3D.new()
+	body.name = "Bollard"
+	body.collision_layer = LAYER_WORLD
+	body.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 0.13
+	cyl.height = 0.95
+	cs.shape = cyl
+	cs.position = Vector3(0, 0.475, 0)
+	body.add_child(cs)
+	var iron := MaterialLibrary.get_material("iron")
+	var mb := MeshBuilder.new()
+	mb.add_cylinder(0.14, 0.12, 0.8, Vector3(0, 0.4, 0), iron, 12)
+	mb.add_cylinder(0.15, 0.15, 0.06, Vector3(0, 0.62, 0), iron, 12) # collar
+	var cap := SphereMesh.new()
+	cap.radius = 0.12
+	cap.height = 0.2
+	cap.radial_segments = 12
+	cap.rings = 5
+	mb.add_mesh(cap, Transform3D(Basis.IDENTITY, Vector3(0, 0.84, 0)), iron)
+	mb.build_into(body, "Mesh")
+	return body

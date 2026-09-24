@@ -43,8 +43,10 @@ func _ready() -> void:
 
 
 ## Wind values that shaders (washing lines, later trees and grass) read every frame.
+## They're declared in project.godot ([shader_globals]); this only adds them if a project
+## copy lacks them (querying the list is an editor-only call, so check the setting instead).
 static func _declare_globals() -> void:
-	if not RenderingServer.global_shader_parameter_get_list().has(&"wind_strength"):
+	if not ProjectSettings.has_setting("shader_globals/wind_strength"):
 		RenderingServer.global_shader_parameter_add(&"wind_strength", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.2)
 		RenderingServer.global_shader_parameter_add(&"wind_direction", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(1, 0, 0))
 
@@ -70,7 +72,8 @@ func _process(delta: float) -> void:
 
 	# Clouds drift with the wind.
 	_cloud_offset += Vector2(wind_vec.x, wind_vec.z) * delta * 0.004
-	_cloud_mat.set_shader_parameter("coverage", Weather.cloud)
+	# Fair-weather cumulus even on a "clear" day (visual only; gameplay reads Weather.cloud).
+	_cloud_mat.set_shader_parameter("coverage", maxf(Weather.cloud, 0.34))
 	_cloud_mat.set_shader_parameter("fog_amount", Weather.fog)
 	_cloud_mat.set_shader_parameter("offset", _cloud_offset)
 	_cloud_mat.set_shader_parameter("darkness", clampf(Weather.rain * 0.6 + maxf(Weather.cloud - 0.6, 0.0), 0.0, 0.85))
@@ -223,8 +226,11 @@ void fragment() {
 	float d = smoothstep(threshold, threshold + 0.35, n);
 	// Fade towards the horizon so the layer never shows an edge.
 	float edge = 1.0 - smoothstep(0.3, 0.5, length(UV - vec2(0.5)));
-	vec3 lit = mix(vec3(0.92, 0.9, 0.86), vec3(0.32, 0.33, 0.36), darkness);
-	ALBEDO = lit * mix(0.05, 1.0, daylight);
+	// Sunlit white edges, soft blue-grey bellies where the cloud is thick.
+	float core = smoothstep(threshold + 0.1, threshold + 0.6, n);
+	vec3 lit = mix(vec3(1.0, 0.98, 0.94), vec3(0.62, 0.66, 0.74), core * 0.7);
+	lit = mix(lit, vec3(0.32, 0.33, 0.36), darkness);
+	ALBEDO = lit * mix(0.05, 1.05, daylight);
 	ALPHA = d * edge * mix(0.6, 0.97, coverage) * (1.0 - fog_amount * 0.95);
 }
 """

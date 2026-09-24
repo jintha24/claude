@@ -205,6 +205,7 @@ func _build_lamps() -> void:
 	]:
 		var lamp := GasLamp.new()
 		lamp.position = p
+		lamp.flower_baskets = true
 		add_child(lamp)
 
 

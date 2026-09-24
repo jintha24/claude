@@ -81,6 +81,7 @@ func rebuild() -> void:
 	_build_gate()
 	_build_lodge()
 	_build_house_shell()
+	_dress_facades()
 	_build_house_floors()
 	_build_staircase()
 	_build_interior_walls()
@@ -244,6 +245,12 @@ func _build_ground() -> void:
 	# Gravel paths across the lawns (visual strips on the grass).
 	for p: Array in [[Vector3(90.0, 0.005, -71.0), Vector3(20.0, 0.01, 2.2)], [Vector3(93.0, 0.005, -58.0), Vector3(2.2, 0.01, 50.0)], [Vector3(73.0, 0.005, -40.0), Vector3(50.0, 0.01, 2.2)]]:
 		_mb.add_box(p[1], p[0], _mats["gravel"])
+	# Cast-iron bollards along Ashcombe Row keep carriages off the footway.
+	for x: float in [28.0, 32.5, 37.0, 41.5]:
+		for z: float in [LANE_Z0 + 0.45, LANE_Z1 - 0.45]:
+			var bollard := StreetProps.make_bollard()
+			bollard.position = Vector3(x, 0.0, z)
+			add_child(bollard)
 	# Carriage drive from the gate to the portico (a strip of darker gravel).
 	_mb.add_box(Vector3(14.0, 0.01, 5.0), Vector3(53.0, 0.006, -71.0), MaterialLibrary.get_tinted("gravel", Color(0.8, 0.77, 0.7)))
 
@@ -382,7 +389,7 @@ func _build_lodge() -> void:
 # ---------------------------------------------------------------------------
 func _build_house_shell() -> void:
 	var t := 0.5
-	var top := ROOF + 1.0
+	var top := ROOF + 0.3 # the parapet above this is a stone balustrade (_dress_facades)
 	var gf_win := [1.6, 3.8]
 	var ff_win := [6.1, 8.4]
 	# Front (west): door and windows.
@@ -401,14 +408,14 @@ func _build_house_shell() -> void:
 	_wall("z", HX1, HZ0 - 0.25, HZ1 + 0.25, 0.0, top, t, "stucco", rear)
 	# North: the door to the servants' wing; first-floor windows over the wing roof.
 	var north: Array = [[74.4, 75.6, GF, 3.3]]
-	for x: float in [67.0, 76.0]:
+	for x: float in [67.0, 77.0]:
 		north.append([x - 0.55, x + 0.55, ff_win[0], ff_win[1]])
 	_wall("x", HZ0, HX0 + 0.25, HX1 - 0.25, 0.0, top, t, "stucco", north)
 	# South: dining room, study and bedroom windows.
 	var south: Array = []
 	for x: float in [65.0, 69.0, 73.0, 77.0]:
 		south.append([x - 0.55, x + 0.55, gf_win[0], gf_win[1]])
-	for x: float in [65.5, 68.5, 73.5, 76.5]:
+	for x: float in [65.0, 69.0, 73.0, 77.0]:
 		south.append([x - 0.55, x + 0.55, ff_win[0], ff_win[1]])
 	_wall("x", HZ1, HX0 + 0.25, HX1 - 0.25, 0.0, top, t, "stucco", south)
 	# Plinth (the raised ground floor) and a rusticated base band.
@@ -416,7 +423,6 @@ func _build_house_shell() -> void:
 	# Cornices and string courses.
 	for y: float in [GF - 0.05, FF + 0.15, ROOF + 0.05]:
 		_mb.add_box(Vector3(HX1 - HX0 + 0.3, 0.22, HZ1 - HZ0 + 0.3), Vector3((HX0 + HX1) * 0.5, y, (HZ0 + HZ1) * 0.5), _mats["stone"])
-	_mb.add_box(Vector3(HX1 - HX0 + 0.2, 0.15, HZ1 - HZ0 + 0.2), Vector3((HX0 + HX1) * 0.5, top + 0.075, (HZ0 + HZ1) * 0.5), _mats["stone"])
 	# Roof (lead flat behind the parapet) and chimney stacks.
 	_slab(HX0 + 0.25, HX1 - 0.25, HZ0 + 0.25, HZ1 - 0.25, ROOF, 0.3, "lead", "metal")
 	for p: Vector3 in [Vector3(66.0, 0, -85.6), Vector3(76.0, 0, -85.6), Vector3(66.0, 0, -56.4), Vector3(76.0, 0, -56.4)]:
@@ -432,6 +438,91 @@ func _build_house_shell() -> void:
 		_mb.add_cylinder(0.2, 0.2, 3.7, Vector3(61.1, GF + 1.85, z), _mats["stucco"], 14)
 		_collider(Vector3(0.38, 3.7, 0.38), Vector3(61.1, GF + 1.85, z))
 	_solid(Vector3(HX0 - 60.6, 0.45, 7.2), Vector3((60.6 + HX0) * 0.5, GF + 3.7 + 0.225, -71.0), "stucco")
+
+
+## Classical dressing in pale stone: window architraves with sills, pediments over the
+## first-floor windows, quoins at the corners, a plinth course and a balustraded parapet
+## with urns. Visual only, apart from the balustrade (which stops you walking off the roof).
+func _dress_facades() -> void:
+	var stone: Material = MaterialLibrary.get_tinted("stone_trim", Color(0.97, 0.95, 0.9))
+	var half := 0.25
+	# [line, axis, outward sign, centres, sill y, height]
+	var faces: Array = [
+		[HX0, "z", -1.0, [-82.0, -78.0, -64.0, -60.0], 1.6, 2.2], [HX0, "z", -1.0, [-82.0, -78.0, -74.0, -68.0, -64.0, -60.0], 6.1, 2.3],
+		[HX1, "z", 1.0, [-82.0, -78.0, -64.0, -60.0], 1.6, 2.2], [HX1, "z", 1.0, [-82.0, -78.0, -74.0, -64.0, -60.0], 6.1, 2.3],
+		[HZ1, "x", 1.0, [65.0, 69.0, 73.0, 77.0], 1.6, 2.2], [HZ1, "x", 1.0, [65.0, 69.0, 73.0, 77.0], 6.1, 2.3],
+		[HZ0, "x", -1.0, [67.0, 77.0], 6.1, 2.3],
+	]
+	for f: Array in faces:
+		var line := float(f[0])
+		var along_z: bool = f[1] == "z"
+		var sgn := float(f[2])
+		var sill := float(f[4])
+		var h := float(f[5])
+		var w := 1.1
+		var at := func(a: float, y: float, proud: float) -> Vector3:
+			var o := line + sgn * (half + proud)
+			return Vector3(o, y, a) if along_z else Vector3(a, y, o)
+		var sz := func(across: float, tall: float, depth: float) -> Vector3:
+			return Vector3(depth, tall, across) if along_z else Vector3(across, tall, depth)
+		for c: float in f[3]:
+			for side: float in [-1.0, 1.0]:
+				_mb.add_box(sz.call(0.14, h + 0.14, 0.08), at.call(c + side * (w * 0.5 + 0.07), sill + h * 0.5 + 0.07, 0.04), stone)
+			_mb.add_box(sz.call(w + 0.28, 0.14, 0.08), at.call(c, sill + h + 0.07, 0.04), stone)
+			_mb.add_box(sz.call(w + 0.4, 0.09, 0.2), at.call(c, sill - 0.045, 0.1), stone) # sill
+			if sill > 5.0:
+				# First floor: a cornice and a triangular pediment over each window.
+				_mb.add_box(sz.call(w + 0.5, 0.1, 0.22), at.call(c, sill + h + 0.19, 0.11), stone)
+				var ped := PrismMesh.new()
+				ped.size = Vector3(w + 0.5, 0.42, 0.18)
+				var yaw := PI * 0.5 if along_z else 0.0
+				_mb.add_mesh(ped, Transform3D(Basis(Vector3.UP, yaw), at.call(c, sill + h + 0.45, 0.1)), stone)
+			else:
+				_mb.add_box(sz.call(0.22, 0.26, 0.1), at.call(c, sill + h + 0.07, 0.07), stone) # keystone
+	# Quoins: alternating long and short stones up each corner.
+	for corner: Vector2 in [Vector2(HX0, HZ0), Vector2(HX0, HZ1), Vector2(HX1, HZ0), Vector2(HX1, HZ1)]:
+		var sx := -1.0 if corner.x == HX0 else 1.0
+		var sz2 := -1.0 if corner.y == HZ0 else 1.0
+		var y := GF
+		var k := 0
+		while y < ROOF - 0.2:
+			var long_x := k % 2 == 0
+			var lx := 0.8 if long_x else 0.45
+			var lz := 0.45 if long_x else 0.8
+			_mb.add_box(Vector3(lx, 0.38, lz), Vector3(corner.x + sx * (half - lx * 0.5 + 0.04), y + 0.2, corner.y + sz2 * (half - lz * 0.5 + 0.04)), stone)
+			y += 0.42
+			k += 1
+	# Plinth course at ground-floor level.
+	_mb.add_box(Vector3(HX1 - HX0 + 0.36, 0.25, HZ1 - HZ0 + 0.36), Vector3((HX0 + HX1) * 0.5, GF - 0.3, (HZ0 + HZ1) * 0.5), stone)
+	# Balustrade round the roof: plinth, balusters, coping rail, urns on the corners.
+	var base := ROOF + 0.3
+	var runs: Array = [
+		[Vector3(HX0, 0, HZ0), Vector3(HX1, 0, HZ0)], [Vector3(HX1, 0, HZ0), Vector3(HX1, 0, HZ1)],
+		[Vector3(HX1, 0, HZ1), Vector3(HX0, 0, HZ1)], [Vector3(HX0, 0, HZ1), Vector3(HX0, 0, HZ0)],
+	]
+	for run: Array in runs:
+		var a: Vector3 = run[0]
+		var b: Vector3 = run[1]
+		var d := b - a
+		var length := d.length()
+		var dir := d / length
+		var mid := (a + b) * 0.5
+		var basis := Basis(Vector3.UP, atan2(-dir.z, dir.x))
+		_mb.add_box(Vector3(length + 0.4, 0.14, 0.5), Vector3(mid.x, base + 0.07, mid.z), stone, basis)
+		_mb.add_box(Vector3(length + 0.4, 0.12, 0.55), Vector3(mid.x, base + 0.78, mid.z), stone, basis)
+		_collider(Vector3(absf(d.x) + 0.5, 0.85, absf(d.z) + 0.5), Vector3(mid.x, base + 0.42, mid.z))
+		var n := int(length / 0.3)
+		for i in n:
+			var p := a + dir * (0.15 + i * length / n)
+			_mb.add_cylinder(0.055, 0.085, 0.3, Vector3(p.x, base + 0.29, p.z), stone, 8)
+			_mb.add_cylinder(0.085, 0.05, 0.28, Vector3(p.x, base + 0.58, p.z), stone, 8)
+	for corner: Vector3 in [Vector3(HX0, 0, HZ0), Vector3(HX0, 0, HZ1), Vector3(HX1, 0, HZ0), Vector3(HX1, 0, HZ1)]:
+		_mb.add_box(Vector3(0.6, 0.9, 0.6), Vector3(corner.x, base + 0.45, corner.z), stone)
+		_mb.add_cylinder(0.14, 0.26, 0.45, Vector3(corner.x, base + 1.12, corner.z), stone, 12) # urn
+		var lid := SphereMesh.new()
+		lid.radius = 0.2
+		lid.height = 0.3
+		_mb.add_mesh(lid, Transform3D(Basis.IDENTITY, Vector3(corner.x, base + 1.42, corner.z)), stone)
 
 
 func _build_house_floors() -> void:
@@ -626,6 +717,20 @@ func _build_garden() -> void:
 	]
 	for i in clumps.size():
 		_shrubbery(clumps[i], i)
+	# Old plane and lime trees, and a cedar on the south lawn.
+	var trees := Node3D.new()
+	trees.name = "Trees"
+	add_child(trees)
+	var tree_specs: Array = [
+		[Vector3(88.0, 0, -100.0), 16.0, Color(0.3, 0.44, 0.17)], [Vector3(102.0, 0, -90.0), 15.0, Color(0.34, 0.46, 0.2)],
+		[Vector3(102.0, 0, -52.0), 17.0, Color(0.3, 0.44, 0.17)], [Vector3(80.0, 0, -36.0), 14.0, Color(0.36, 0.48, 0.2)],
+		[Vector3(55.0, 0, -36.0), 15.0, Color(0.3, 0.44, 0.17)], [Vector3(64.0, 0, -46.0), 12.0, Color(0.2, 0.3, 0.16)],
+		[Vector3(92.0, 0, -80.0), 13.0, Color(0.34, 0.46, 0.2)],
+	]
+	for i in tree_specs.size():
+		var t := StreetProps.make_tree(300 + i, tree_specs[i][1], tree_specs[i][2])
+		t.position = tree_specs[i][0]
+		trees.add_child(t)
 	# Box hedges edging the garden path (low: you can crouch behind them).
 	for x: float in [83.0, 86.0, 89.0]:
 		_solid(Vector3(2.2, 0.9, 0.6), Vector3(x, 0.45, -73.0), "hedge", "grass")
@@ -739,13 +844,13 @@ func _build_openings() -> void:
 		i += 1
 	# Over the wing roof. The linen-room sash has a broken catch.
 	w.call("EvelynWindow", Vector3(67.0, 6.1, HZ0), Vector3.FORWARD)
-	w.call("LinenWindow", Vector3(76.0, 6.1, HZ0), Vector3.FORWARD, false)
+	w.call("LinenWindow", Vector3(77.0, 6.1, HZ0), Vector3.FORWARD, false)
 	i = 0
 	for x: float in [65.0, 69.0, 73.0, 77.0]:
 		w.call("SouthGF%d" % i, Vector3(x, 1.6, HZ1), Vector3.BACK)
 		i += 1
 	i = 0
-	for x: float in [65.5, 68.5, 73.5, 76.5]:
+	for x: float in [65.0, 69.0, 73.0, 77.0]:
 		w.call("SouthFF%d" % i, Vector3(x, 6.1, HZ1), Vector3.BACK)
 		i += 1
 	w.call("WingWest", Vector3(WING_X0, 1.6, -90.0), Vector3.LEFT, true, 2.0)
@@ -756,7 +861,7 @@ func _build_openings() -> void:
 	# Floor-length curtains either side of some windows: stand behind them, crouched, to hide.
 	for spec: Array in [
 		[Vector3(HX0, GF, -82.0), Vector3.RIGHT], [Vector3(HX0, GF, -60.0), Vector3.RIGHT],
-		[Vector3(HX1, GF, -64.0), Vector3.LEFT], [Vector3(65.5, FF, HZ1), Vector3.FORWARD],
+		[Vector3(HX1, GF, -64.0), Vector3.LEFT], [Vector3(65.0, FF, HZ1), Vector3.FORWARD],
 		[Vector3(HX1, FF, -60.0), Vector3.LEFT], [Vector3(HX0, FF, -68.0), Vector3.RIGHT],
 		[Vector3(HX1, FF, -78.0), Vector3.LEFT],
 	]:

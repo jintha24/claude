@@ -73,6 +73,15 @@ floorboards, dim rooms and gaslight, and for servants who notice an open door or
 Two mastiffs are let loose at night: they track you by scent according to the wind, outrun you,
 and bite.
 
+**Visual pass (Syndicate-style mood):**
+- blue skies with cumulus, blue-grey aerial haze
+- a distant skyline with St Paul's, Westminster's Clock Tower, spires and smoking factory chimneys
+- ornate lamps with hanging flower baskets, plane trees and bollards
+- a columned bank front and a classically dressed Ashcombe House
+- Harry in a flared leather greatcoat and top hat
+
+Realistic faces and clothing need real 3D models. See [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md).
+
 ## Getting started
 
 Read **[docs/PHASE_1_GUIDE.md](docs/PHASE_1_GUIDE.md)**, then **[docs/PHASE_2_GUIDE.md](docs/PHASE_2_GUIDE.md)** **[docs/PHASE_3_GUIDE.md](docs/PHASE_3_GUIDE.md)** **[docs/PHASE_4_GUIDE.md](docs/PHASE_4_GUIDE.md)** **[docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md)** **[docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md)** and **[docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md)**. It covers installing Godot, Git and
@@ -87,6 +96,7 @@ the recommended PC specs.
 - [docs/PHASE_5_GUIDE.md](docs/PHASE_5_GUIDE.md) — day and night, routines, police shifts
 - [docs/PHASE_6_GUIDE.md](docs/PHASE_6_GUIDE.md) — dynamic weather and its effects
 - [docs/PHASE_7_GUIDE.md](docs/PHASE_7_GUIDE.md) — Ashcombe House: routes in, lockpicking, the safe, dogs
+- [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences
 

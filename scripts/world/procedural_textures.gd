@@ -9,7 +9,7 @@ extends RefCounted
 ## ORM texture layout (same as glTF): R = ambient occlusion, G = roughness, B = metallic.
 
 const CACHE_DIR := "user://texture_cache"
-const CACHE_VERSION := 3
+const CACHE_VERSION := 4
 const SIZE := 512
 
 ## Returns {"albedo": Texture2D, "normal": Texture2D, "orm": Texture2D, "height": Texture2D}
@@ -32,21 +32,21 @@ static func get_set(kind: String) -> Dictionary:
 		"slate_roof":
 			images = _slates()
 		"stucco":
-			images = _render(Color(0.80, 0.76, 0.67), 0.88, 31)
+			images = _render(Color(0.84, 0.8, 0.71), 0.88, 31, 0.3)
 		"stone_trim":
-			images = _render(Color(0.74, 0.72, 0.67), 0.82, 47)
+			images = _render(Color(0.8, 0.77, 0.7), 0.82, 47, 0.4)
 		"wood_planks":
 			images = _planks(Color(0.42, 0.31, 0.21))
 		"wood_painted":
-			images = _render(Color(0.92, 0.92, 0.92), 0.55, 59)
+			images = _render(Color(0.92, 0.92, 0.92), 0.55, 59, 0.15)
 		"grass":
-			images = _render(Color(0.22, 0.31, 0.12), 0.95, 71)
+			images = _render(Color(0.24, 0.34, 0.13), 0.95, 71, 0.35)
 		"gravel":
 			images = _render(Color(0.62, 0.57, 0.47), 0.95, 83)
 		"plaster":
-			images = _render(Color(0.9, 0.87, 0.8), 0.9, 97)
+			images = _render(Color(0.9, 0.87, 0.8), 0.9, 97, 0.08)
 		"marble":
-			images = _render(Color(0.9, 0.89, 0.86), 0.2, 101)
+			images = _render(Color(0.9, 0.89, 0.86), 0.2, 101, 0.06)
 		"floorboards":
 			images = _planks(Color(0.34, 0.2, 0.1))
 		_:
@@ -290,7 +290,7 @@ static func _slates() -> Dictionary:
 
 
 ## Lime render / painted stucco / Portland stone: smooth surface with stains.
-static func _render(base: Color, roughness: float, seed_value: int) -> Dictionary:
+static func _render(base: Color, roughness: float, seed_value: int, grime: float = 0.8) -> Dictionary:
 	var s := SIZE
 	var stain := _noise(seed_value, 0.01, 4)
 	var mid := _noise(seed_value + 1, 0.05, 3)
@@ -306,7 +306,7 @@ static func _render(base: Color, roughness: float, seed_value: int) -> Dictionar
 		var m := mid[i] / 255.0
 		var f := fine[i] / 255.0
 		var c := base * (0.92 + 0.12 * m) * (0.95 + 0.1 * f)
-		c = c.lerp(Color(0.3, 0.28, 0.25), maxf(st - 0.45, 0.0) * 0.8)
+		c = c.lerp(Color(0.3, 0.28, 0.25), maxf(st - 0.45, 0.0) * grime)
 		_put_rgb(albedo, i, c)
 		height[i] = int((0.5 + 0.25 * m + 0.25 * f) * 255.0)
 		_put_rgb(orm, i, Color(1.0, clampf(roughness + 0.08 * (f - 0.5), 0.0, 1.0), 0.0))

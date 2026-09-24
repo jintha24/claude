@@ -1,12 +1,12 @@
 [gd_resource type="Environment" format=3]
 
 [sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_idi28"]
-rayleigh_coefficient = 2.2
-rayleigh_color = Color(0.26, 0.41, 0.58, 1)
-mie_coefficient = 0.012
+rayleigh_coefficient = 2.0
+rayleigh_color = Color(0.3, 0.48, 0.76, 1)
+mie_coefficient = 0.009
 mie_eccentricity = 0.86
-mie_color = Color(0.72, 0.62, 0.48, 1)
-turbidity = 14.0
+mie_color = Color(0.86, 0.76, 0.6, 1)
+turbidity = 9.0
 sun_disk_scale = 1.4
 ground_color = Color(0.12, 0.11, 0.1, 1)
 
@@ -37,18 +37,18 @@ glow_bloom = 0.04
 glow_blend_mode = 2
 glow_hdr_threshold = 1.1
 fog_enabled = true
-fog_light_color = Color(0.58, 0.54, 0.48, 1)
-fog_sun_scatter = 0.3
+fog_light_color = Color(0.68, 0.73, 0.8, 1)
+fog_sun_scatter = 0.45
 fog_density = 0.0035
-fog_aerial_perspective = 0.45
-fog_sky_affect = 0.35
+fog_aerial_perspective = 0.75
+fog_sky_affect = 0.2
 volumetric_fog_enabled = true
 volumetric_fog_density = 0.012
-volumetric_fog_albedo = Color(0.88, 0.84, 0.78, 1)
+volumetric_fog_albedo = Color(0.88, 0.88, 0.9, 1)
 volumetric_fog_anisotropy = 0.55
 volumetric_fog_length = 90.0
 volumetric_fog_ambient_inject = 0.15
 volumetric_fog_sky_affect = 0.25
 adjustment_enabled = true
-adjustment_contrast = 1.06
-adjustment_saturation = 0.88
+adjustment_contrast = 1.08
+adjustment_saturation = 1.0

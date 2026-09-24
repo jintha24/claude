@@ -36,35 +36,83 @@ var _climb_phase := 0.0
 
 
 func _ready() -> void:
-	var coat := _mat(Color(0.12, 0.105, 0.09), 0.85)
-	var trousers := _mat(Color(0.09, 0.085, 0.08), 0.9)
-	var boots := _mat(Color(0.03, 0.025, 0.02), 0.45)
-	var skin := _mat(Color(0.72, 0.55, 0.45), 0.6)
-	var scarf := _mat(Color(0.32, 0.07, 0.06), 0.95)
-	var cap := _mat(Color(0.16, 0.15, 0.13), 0.9)
-	var shirt := _mat(Color(0.55, 0.52, 0.46), 0.9)
+	# A long, weathered leather greatcoat over a dark waistcoat, battered top hat, gloves:
+	# a gentleman thief's silhouette from any distance.
+	var coat := _mat(Color(0.33, 0.21, 0.13), 0.55)
+	var coat_dark := _mat(Color(0.2, 0.13, 0.08), 0.6)
+	var trousers := _mat(Color(0.12, 0.12, 0.11), 0.9)
+	var boots := _mat(Color(0.05, 0.035, 0.025), 0.4)
+	var skin := _mat(Color(0.74, 0.57, 0.47), 0.55)
+	var hair := _mat(Color(0.12, 0.08, 0.05), 0.8)
+	var scarf := _mat(Color(0.42, 0.08, 0.07), 0.95)
+	var hat := _mat(Color(0.08, 0.075, 0.07), 0.6)
+	var waistcoat := _mat(Color(0.1, 0.17, 0.18), 0.7)
+	var shirt := _mat(Color(0.82, 0.8, 0.74), 0.9)
+	var brass := _mat(Color(0.75, 0.58, 0.3), 0.3)
+	brass.metallic = 1.0
 
 	_hips = _pivot(self, Vector3(0, HIP_HEIGHT, 0))
 	_capsule(_hips, 0.17, 0.26, Vector3(0, 0.02, 0), trousers, Vector3(0, 0, 90))
+	# Belt with a brass buckle, and the quiver strap across the chest.
+	_cylinder(_hips, 0.19, 0.07, Vector3(0, 0.1, 0), coat_dark)
+	_box(_hips, Vector3(0.08, 0.06, 0.02), Vector3(0, 0.1, -0.19), brass)
 	_spine = _pivot(_hips, Vector3(0, 0.08, 0))
 	_capsule(_spine, 0.2, 0.58, Vector3(0, 0.27, 0), coat) # coat torso
-	_box(_spine, Vector3(0.2, 0.3, 0.02), Vector3(0, 0.34, -0.19), shirt) # waistcoat/shirt front
+	_box(_spine, Vector3(0.2, 0.34, 0.02), Vector3(0, 0.32, -0.19), waistcoat) # waistcoat, open coat front
+	_box(_spine, Vector3(0.1, 0.1, 0.02), Vector3(0, 0.5, -0.195), shirt) # shirt at the throat
+	for side in [-1.0, 1.0]:
+		_box(_spine, Vector3(0.07, 0.4, 0.03), Vector3(side * 0.12, 0.33, -0.19), coat_dark) # lapels
+	_box(_spine, Vector3(0.06, 0.55, 0.02), Vector3(0.02, 0.3, -0.205), coat_dark, Vector3(0, 0, 38)) # quiver strap
+	# Turned-up collar and a leather shoulder guard (bow side).
+	_box(_spine, Vector3(0.26, 0.11, 0.025), Vector3(0, 0.6, 0.11), coat_dark, Vector3(-20, 0, 0))
+	for side in [-1.0, 1.0]:
+		_box(_spine, Vector3(0.025, 0.1, 0.12), Vector3(side * 0.125, 0.59, 0.03), coat_dark, Vector3(0, side * 20, side * 10))
+	var pad := MeshInstance3D.new()
+	var pad_mesh := SphereMesh.new()
+	pad_mesh.radius = 0.1
+	pad_mesh.height = 0.12
+	pad.mesh = pad_mesh
+	pad.material_override = coat_dark
+	pad.position = Vector3(-0.21, 0.5, 0)
+	pad.scale = Vector3(1.1, 0.8, 1.3)
+	_spine.add_child(pad)
+	# The coat skirts: a back panel that swings with the stride, and front flaps that follow
+	# each leg (the coat is split up the front, so it never hides the legs).
 	_coat_skirt = _pivot(_hips, Vector3(0, 0.05, 0))
-	_box(_coat_skirt, Vector3(0.44, 0.6, 0.3), Vector3(0, -0.27, 0.02), coat) # long coat tails
+	# Panels hinge at the waist and flare out towards the hem, like heavy leather.
+	var back := _pivot(_coat_skirt, Vector3(0, 0, 0.15))
+	back.rotation.x = deg_to_rad(9.0)
+	_box(back, Vector3(0.42, 0.7, 0.04), Vector3(0, -0.35, 0.0), coat)
+	_box(back, Vector3(0.02, 0.4, 0.045), Vector3(0, -0.5, 0.0), coat_dark) # rear vent
+	for side in [-1.0, 1.0]:
+		var panel := _pivot(_coat_skirt, Vector3(side * 0.2, 0, 0.03))
+		panel.rotation.z = deg_to_rad(side * 7.0)
+		_box(panel, Vector3(0.04, 0.7, 0.3), Vector3(0, -0.35, 0.0), coat)
 	var neck := _pivot(_spine, Vector3(0, 0.56, 0))
-	_capsule(neck, 0.11, 0.2, Vector3(0, 0.02, 0), scarf) # scarf wrapped round the neck
+	_capsule(neck, 0.11, 0.18, Vector3(0, 0.02, 0), scarf) # scarf knotted at the neck
 	_head = _pivot(neck, Vector3(0, 0.1, 0))
 	_capsule(_head, 0.1, 0.25, Vector3(0, 0.05, -0.01), skin)
-	_box(_head, Vector3(0.21, 0.11, 0.2), Vector3(0, -0.01, -0.02), scarf) # scarf pulled over the face
-	_capsule(_head, 0.115, 0.24, Vector3(0, 0.085, 0.0), cap, Vector3(90, 0, 0)) # flat cap crown
-	_box(_head, Vector3(0.2, 0.02, 0.1), Vector3(0, 0.065, -0.15), cap) # cap peak
+	_box(_head, Vector3(0.035, 0.05, 0.05), Vector3(0, 0.04, -0.115), skin) # nose
+	_box(_head, Vector3(0.13, 0.016, 0.02), Vector3(0, 0.085, -0.1), hair) # brows
+	_box(_head, Vector3(0.16, 0.06, 0.03), Vector3(0, -0.03, -0.085), _mat(Color(0.45, 0.33, 0.27), 0.9)) # stubble
+	_capsule(_head, 0.106, 0.2, Vector3(0, 0.07, 0.02), hair, Vector3(90, 0, 0)) # hair under the hat
+	# Battered top hat with a dark red band, tipped a little forward.
+	var hat_pivot := _pivot(_head, Vector3(0, 0.15, 0))
+	hat_pivot.rotation.x = deg_to_rad(-6.0)
+	_cylinder(hat_pivot, 0.19, 0.012, Vector3(0, 0.0, 0), hat) # brim
+	_cylinder(hat_pivot, 0.105, 0.17, Vector3(0, 0.09, 0), hat, 0.11) # crown
+	_cylinder(hat_pivot, 0.108, 0.035, Vector3(0, 0.03, 0), scarf) # band
 
 	for side in [-1.0, 1.0]:
 		var thigh := _pivot(_hips, Vector3(side * 0.1, 0.0, 0))
 		_capsule(thigh, 0.075, THIGH + 0.06, Vector3(0, -THIGH * 0.5, 0), trousers)
+		var flap := _pivot(thigh, Vector3(side * 0.03, 0.02, -0.11))
+		flap.rotation.x = deg_to_rad(-6.0)
+		_box(flap, Vector3(0.19, 0.64, 0.035), Vector3(0, -0.3, 0), coat) # front coat flap
 		var knee := _pivot(thigh, Vector3(0, -THIGH, 0))
 		_capsule(knee, 0.062, SHIN + 0.04, Vector3(0, -SHIN * 0.5, 0), trousers)
-		_capsule(knee, 0.068, 0.24, Vector3(0, -SHIN + 0.1, 0), boots) # boot shaft
+		_capsule(knee, 0.07, 0.3, Vector3(0, -SHIN + 0.13, 0), boots) # tall riding boot
+		_cylinder(knee, 0.075, 0.03, Vector3(0, -SHIN + 0.29, 0), coat_dark) # boot top
 		var foot := _pivot(knee, Vector3(0, -SHIN, 0))
 		_box(foot, Vector3(0.11, 0.08, 0.27), Vector3(0, -0.02, -0.06), boots)
 		_thigh.append(thigh)
@@ -72,10 +120,11 @@ func _ready() -> void:
 		_foot.append(foot)
 
 		var shoulder := _pivot(_spine, Vector3(side * 0.23, 0.5, 0))
-		_capsule(shoulder, 0.062, UPPER_ARM + 0.06, Vector3(0, -UPPER_ARM * 0.5, 0), coat)
+		_capsule(shoulder, 0.064, UPPER_ARM + 0.06, Vector3(0, -UPPER_ARM * 0.5, 0), coat)
 		var elbow := _pivot(shoulder, Vector3(0, -UPPER_ARM, 0))
-		_capsule(elbow, 0.052, FOREARM + 0.04, Vector3(0, -FOREARM * 0.5, 0), coat)
-		_capsule(elbow, 0.045, 0.14, Vector3(0, -FOREARM - 0.04, 0), skin) # hand
+		_capsule(elbow, 0.054, FOREARM + 0.04, Vector3(0, -FOREARM * 0.5, 0), coat)
+		_cylinder(elbow, 0.06, 0.06, Vector3(0, -FOREARM + 0.02, 0), coat_dark) # turned-back cuff
+		_capsule(elbow, 0.045, 0.14, Vector3(0, -FOREARM - 0.04, 0), _mat(Color(0.09, 0.065, 0.05), 0.5)) # leather glove
 		_shoulder.append(shoulder)
 		_elbow.append(elbow)
 
@@ -343,9 +392,25 @@ func _capsule(parent: Node3D, radius: float, height: float, pos: Vector3, mat: M
 	parent.add_child(mi)
 
 
-func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> void:
+func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material, rot_deg: Vector3 = Vector3.ZERO) -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = size
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = mat
+	mi.position = pos
+	mi.rotation_degrees = rot_deg
+	parent.add_child(mi)
+
+
+## An upright cylinder (hat crowns, brims, belts, cuffs). `top_radius` < 0 = same as radius.
+func _cylinder(parent: Node3D, radius: float, height: float, pos: Vector3, mat: Material, top_radius: float = -1.0) -> void:
+	var mesh := CylinderMesh.new()
+	mesh.bottom_radius = radius
+	mesh.top_radius = radius if top_radius < 0.0 else top_radius
+	mesh.height = height
+	mesh.radial_segments = 16
+	mesh.rings = 1
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat

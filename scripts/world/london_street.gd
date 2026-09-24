@@ -62,6 +62,7 @@ func rebuild() -> void:
 	_build_terrace_east()
 	_build_terrace_west()
 	_build_end_buildings()
+	_build_bank_portico()
 	_build_alley()
 	_build_lamps()
 	_build_props()
@@ -218,6 +219,48 @@ func _build_end_buildings() -> void:
 	south.rotation.y = PI
 	south.position = Vector3(FACADE_X, PAVE_TOP, STREET_HALF_LEN)
 	add_child(south)
+
+
+## A Greek Revival portico on the bank at the south end: six columns with Corinthian-style
+## capitals, entablature and pediment, in pale Portland stone.
+func _build_bank_portico() -> void:
+	var body := StaticBody3D.new()
+	body.name = "BankPortico"
+	body.collision_layer = 1
+	body.collision_mask = 0
+	body.set_meta("surface", "stone")
+	add_child(body)
+	var stone := MaterialLibrary.get_tinted("stone_trim", Color(0.95, 0.92, 0.85))
+	var mb := MeshBuilder.new()
+	var z := STREET_HALF_LEN - 0.7
+	var w := FACADE_X * 2.0
+	mb.add_box(Vector3(w, 0.3, 1.4), Vector3(0, 0.15, z), stone) # stylobate
+	_box_collider(body, Vector3(w, 0.3, 1.4), Vector3(0, 0.15, z))
+	var top := 6.6
+	for x: float in [-5.9, -3.6, -1.2, 1.2, 3.6, 5.9]:
+		mb.add_cylinder(0.34, 0.34, 0.2, Vector3(x, 0.4, z), stone, 16) # base
+		mb.add_cylinder(0.26, 0.3, top - 0.8, Vector3(x, 0.5 + (top - 0.8) * 0.5, z), stone, 16) # shaft
+		for k in 12:
+			var a := TAU * k / 12.0
+			mb.add_box(Vector3(0.035, top - 1.0, 0.035), Vector3(x + cos(a) * 0.28, 0.5 + (top - 0.8) * 0.5, z + sin(a) * 0.28), stone) # fluting
+		mb.add_cylinder(0.42, 0.3, 0.45, Vector3(x, top - 0.1, z), stone, 12) # capital bell
+		mb.add_box(Vector3(0.9, 0.12, 0.9), Vector3(x, top + 0.18, z), stone) # abacus
+		var cs := CollisionShape3D.new()
+		var cyl := CylinderShape3D.new()
+		cyl.radius = 0.32
+		cyl.height = top
+		cs.shape = cyl
+		cs.position = Vector3(x, top * 0.5, z)
+		body.add_child(cs)
+	mb.add_box(Vector3(w + 0.4, 1.0, 1.7), Vector3(0, top + 0.74, z), stone) # entablature
+	mb.add_box(Vector3(w + 0.7, 0.2, 1.9), Vector3(0, top + 1.34, z), stone) # cornice
+	_box_collider(body, Vector3(w + 0.4, 1.2, 1.7), Vector3(0, top + 0.84, z))
+	# Pediment: a low triangular gable.
+	var ped := PrismMesh.new()
+	ped.size = Vector3(w + 0.6, 1.8, 1.6)
+	mb.add_mesh(ped, Transform3D(Basis.IDENTITY, Vector3(0, top + 2.34, z)), stone)
+	mb.add_box(Vector3(w * 0.72, 0.14, 0.1), Vector3(0, top + 0.74, z - 0.86), MaterialLibrary.get_material("gilt_letters")) # gilt name band
+	mb.build_into(self, "BankPorticoMesh").gi_mode = GeometryInstance3D.GI_MODE_STATIC
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +448,7 @@ func _build_lamps() -> void:
 func _add_lamp(pos: Vector3) -> void:
 	var lamp := GasLamp.new()
 	lamp.position = pos
+	lamp.flower_baskets = true
 	add_child(lamp)
 
 
