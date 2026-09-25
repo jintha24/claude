@@ -73,7 +73,9 @@ floorboards, dim rooms and gaslight, and for servants who notice an open door or
 Two mastiffs are let loose at night: they track you by scent according to the wind, outrun you,
 and bite.
 
-**Phase 8 — the hills:** 2 km × 2 km of downs and woods north of London:
+**Greater London:** the city is now 3.4 km × 3.4 km (11.6 km²) round the old streets. It has about 1,240 blocks of terraces, shops, pubs and warehouses, the Thames with four bridges, St Paul's and Westminster, squares, churches and parks. Passers-by, street sellers and constables fill the streets, and all of it streams in around the player. The hills are now 4.1 km × 4.1 km (16.8 km²), with four villages, their people, farms, hedgerows and livestock. See [docs/GREATER_LONDON.md](docs/GREATER_LONDON.md).
+
+**Phase 8 — the hills:** downs and woods north of London (first 2 km × 2 km, since grown to 4 km × 4 km):
 - **Streaming:** the land streams in 64 m chunks on background threads, with levels of detail.
 - **Harry's cave:** loaded on a background thread when he nears it. It has a fire, a bed (sleep), a loot chest and a fletching bench.
 - **Wildlife:** red deer and rabbits with sight, hearing and wind-borne scent. Hunt them with broadhead arrows (never at a man: the Outlaw's Code).
@@ -159,6 +161,7 @@ the recommended PC specs.
 - [docs/PHASE_9_GUIDE.md](docs/PHASE_9_GUIDE.md) — Steal and Give: fence, poor box, upgrades, Legend, notoriety, fishing, menus, settings, saving
 - [docs/PHASE_10_GUIDE.md](docs/PHASE_10_GUIDE.md) — Act One walkthrough, the mission system, the fist fight, St Giles, sound (and adding real recordings), performance, writing missions
 - [docs/PHASE_11_GUIDE.md](docs/PHASE_11_GUIDE.md) — building the Windows game and installer, testing a build, releasing on Steam and itch.io, code signing, release checklist
+- [docs/GREATER_LONDON.md](docs/GREATER_LONDON.md) — the 11.6 km² city and the 16.8 km² hills: layout, streaming, people, villages and farms
 - [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md) — getting the *Assassin's Creed Syndicate* look: what the code does, and how to add real textures, skies and character models
 - [docs/STORY.md](docs/STORY.md) — story bible (the Victorian Robin Hood) and which phase builds each story system
 - [docs/ASSETS.md](docs/ASSETS.md) — asset sources and licences

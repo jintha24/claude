@@ -35,7 +35,27 @@ func _ready() -> void:
 	_apply_lit()
 
 
+## The post, shared by every lamp without flower baskets (built once: there are hundreds).
+static var _shared_post: Mesh
+static var _shared_shadow: Mesh
+
+
 func _build() -> void:
+	if not flower_baskets and _shared_post != null:
+		var shared := MeshInstance3D.new()
+		shared.name = "Post"
+		shared.mesh = _shared_post
+		shared.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+		add_child(shared)
+		if _shared_shadow:
+			shared.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var caster := MeshInstance3D.new()
+			caster.name = "ShadowCaster"
+			caster.mesh = _shared_shadow
+			caster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			shared.add_child(caster)
+		_build_lantern()
+		return
 	var iron := MaterialLibrary.get_material("iron")
 	var mb := MeshBuilder.new()
 	var gilt := MaterialLibrary.get_material("gilt")
@@ -76,6 +96,14 @@ func _build() -> void:
 		_add_baskets(mb, iron)
 	var mi := mb.build_into(self, "Post")
 	mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+	if not flower_baskets and not Engine.is_editor_hint():
+		_shared_post = mi.mesh
+		var caster := mi.get_node_or_null("ShadowCaster") as MeshInstance3D
+		_shared_shadow = caster.mesh if caster else null
+	_build_lantern()
+
+
+func _build_lantern() -> void:
 
 	var glass_mesh := CylinderMesh.new()
 	glass_mesh.top_radius = 0.24

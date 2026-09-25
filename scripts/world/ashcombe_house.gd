@@ -259,8 +259,10 @@ func _build_ground() -> void:
 func _build_mews_walls() -> void:
 	_wall("z", MEWS_X0 - 0.25, EST_Z0, -90.0, 0.0, 4.0, 0.5, "brick_y")
 	_wall("z", MEWS_X0 - 0.25, -52.0, EST_Z1, 0.0, 4.0, 0.5, "brick_y")
-	_wall("x", EST_Z0 - 0.25, MARKET_X1, EST_X0, 0.0, 4.0, 0.5, "brick_y")
-	_wall("x", EST_Z1 + 0.25, MARKET_X1, EST_X0, 0.0, 4.0, 0.5, "brick_y")
+	# The mews opens onto the city at both ends (Greater London, CityPlan): north onto the
+	# ring road, south into the lane that carries it on down to the river road.
+	_wall("x", EST_Z0 - 0.25, MARKET_X1, MEWS_X0, 0.0, 4.0, 0.5, "brick_y")
+	_wall("x", EST_Z1 + 0.25, MARKET_X1, MEWS_X0 - 0.5, 0.0, 4.0, 0.5, "brick_y")
 	# The block between the market's north-east corner and the mews.
 	_solid(Vector3(MEWS_X0 - MARKET_X1, 4.0, -90.0 - EST_Z0), Vector3((MARKET_X1 + MEWS_X0) * 0.5, 2.0, (EST_Z0 - 90.0) * 0.5), "brick_y")
 

@@ -142,7 +142,7 @@ func lamps() -> Array:
 ## Police constables on duty (not Lord Ashcombe's private men, who never change shift).
 func on_duty() -> Array:
 	return get_nodes_in_group_safe("guards").filter(func(g: Node) -> bool:
-		return is_instance_valid(g) and not g.is_queued_for_deletion() and not g.is_in_group("ashcombe_guards") and (g as Guard).state != Guard.State.OFF_DUTY)
+		return is_instance_valid(g) and not g.is_queued_for_deletion() and not g.is_in_group("ashcombe_guards") and not g.is_in_group("city_constables") and (g as Guard).state != Guard.State.OFF_DUTY)
 
 
 func set_hour(h: float) -> void:

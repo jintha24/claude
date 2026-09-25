@@ -34,7 +34,9 @@ func run_tests() -> void:
 	var label := hud.get("_debug_label") as Label
 	check("F3 shows frame time, draw calls and NPC count", label.visible and label.text.contains("Draw calls") and label.text.contains("NPCs"), label.text.get_slice("\n", 0))
 	_press_event("debug_overlay")
-	# Frame budget: average CPU time per frame over ~10 seconds of the whole city.
+	# Frame budget: average CPU time per frame over ~10 seconds of the whole city, once the
+	# game has settled after loading (physics catches up on the loading time for a moment).
+	await wait(240)
 	var total := 0.0
 	var worst := 0.0
 	var n := 0

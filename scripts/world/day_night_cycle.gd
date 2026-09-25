@@ -33,6 +33,7 @@ var _lamp_delays := {}
 
 
 func _ready() -> void:
+	add_to_group("day_night")
 	GameClock.bus()
 	_sun = get_node_or_null(sun_path) as DirectionalLight3D
 	var we := get_node_or_null(environment_path) as WorldEnvironment
@@ -106,8 +107,8 @@ func update_now() -> void:
 		fog = fog.lerp(Color(0.5, 0.47, 0.35) * maxf(daylight, 0.12), Weather.fog * 0.7)
 		_env.fog_light_color = fog
 		_env.volumetric_fog_albedo = Color(0.88, 0.88, 0.9).lerp(Color(0.5, 0.55, 0.65), 1.0 - daylight)
-		_env.volumetric_fog_density = 0.012 + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
-		_env.fog_density = 0.0024 + Weather.fog * 0.028 + Weather.rain * 0.004
+		_env.volumetric_fog_density = 0.007 + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
+		_env.fog_density = 0.0011 + Weather.fog * 0.03 + Weather.rain * 0.004
 		if _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
 			var sky := _env.sky.sky_material as PhysicalSkyMaterial
 			sky.energy_multiplier = lerpf(1.0, 0.4, Weather.cloud * Weather.cloud)

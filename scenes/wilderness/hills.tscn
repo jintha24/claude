@@ -64,10 +64,10 @@ script = ExtResource("15_story")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -120, 0, 96)
 
 [node name="LondonRoad" type="Marker3D" parent="." groups=["spawn_points"]]
-transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 972, 0, 540)
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 1968, 0, 606.9)
 
 [node name="ToLondon" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 985, 0, 536)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1981, 0, 605.6)
 script = ExtResource("8_travel")
 destination_name = "London"
 destination_scene = "res://scenes/main/main.tscn"

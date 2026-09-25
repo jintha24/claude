@@ -130,6 +130,11 @@ static func set_wetness(wetness: float, snow_cover: float = 0.0) -> void:
 		mat.albedo_color = c
 
 
+## Adds a material made elsewhere to the cache (so rain and snow reach it too).
+static func register(key: String, mat: StandardMaterial3D) -> void:
+	_cache[key] = mat
+
+
 ## A copy of a textured material multiplied by a colour (e.g. painted woodwork).
 static func get_tinted(key: String, tint: Color) -> StandardMaterial3D:
 	var cache_key := "%s#%s" % [key, tint.to_html(false)]

@@ -23,8 +23,16 @@ func _ready() -> void:
 	if GameState.autosave_on_arrival:
 		GameState.autosave_on_arrival = false
 		SaveGame.save.call_deferred(get_tree(), 0)
+	# Greater London: build the streets round Harry at once if he starts out in them.
+	var city := get_node_or_null("City") as CityStreamer
+	if city:
+		# The whole view is built while loading (on every core), so play starts smoothly.
+		city.build_all_now(harry.global_position)
 	var nav := get_node_or_null("Navigation") as NavigationRegion3D
 	if nav:
+		# One region: nothing to stitch to (and stitching free edges costs seconds whenever
+		# the city's navigation region round the player is replaced).
+		nav.use_edge_connections = false
 		nav.bake_navigation_mesh(false)
 	harry.respawned.connect(func() -> void:
 		get_tree().call_group("guards", "reset_after_player_respawn")

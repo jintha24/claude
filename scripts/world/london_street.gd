@@ -69,7 +69,6 @@ func rebuild() -> void:
 	_build_alley()
 	_build_lamps()
 	_build_props()
-	_build_landmarks()
 
 
 # ---------------------------------------------------------------------------
@@ -503,32 +502,6 @@ func _build_props() -> void:
 
 
 ## A church tower and spire far down the street, visible over the rooftops.
-func _build_landmarks() -> void:
-	var mb := MeshBuilder.new()
-	var stone := MaterialLibrary.get_tinted("stone_trim", Color(0.8, 0.78, 0.74))
-	var lead := MaterialLibrary.get_tinted("stone_trim", Color(0.3, 0.31, 0.33))
-	var base := Vector3(-4.0, 0.0, -120.0)
-	mb.add_box(Vector3(9, 30, 9), base + Vector3(0, 15, 0), stone)
-	mb.add_box(Vector3(10, 1.0, 10), base + Vector3(0, 30.5, 0), stone)
-	for cx in [-4.4, 4.4]:
-		for cz in [-4.4, 4.4]:
-			mb.add_cylinder(0.45, 0.2, 4.0, base + Vector3(cx, 33.0, cz), stone, 8) # pinnacles
-	mb.add_cylinder(4.2, 0.05, 30.0, base + Vector3(0, 46.0, 0), lead, 8) # spire
-	mb.add_box(Vector3(9.2, 2.2, 0.3), base + Vector3(0, 24.0, 4.6), MaterialLibrary.get_material("iron")) # louvres
-	var mi := mb.build_into(self, "ChurchSpire")
-	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-	# Some rooftops behind the end building so the city seems to continue.
-	var roofs := MeshBuilder.new()
-	var brick := MaterialLibrary.get_material("brick_yellow")
-	for i in 8:
-		var w := _rng.randf_range(6.0, 12.0)
-		var h := _rng.randf_range(10.0, 16.0)
-		var pos := Vector3(_rng.randf_range(-40.0, 40.0), h * 0.5, _rng.randf_range(-150.0, -110.0))
-		roofs.add_box(Vector3(w, h, 10.0), pos, brick)
-	var rmi := roofs.build_into(self, "DistantBlocks")
-	rmi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
-
-
 func _box_collider(body: StaticBody3D, size: Vector3, center: Vector3, surface: String = "") -> void:
 	var cs := CollisionShape3D.new()
 	if surface != "":

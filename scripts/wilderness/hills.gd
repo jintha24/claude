@@ -18,6 +18,13 @@ func _ready() -> void:
 		m.position.y = gen.height(m.position.x, m.position.z) + 0.05
 	_build_jump_course(gen)
 	_build_fishing(gen)
+	for i in TerrainGenerator.VILLAGES.size():
+		var village := Village.new()
+		village.setup(gen, i)
+		add_child(village)
+	var farm := FarmAnimals.new()
+	farm.name = "FarmAnimals"
+	add_child(farm)
 	var audio := get_node_or_null("Audio") as AudioDirector
 	if audio:
 		audio.add_zone("water_lap", Vector3(TerrainGenerator.LAKE.x, TerrainGenerator.WATER_Y, TerrainGenerator.LAKE.y), TerrainGenerator.LAKE_RADIUS - 15.0, 45.0, 0.7)

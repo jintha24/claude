@@ -21,6 +21,8 @@
 [ext_resource type="Script" path="res://scripts/world/st_giles.gd" id="21_stgil"]
 [ext_resource type="Script" path="res://scripts/audio/audio_director.gd" id="22_audio"]
 [ext_resource type="Script" path="res://scripts/story/story_director.gd" id="23_story"]
+[ext_resource type="Script" path="res://scripts/city/city_streamer.gd" id="24_city"]
+[ext_resource type="Script" path="res://scripts/city/city_life.gd" id="25_clife"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -68,6 +70,10 @@ script = ExtResource("15_ashhs")
 [node name="StGiles" type="Node3D" parent="."]
 script = ExtResource("21_stgil")
 
+[node name="City" type="Node3D" parent="."]
+script = ExtResource("24_city")
+target_path = NodePath("../Harry")
+
 [node name="Navigation" type="NavigationRegion3D" parent="."]
 navigation_mesh = SubResource("NavigationMesh_street")
 
@@ -79,6 +85,9 @@ script = ExtResource("14_wthr")
 
 [node name="Population" type="Node3D" parent="."]
 script = ExtResource("13_popul")
+
+[node name="CityLife" type="Node3D" parent="."]
+script = ExtResource("25_clife")
 
 [node name="Patrols" type="Node3D" parent="."]
 script = ExtResource("10_patrl")

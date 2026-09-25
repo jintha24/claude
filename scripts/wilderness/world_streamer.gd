@@ -203,7 +203,9 @@ func _generate(c: Vector2i, lod: int, gen: TerrainGenerator) -> Dictionary:
 			var hz := hs[(j + 2) * w + i + 1] - hs[j * w + i + 1]
 			norms.append(Vector3(-hx, 2.0 * step, -hz).normalized())
 			var road := 1.0 - smoothstep(TerrainGenerator.ROAD_HALF_WIDTH - 0.5, TerrainGenerator.ROAD_HALF_WIDTH + 1.5, gen.road_info(x0 + x, z0 + z).x)
-			cols.append(Color(road, 0.0, 0.0))
+			var farm := gen.farm_at(x0 + x, z0 + z)
+			var village := 1.0 if gen.village_at(x0 + x, z0 + z, -4.0) >= 0 else 0.0
+			cols.append(Color(road, farm.x / 4.0, village))
 	for j in res:
 		for i in res:
 			var a := j * n + i
@@ -271,6 +273,16 @@ func _scatter(data: Dictionary, c: Vector2i, lod: int, gen: TerrainGenerator) ->
 				trees.append([Vector3(px - x0, gen.height(px, pz) - 0.1, pz - z0), kind, scale, TerrainGenerator.hash01(gx, gz, 6) * TAU])
 			elif r > 0.985 and not gen.is_water(px, pz) and gen.road_info(px, pz).x > 6.0:
 				rocks.append([Vector3(px - x0, gen.height(px, pz) - 0.3, pz - z0), 0.5 + TerrainGenerator.hash01(gx, gz, 7) * 1.1])
+	# Hedgerows round the fields: bushes, with an oak standing out of them here and there.
+	if lod <= 2:
+		for q in gen.hedge_points(Rect2(x0, z0, chunk_size, chunk_size)):
+			var hx := roundi(q.x * 3.0)
+			var hz := roundi(q.y * 3.0)
+			if TerrainGenerator.hash01(hx, hz, 21) < 0.1:
+				continue
+			var oak := TerrainGenerator.hash01(hx, hz, 22) < 0.07
+			var sc := 0.7 + TerrainGenerator.hash01(hx, hz, 23) * 0.3 if oak else 0.22 + TerrainGenerator.hash01(hx, hz, 23) * 0.1
+			trees.append([Vector3(q.x - x0, gen.height(q.x, q.y) - 0.1, q.y - z0), 0, sc, TerrainGenerator.hash01(hx, hz, 24) * TAU])
 	data["trees"] = trees
 	data["rocks"] = rocks if lod <= 1 else []
 	if lod == 0:
@@ -462,7 +474,22 @@ void fragment() {
 	vec3 bw = pow(abs(wnrm), vec3(4.0));
 	bw /= (bw.x + bw.y + bw.z);
 	vec3 r = texture(rock_tex, wpos.zy / 4.0).rgb * bw.x + texture(rock_tex, wpos.xz / 4.0).rgb * bw.y + texture(rock_tex, wpos.xy / 4.0).rgb * bw.z;
-	vec3 c = mix(g, d, COLOR.r);
+	vec3 c = g;
+	// Farmland: pasture, stubble of cut wheat, ploughed furrows and hay meadow.
+	int field = int(COLOR.g * 4.0 + 0.5);
+	float furrow = 0.5 + 0.5 * sin(wpos.x * 2.2 + wpos.z * 0.7);
+	if (field == 1) {
+		c = g * vec3(0.92, 1.12, 0.86);
+	} else if (field == 2) {
+		c = mix(vec3(0.72, 0.6, 0.34), vec3(0.62, 0.5, 0.28), furrow * 0.6) * (0.85 + g.g * 0.4);
+	} else if (field == 3) {
+		c = d * mix(0.55, 0.8, furrow);
+	} else if (field == 4) {
+		c = mix(g, vec3(0.6, 0.58, 0.33), 0.45);
+	}
+	// Village greens are cropped short and worn along the paths.
+	c = mix(c, mix(g * vec3(1.0, 1.08, 0.9), d, 0.25), COLOR.b * 0.6);
+	c = mix(c, d, COLOR.r);
 	float shore = 1.0 - smoothstep(water_y + 0.2, water_y + 1.4, wpos.y);
 	c = mix(c, d * 0.75, shore);
 	c = mix(c, r, smoothstep(0.26, 0.42, slope));
