@@ -27,3 +27,6 @@ desktop.ini
 # Character generator source data (fetched by tools/characters/fetch_data.sh)
 tools/characters/data/
 tools/characters/cache/
+
+# Python bytecode
+__pycache__/
