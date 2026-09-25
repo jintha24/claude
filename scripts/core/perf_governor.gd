@@ -45,7 +45,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not enabled or get_tree().paused:
+	# Recording a movie runs on a fixed clock at any speed: nothing to adapt to.
+	if not enabled or get_tree().paused or Engine.get_write_movie_path() != "":
 		_restore()
 		return
 	# A loading hitch or a breakpoint says nothing about the steady frame rate.
