@@ -104,6 +104,10 @@ func on_arrow_hit(kind: String, _point: Vector3, from_dir: Vector3) -> void:
 
 
 # ---------------------------------------------------------------------------
+var _lod_frame := randi() % 30
+var _far := false
+
+
 func _physics_process(delta: float) -> void:
 	if _harry == null:
 		_harry = get_tree().get_first_node_in_group("player") as Harry
@@ -111,6 +115,15 @@ func _physics_process(delta: float) -> void:
 		_streamer = get_tree().get_first_node_in_group("world_streamer") as WorldStreamer
 		if _streamer == null:
 			return
+	# Grazing or ambling far from the camera: every third frame is plenty.
+	_lod_frame += 1
+	if _lod_frame % 30 == 0:
+		var cam := get_viewport().get_camera_3d()
+		_far = cam != null and cam.global_position.distance_squared_to(global_position) > 3600.0
+	if _far and state in [State.GRAZE, State.WANDER]:
+		if _lod_frame % 3 != 0:
+			return
+		delta *= 3.0
 	_timer -= delta
 	_speed = 0.0
 	if state != State.DEAD and state != State.DYING:

@@ -152,7 +152,19 @@ func call_to(pos: Vector3, viewer: Node3D = null) -> void:
 		reset_physics_interpolation()
 
 
+var _idle_frames := 0
+
+
 func _physics_process(delta: float) -> void:
+	# Standing idle with nobody on him and nowhere to go: nothing changes, so only look
+	# again every tenth frame (the water, the ground, a push).
+	if (rider == null or not is_instance_valid(rider)) and not called and absf(speed) < 0.05 and is_on_floor() and not is_jumping:
+		_idle_frames += 1
+		if _idle_frames % 10 != 0:
+			return
+		delta *= 10.0
+	else:
+		_idle_frames = 0
 	_refuse_timer = maxf(_refuse_timer - delta, 0.0)
 	_jump_cooldown = maxf(_jump_cooldown - delta, 0.0)
 	var wish := Vector3.ZERO

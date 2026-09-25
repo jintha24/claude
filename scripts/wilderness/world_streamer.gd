@@ -103,6 +103,10 @@ func _lod_for(c: Vector2i, center: Vector2i) -> int:
 	return 2
 
 
+var _last_center := Vector2i(1 << 30, 0)
+var _rescan_timer := 0.0
+
+
 func _process(_delta: float) -> void:
 	if _target == null:
 		_target = get_node_or_null(target_path) as Node3D
@@ -128,7 +132,15 @@ func _process(_delta: float) -> void:
 			WorkerThreadPool.wait_for_task_completion(t)
 		else:
 			running.append(t)
+	var freed := running.size() < _tasks.size()
 	_tasks = running
+	# Nothing to decide unless he's crossed into another chunk, work has come back or a
+	# worker is free (and twice a second, to be safe): the scan below covers ~200 chunks.
+	_rescan_timer -= _delta
+	if center == _last_center and ready.is_empty() and not freed and _rescan_timer > 0.0:
+		return
+	_last_center = center
+	_rescan_timer = 0.5
 	# Queue what's missing or at the wrong detail, nearest first.
 	var wanted: Array[Vector2i] = []
 	for dz in range(-far_radius, far_radius + 1):

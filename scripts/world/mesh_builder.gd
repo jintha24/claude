@@ -59,6 +59,54 @@ func build() -> ArrayMesh:
 	return array_mesh
 
 
+static var _shadow_one_sided: StandardMaterial3D
+static var _shadow_two_sided: StandardMaterial3D
+
+
+## A position-only copy of `mesh` in (at most) two surfaces, drawn only into shadow maps:
+## one draw call per shadow cascade instead of one per material. Glass
+## casts none; meshes with cut-out surfaces (leaves) keep their own shadows.
+static func shadow_mesh_for(mesh: ArrayMesh) -> ArrayMesh:
+	if mesh == null or mesh.get_surface_count() < 2:
+		return null
+	var groups := [[PackedVector3Array(), PackedInt32Array()], [PackedVector3Array(), PackedInt32Array()]]
+	for i in mesh.get_surface_count():
+		var mat := mesh.surface_get_material(i) as BaseMaterial3D
+		if mat == null or mat.transparency in [BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR, BaseMaterial3D.TRANSPARENCY_ALPHA_HASH]:
+			return null # cut-out leaves and lace need their own shadows
+		if mat.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			continue # window glass: no shadow
+		var g: Array = groups[1 if mat.cull_mode == BaseMaterial3D.CULL_DISABLED else 0]
+		var arrays := mesh.surface_get_arrays(i)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		var base: int = (g[0] as PackedVector3Array).size()
+		(g[0] as PackedVector3Array).append_array(verts)
+		if idx.is_empty():
+			idx = PackedInt32Array(range(verts.size()))
+		var shifted := PackedInt32Array()
+		shifted.resize(idx.size())
+		for k in idx.size():
+			shifted[k] = idx[k] + base
+		(g[1] as PackedInt32Array).append_array(shifted)
+	if _shadow_one_sided == null:
+		_shadow_one_sided = StandardMaterial3D.new()
+		_shadow_two_sided = StandardMaterial3D.new()
+		_shadow_two_sided.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var out := ArrayMesh.new()
+	for gi in 2:
+		var g: Array = groups[gi]
+		if (g[0] as PackedVector3Array).is_empty():
+			continue
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = g[0]
+		arr[Mesh.ARRAY_INDEX] = g[1]
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(out.get_surface_count() - 1, _shadow_two_sided if gi == 1 else _shadow_one_sided)
+	return out
+
+
 ## Convenience: builds the mesh into a new MeshInstance3D child of `parent`.
 func build_into(parent: Node3D, node_name: String, cast_shadows: bool = true) -> MeshInstance3D:
 	var mesh := build()
@@ -69,4 +117,15 @@ func build_into(parent: Node3D, node_name: String, cast_shadows: bool = true) ->
 	mi.mesh = mesh
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if cast_shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
+	if cast_shadows and mesh.get_surface_count() >= 3:
+		# Shadows from a merged copy: one or two draw calls per shadow cascade instead of
+		# one per material (a building has ten or so).
+		var proxy := shadow_mesh_for(mesh)
+		if proxy:
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var caster := MeshInstance3D.new()
+			caster.name = "ShadowCaster"
+			caster.mesh = proxy
+			caster.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			mi.add_child(caster)
 	return mi

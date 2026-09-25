@@ -67,7 +67,8 @@ func run_tests() -> void:
 	var f := trader.get_facing_dir()
 	await tp(trader.global_position + f * 0.9, atan2(f.x, f.z)) # in front, facing him
 	await wait(5)
-	check("no pickpocket prompt from the front", harry.thievery.prompt_target == null)
+	# (Another shopper with his back to Harry may be fair game: it's this trader who isn't.)
+	check("no pickpocket prompt from the front", harry.thievery.prompt_target != trader and not trader.can_be_pickpocketed_from(harry.global_position))
 	await tp(trader.global_position - f * 0.85, atan2(-f.x, -f.z)) # behind, facing his back
 	await wait(5)
 	check("pickpocket prompt from behind", harry.thievery.prompt_target == trader)

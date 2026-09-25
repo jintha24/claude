@@ -68,6 +68,11 @@ func _setup_npc(max_speed: float, body_height: float = 1.76) -> void:
 	_body.height = body_height + 0.02
 	_body.variation_seed = look_seed
 	add_child(_body)
+	# Off-screen people aren't worth animating (when there is a screen: tests run headless).
+	if DisplayServer.get_name() != "headless":
+		_screen = VisibleOnScreenNotifier3D.new()
+		_screen.aabb = AABB(Vector3(-0.6, 0.0, -0.6), Vector3(1.2, body_height + 0.4, 1.2))
+		add_child(_screen)
 	_yaw = rotation.y
 	rotation = Vector3.ZERO
 	_frame = randi() % 12
@@ -85,6 +90,11 @@ func _nav_ready() -> bool:
 ## Far away (level of detail 2), townsfolk glide along their path without collision
 ## tests (nobody can tell at 80 m, and it is most of a crowd's cost).
 var far_glide := false
+## From which level of detail gliding starts (townsfolk: 1, beyond 35 m).
+var glide_lod := 2
+var _screen: VisibleOnScreenNotifier3D
+## Distance to the camera at the last level-of-detail check.
+var _cam_dist := 0.0
 
 
 func _glide(h: Vector3, delta: float) -> void:
@@ -122,6 +132,7 @@ func _begin_frame(delta: float) -> void:
 		_lod_timer = 0.5
 		var cam := get_viewport().get_camera_3d()
 		var d := cam.global_position.distance_to(global_position) if cam else 0.0
+		_cam_dist = d
 		lod_level = 0 if d < 35.0 else (1 if d < 80.0 else 2)
 
 
@@ -157,21 +168,33 @@ func _apply_movement(delta: float, frozen: bool = false) -> void:
 	if _moving and not frozen:
 		h = _safe_velocity if _has_safe_velocity else _agent.velocity
 		h.y = 0.0
-	if far_glide and lod_level >= 2:
+	if far_glide and lod_level >= glide_lod:
 		_glide(h, delta)
-		return
-	var cur := Vector3(velocity.x, 0.0, velocity.z)
-	cur = cur.move_toward(h, 12.0 * delta)
-	velocity.x = cur.x
-	velocity.z = cur.z
-	velocity.y = 0.0 if is_on_floor() else velocity.y - _gravity * delta
-	if is_on_floor() and h != Vector3.ZERO:
-		CharacterMotion.try_step_up(self, velocity, delta, 0.34)
-	move_and_slide()
-	if not is_nan(_look_yaw) and not frozen:
-		_yaw = rotate_toward(_yaw, _look_yaw, turn_speed * delta)
-	_body.rotation.y = _yaw
-	# Level of detail: far-away people are animated less often (or not at all).
-	var step := 1 if lod_level == 0 else (3 if lod_level == 1 else 0)
+	else:
+		var cur := Vector3(velocity.x, 0.0, velocity.z)
+		cur = cur.move_toward(h, 12.0 * delta)
+		velocity.x = cur.x
+		velocity.z = cur.z
+		velocity.y = 0.0 if is_on_floor() else velocity.y - _gravity * delta
+		# Standing still on the ground: nothing to collide with (checked now and then, in
+		# case the ground has gone from under them).
+		var idle := h == Vector3.ZERO and cur.length_squared() < 0.0001 and is_on_floor() and _frame % 8 != 0
+		if not idle:
+			if is_on_floor() and h != Vector3.ZERO:
+				CharacterMotion.try_step_up(self, velocity, delta, 0.34)
+			move_and_slide()
+		if not is_nan(_look_yaw) and not frozen:
+			_yaw = rotate_toward(_yaw, _look_yaw, turn_speed * delta)
+		_body.rotation.y = _yaw
+	# Level of detail: people are animated less often the further off they are: every
+	# frame close by, every other frame across the street, every third frame further,
+	# and not at all in the distance.
+	var step := 0
+	if _screen and _cam_dist > 5.0 and not _screen.is_on_screen():
+		step = 0
+	elif lod_level == 0:
+		step = 1 if _cam_dist < 15.0 else 2
+	elif lod_level == 1:
+		step = 3
 	if step > 0 and _frame % step == 0:
 		_body.update_body(Vector2(velocity.x, velocity.z).length(), _pose, delta * step)

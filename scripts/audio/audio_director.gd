@@ -282,8 +282,18 @@ func compute_bed_targets(listener: Vector3) -> Dictionary:
 	return t
 
 
+var _bed_targets := {}
+var _bed_timer := 0.0
+
+
 func _update_beds(listener: Vector3, delta: float) -> void:
-	var targets := compute_bed_targets(listener)
+	# Where the listener is changes slowly: work out the targets ten times a second, and
+	# fade towards them every frame.
+	_bed_timer -= delta
+	if _bed_timer <= 0.0 or _bed_targets.is_empty():
+		_bed_timer = 0.1
+		_bed_targets = compute_bed_targets(listener)
+	var targets := _bed_targets
 	for bed: String in BEDS:
 		var level := move_toward(float(bed_levels[bed]), float(targets.get(bed, 0.0)), delta * 0.5)
 		bed_levels[bed] = level
@@ -345,7 +355,27 @@ func _update_music(delta: float) -> void:
 
 ## The music for a layer: a file from assets/audio/music/ if there is one; otherwise the
 ## built-in drone (tense) and pulse (chase). Calm has no built-in music: the ambience is it.
+var _music_cache := {}
+var _music_retry := {}
+
+
+## The stream for a music layer, looked up once (not every frame: a missing file means
+## a disk check each time). Layers not ready yet are asked again once a second.
 func _music_stream(layer: String) -> AudioStream:
+	if _music_cache.has(layer):
+		return _music_cache[layer]
+	var now := Time.get_ticks_msec()
+	if now < int(_music_retry.get(layer, 0)):
+		return null
+	var s := _find_music_stream(layer)
+	if s != null:
+		_music_cache[layer] = s
+	else:
+		_music_retry[layer] = now + 1000
+	return s
+
+
+func _find_music_stream(layer: String) -> AudioStream:
 	var names := {"calm": "explore", "tense": "tension", "chase": "chase"}
 	for ext: String in [".ogg", ".mp3", ".wav"]:
 		var path := "res://assets/audio/music/%s%s" % [names[layer], ext]

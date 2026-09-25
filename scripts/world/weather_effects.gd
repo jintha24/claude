@@ -51,6 +51,10 @@ static func _declare_globals() -> void:
 		RenderingServer.global_shader_parameter_add(&"wind_direction", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(1, 0, 0))
 
 
+var _slow_timer := 0.0
+var _last_puddles := -1.0
+
+
 func _process(delta: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam:
@@ -58,11 +62,24 @@ func _process(delta: float) -> void:
 		_rain.global_position = Vector3(p.x, p.y + 14.0, p.z) + Weather.wind_direction * Weather.wind * 4.0
 		_snow.global_position = Vector3(p.x, p.y + 10.0, p.z)
 		_clouds.global_position = Vector3(p.x, 650.0, p.z)
+	# Clouds drift with the wind.
+	var wind_vec := Weather.wind_direction * Weather.wind
+	_cloud_offset += Vector2(wind_vec.x, wind_vec.z) * delta * 0.004
+	_cloud_mat.set_shader_parameter("offset", _cloud_offset)
+	# Lightning flash decays quickly.
+	if _flash_energy > 0.0:
+		_flash_energy = maxf(_flash_energy - delta * 30.0, 0.0)
+		_flash.light_energy = _flash_energy
+		_flash.visible = _flash_energy > 0.01
+	# The weather itself changes slowly: the rest a few times a second is plenty.
+	_slow_timer -= delta
+	if _slow_timer > 0.0:
+		return
+	_slow_timer = 0.2
 	_rain.amount_ratio = Weather.rain
 	_rain.emitting = Weather.rain > 0.01
 	_snow.amount_ratio = Weather.snow
 	_snow.emitting = Weather.snow > 0.01
-	var wind_vec := Weather.wind_direction * Weather.wind
 	(_rain.process_material as ParticleProcessMaterial).gravity = Vector3(wind_vec.x * 6.0, -9.8, wind_vec.z * 6.0)
 	(_snow.process_material as ParticleProcessMaterial).gravity = Vector3(wind_vec.x * 1.5, -0.8, wind_vec.z * 1.5)
 	RenderingServer.global_shader_parameter_set(&"wind_strength", Weather.wind)
@@ -70,12 +87,9 @@ func _process(delta: float) -> void:
 	for node in get_tree().get_nodes_in_group("chimney_smoke"):
 		(node as ChimneySmoke).wind = Vector3(0.1, 0.0, 0.05) + wind_vec * 1.4
 
-	# Clouds drift with the wind.
-	_cloud_offset += Vector2(wind_vec.x, wind_vec.z) * delta * 0.004
 	# Fair-weather cumulus even on a "clear" day (visual only; gameplay reads Weather.cloud).
 	_cloud_mat.set_shader_parameter("coverage", maxf(Weather.cloud, 0.34))
 	_cloud_mat.set_shader_parameter("fog_amount", Weather.fog)
-	_cloud_mat.set_shader_parameter("offset", _cloud_offset)
 	_cloud_mat.set_shader_parameter("darkness", clampf(Weather.rain * 0.6 + maxf(Weather.cloud - 0.6, 0.0), 0.0, 0.85))
 	_cloud_mat.set_shader_parameter("daylight", clampf(Stealth.ambient_light / 0.85, 0.02, 1.0))
 
@@ -84,15 +98,11 @@ func _process(delta: float) -> void:
 		_last_wetness = Weather.wetness
 		_last_snow = Weather.snow_cover
 		MaterialLibrary.set_wetness(Weather.wetness, Weather.snow_cover)
-	for d in _puddles:
-		d.modulate.a = clampf(Weather.puddles * 1.3 - float(d.get_meta("depth")), 0.0, 1.0)
-		d.visible = d.modulate.a > 0.01
-
-	# Lightning flash decays quickly.
-	if _flash_energy > 0.0:
-		_flash_energy = maxf(_flash_energy - delta * 30.0, 0.0)
-		_flash.light_energy = _flash_energy
-		_flash.visible = _flash_energy > 0.01
+	if absf(Weather.puddles - _last_puddles) > 0.005:
+		_last_puddles = Weather.puddles
+		for d in _puddles:
+			d.modulate.a = clampf(Weather.puddles * 1.3 - float(d.get_meta("depth")), 0.0, 1.0)
+			d.visible = d.modulate.a > 0.01
 
 
 func _on_lightning(strength: float) -> void:

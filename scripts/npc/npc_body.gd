@@ -72,7 +72,9 @@ func _ready() -> void:
 		_build_mannequin()
 		if _look_model:
 			_attach_look()
-	PerfTuning.set_visibility_range(self, PerfTuning.RANGE_PERSON)
+	if _look_model == null:
+		# (A realistic look sets its own ranges: near pieces, then the one-piece far body.)
+		PerfTuning.set_visibility_range(self, PerfTuning.RANGE_PERSON)
 
 
 var _umbrella: Node3D

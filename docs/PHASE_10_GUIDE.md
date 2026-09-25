@@ -145,11 +145,22 @@ name in the right folder, as `.ogg`, `.wav` or `.mp3`.
 | **Streaming** | The hills stream in chunks (Phase 8), and the cave loads on a background thread. |
 | **Sounds** | Built on a worker thread while the place loads, so the first footstep never hitches. |
 | **F3 overlay** | Shows frame time (and physics time), draw calls, objects and primitives drawn, node count, NPC count, and video and static memory. |
+| **People near and far** | Within 25 m a person is a dozen detailed pieces (face, clothes, hat...). Beyond, they swap to a one-piece *far body*: the same outfit merged into one mesh, coloured per person by a shader (`assets/characters/far_body.gdshader`). One draw call instead of twelve, shadows likewise. Eyes and teeth stop at 20 m, collars and cravats at 45 m, and only the big pieces cast shadows. |
+| **Building shadows** | Every building casts its shadow from a merged, shadows-only copy of itself (one or two draw calls per shadow cascade instead of one per material). The street went from 7,400 draw calls to 2,000. |
+| **NPC animation** | Every frame within 15 m, every other frame to 35 m, every third to 80 m, not at all beyond. People off screen aren't animated at all. |
+| **NPC movement** | Townsfolk beyond 35 m (and constables beyond 80 m who are only walking their beat) glide along their path without collision tests. Anyone standing still skips them too. |
+| **Wildlife, horse, streaming** | Animals grazing beyond 60 m think every third frame. An idle horse with no rider checks his surroundings every tenth frame. The terrain streamer only rescans when Harry crosses into another chunk. |
+| **Dynamic resolution** | `PerfGovernor` lowers the render scale (down to 60%, upscaled with FSR 2) a step at a time when the frame rate drops, and raises it again when there's room. Settings → Graphics → *Dynamic resolution*. |
+| **Presets for your PC** | On the first run the game picks a preset from the graphics card: a dedicated GPU gets High, integrated graphics Medium, anything else Low. Presets now also set shadow edges (soft-shadow quality), shadow distance, shadow cascades (2 on Low and Medium, 4 on High and Ultra) and skin light scattering. |
 
 **On a slow PC:**
-1. Settings → Graphics → **Low**, which uses render scale 0.67 with FSR2.
-2. If that's still slow, turn off **Volumetric fog**.
-3. Then lower **Shadow resolution**.
+1. Settings → Graphics → **Low**, which uses render scale 0.67 with FSR2, two shadow cascades out to 70 m and hard-edged shadows.
+2. Keep **Dynamic resolution** on.
+3. If that's still slow, turn off **Volumetric fog**, then lower **Shadow resolution** and **Shadow distance**.
+
+**Measuring:** in a headless run, `Performance.TIME_PHYSICS_PROCESS` and `TIME_PROCESS` give the
+CPU cost per frame. In a rendered run, `RENDER_TOTAL_DRAW_CALLS_IN_FRAME` gives the draw calls.
+`tests/test_performance.gd` checks the budget and the level-of-detail rules.
 
 ## Part 7 — How it's built
 
@@ -164,6 +175,7 @@ name in the right folder, as `.ogg`, `.wav` or `.mp3`.
 | `scripts/world/st_giles.gd`, `water_volume.gd` | The district, and wadeable water in built places |
 | `scripts/audio/sound_library.gd`, `audio_director.gd` | Sound synthesis and file overrides; the mix |
 | `scripts/core/perf_tuning.gd` | Draw distances, occluders, overlay numbers |
+| `scripts/core/perf_governor.gd` | Dynamic resolution |
 
 ## Part 8 — Writing a mission
 

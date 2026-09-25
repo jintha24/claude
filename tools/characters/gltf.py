@@ -71,7 +71,7 @@ class GLB:
         self.skeleton_root = first
         return first
 
-    def add_mesh(self, name, positions, normals, uvs, indices, joints, weights, material, colors=None, morphs=None, morph_names=None):
+    def add_mesh(self, name, positions, normals, uvs, indices, joints, weights, material, colors=None, morphs=None, morph_names=None, uv2=None):
         attrs = {
             "POSITION": self.accessor(positions.astype(np.float32), "VEC3", minmax=True),
             "NORMAL": self.accessor(normals.astype(np.float32), "VEC3"),
@@ -79,6 +79,8 @@ class GLB:
             "JOINTS_0": self._joints(joints),
             "WEIGHTS_0": self._weights(weights),
         }
+        if uv2 is not None:
+            attrs["TEXCOORD_1"] = self.accessor(uv2.astype(np.float32), "VEC2")
         if colors is not None:
             rgba = np.clip(np.rint(colors * 255.0), 0, 255).astype(np.uint8)
             attrs["COLOR_0"] = self.accessor(rgba, "VEC4", UBYTE, normalized=True)

@@ -9,10 +9,14 @@ extends RefCounted
 const PATH := "user://settings.cfg"
 
 const PRESETS := {
-	"Low": {"graphics/sdfgi": false, "graphics/ssr": false, "graphics/ssao": false, "graphics/ssil": false, "graphics/volumetric_fog": false, "graphics/shadow_size": 2048, "graphics/render_scale": 0.67, "graphics/view_distance": 4},
-	"Medium": {"graphics/sdfgi": false, "graphics/ssr": false, "graphics/ssao": true, "graphics/ssil": false, "graphics/volumetric_fog": true, "graphics/shadow_size": 4096, "graphics/render_scale": 0.77, "graphics/view_distance": 5},
-	"High": {"graphics/sdfgi": true, "graphics/ssr": true, "graphics/ssao": true, "graphics/ssil": true, "graphics/volumetric_fog": true, "graphics/shadow_size": 4096, "graphics/render_scale": 1.0, "graphics/view_distance": 7},
-	"Ultra": {"graphics/sdfgi": true, "graphics/ssr": true, "graphics/ssao": true, "graphics/ssil": true, "graphics/volumetric_fog": true, "graphics/shadow_size": 8192, "graphics/render_scale": 1.0, "graphics/view_distance": 9},
+	"Low": {"graphics/sdfgi": false, "graphics/ssr": false, "graphics/ssao": false, "graphics/ssil": false, "graphics/volumetric_fog": false, "graphics/shadow_size": 2048, "graphics/render_scale": 0.67, "graphics/view_distance": 4,
+		"graphics/shadow_quality": 1, "graphics/shadow_distance": 70.0, "graphics/skin_scattering": false, "graphics/shadow_splits": 2},
+	"Medium": {"graphics/sdfgi": false, "graphics/ssr": false, "graphics/ssao": true, "graphics/ssil": false, "graphics/volumetric_fog": true, "graphics/shadow_size": 4096, "graphics/render_scale": 0.77, "graphics/view_distance": 5,
+		"graphics/shadow_quality": 2, "graphics/shadow_distance": 100.0, "graphics/skin_scattering": true, "graphics/shadow_splits": 2},
+	"High": {"graphics/sdfgi": true, "graphics/ssr": true, "graphics/ssao": true, "graphics/ssil": true, "graphics/volumetric_fog": true, "graphics/shadow_size": 4096, "graphics/render_scale": 1.0, "graphics/view_distance": 7,
+		"graphics/shadow_quality": 3, "graphics/shadow_distance": 150.0, "graphics/skin_scattering": true, "graphics/shadow_splits": 4},
+	"Ultra": {"graphics/sdfgi": true, "graphics/ssr": true, "graphics/ssao": true, "graphics/ssil": true, "graphics/volumetric_fog": true, "graphics/shadow_size": 8192, "graphics/render_scale": 1.0, "graphics/view_distance": 9,
+		"graphics/shadow_quality": 4, "graphics/shadow_distance": 200.0, "graphics/skin_scattering": true, "graphics/shadow_splits": 4},
 }
 const AUDIO_BUSES: Array[String] = ["Master", "Music", "SFX", "Ambience", "Voice"]
 ## Actions that can be re-bound, with their names in the Controls menu.
@@ -39,9 +43,24 @@ static func defaults() -> Dictionary:
 		"gameplay/invert_y": false,
 		"gameplay/subtitles": true,
 		"gameplay/day_minutes": 48.0,
+		# Lower the render resolution by itself when the frame rate drops (see PerfGovernor).
+		"graphics/dynamic_resolution": true,
 	}
 	d.merge(PRESETS["High"])
 	return d
+
+
+## The preset a new player starts on, from their graphics card: a discrete GPU gets
+## High, integrated graphics Medium, anything else (software, virtual) Low.
+static func detect_preset() -> String:
+	if DisplayServer.get_name() == "headless":
+		return "High"
+	match RenderingServer.get_video_adapter_type():
+		RenderingDevice.DEVICE_TYPE_DISCRETE_GPU:
+			return "High"
+		RenderingDevice.DEVICE_TYPE_INTEGRATED_GPU:
+			return "Medium"
+	return "Low"
 
 
 static func get_value(key: String) -> Variant:
@@ -84,12 +103,23 @@ static func load_settings() -> void:
 	values = defaults()
 	var cfg := ConfigFile.new()
 	if cfg.load(PATH) != OK:
+		# First run: start on the preset this PC can manage.
+		var first := detect_preset()
+		values.merge(PRESETS[first], true)
+		values["graphics/preset"] = first
 		return
 	for section in cfg.get_sections():
 		if section == "controls":
 			continue
 		for key in cfg.get_section_keys(section):
 			values["%s/%s" % [section, key]] = cfg.get_value(section, key)
+	# Settings saved by an older version lack the newer options: take them from the preset.
+	var chosen := String(values.get("graphics/preset", ""))
+	if PRESETS.has(chosen):
+		for k: String in PRESETS[chosen]:
+			var parts := k.split("/", true, 1)
+			if not cfg.has_section_key(parts[0], parts[1]):
+				values[k] = PRESETS[chosen][k]
 	if cfg.has_section("controls"):
 		for action in cfg.get_section_keys("controls"):
 			if not InputMap.has_action(action):
@@ -131,6 +161,7 @@ static func apply(tree: SceneTree) -> void:
 			AudioServer.set_bus_volume_db(idx, linear_to_db(maxf(v, 0.0001)))
 			AudioServer.set_bus_mute(idx, v <= 0.001)
 	GameClock.real_minutes_per_game_day = float(get_value("gameplay/day_minutes"))
+	PerfGovernor.ensure(tree)
 	if tree.current_scene:
 		apply_to_scene(tree.current_scene)
 
@@ -143,6 +174,20 @@ static func apply_to_scene(root: Node) -> void:
 	var shadow := int(get_value("graphics/shadow_size"))
 	RenderingServer.directional_shadow_atlas_set_size(shadow, true)
 	vp.positional_shadow_atlas_size = shadow / 2
+	var sq := int(get_value("graphics/shadow_quality")) as RenderingServer.ShadowQuality
+	RenderingServer.directional_soft_shadow_filter_set_quality(sq)
+	RenderingServer.positional_soft_shadow_filter_set_quality(sq)
+	RenderingServer.sub_surface_scattering_set_quality(RenderingServer.SUB_SURFACE_SCATTERING_QUALITY_MEDIUM if get_value("graphics/skin_scattering") else RenderingServer.SUB_SURFACE_SCATTERING_QUALITY_DISABLED)
+	for sun in root.get_tree().get_nodes_in_group("sun"):
+		if sun is DirectionalLight3D:
+			(sun as DirectionalLight3D).directional_shadow_max_distance = float(get_value("graphics/shadow_distance"))
+			# Each cascade draws the shadow casters again: two are plenty on lower presets.
+			(sun as DirectionalLight3D).directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(get_value("graphics/shadow_splits")) <= 2 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	var gov := root.get_tree().get_first_node_in_group("perf_governor") as PerfGovernor
+	if gov:
+		gov.enabled = bool(get_value("graphics/dynamic_resolution"))
+		gov.max_scale = scale
+		gov.scale = scale
 	for we in root.find_children("*", "WorldEnvironment", true, false):
 		var env := (we as WorldEnvironment).environment
 		if env == null:

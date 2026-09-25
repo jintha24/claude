@@ -50,8 +50,18 @@ func _ready() -> void:
 	update_now()
 
 
+var _sky_timer := 0.0
+var _sky_minutes := -1.0
+
+
 func _process(delta: float) -> void:
-	update_now()
+	# The sun moves a hundredth of a degree in a tenth of a second: ten updates a second
+	# look the same as sixty (and at once after sleeping, waiting or a test's jump).
+	_sky_timer -= delta
+	if _sky_timer <= 0.0 or absf(GameClock.minutes - _sky_minutes) > 2.0:
+		_sky_timer = 0.1
+		_sky_minutes = GameClock.minutes
+		update_now()
 	_lamp_timer -= delta
 	if _lamp_timer <= 0.0:
 		_lamp_timer = 0.5

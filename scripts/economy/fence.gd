@@ -28,8 +28,18 @@ func _ready() -> void:
 	add_child(solid)
 
 
+var _frame := 0
+
+
 func _process(delta: float) -> void:
 	var b := get_node_or_null("Mags") as NPCBody
+	# Only worth animating when someone's near enough to see her (and at half rate
+	# unless close).
+	_frame += 1
+	var cam := get_viewport().get_camera_3d()
+	var d := cam.global_position.distance_to(global_position) if cam else 0.0
+	if d > 40.0 or (d > 15.0 and _frame % 2 == 1):
+		return
 	if b:
 		# Her day: at the stall from seven, haggling; after ten at night she dozes on her
 		# stool behind it (a fence keeps late hours: she'll still wake for business).
@@ -39,7 +49,7 @@ func _process(delta: float) -> void:
 			pose = NPCBody.Pose.SIT
 		elif fmod(Time.get_ticks_msec() / 1000.0, 30.0) > 21.0:
 			pose = NPCBody.Pose.TALK
-		b.update_body(0.0, pose, delta)
+		b.update_body(0.0, pose, delta if d <= 15.0 else delta * 2.0)
 
 
 func get_interact_point() -> Vector3:

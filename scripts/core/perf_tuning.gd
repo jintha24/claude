@@ -11,6 +11,9 @@ extends RefCounted
 const RANGE_SMALL_PROP := 70.0   # crates, barrels, bollards, hay
 const RANGE_PROP := 120.0        # carts, stalls, troughs
 const RANGE_PERSON := 150.0      # townsfolk and constables
+const RANGE_NEAR := 25.0         # people: all their pieces nearer, the one-piece far body beyond
+const RANGE_SMALL_DETAIL := 45.0 # collars, cravats, belts, hat bands on people
+const RANGE_FACE := 20.0         # eyes, lashes and teeth
 
 
 ## Stops every mesh under `node` being drawn beyond `end` metres (fading over the last 10%).

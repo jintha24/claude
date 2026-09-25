@@ -99,7 +99,18 @@ func _graphics_tab() -> VBoxContainer:
 		GameSettings.set_value("graphics/shadow_size", sizes[i])
 		_apply())
 	p.add_child(UIKit.row("Shadows", shadows))
+	var softness := OptionButton.new()
+	for n: String in ["Hard", "Soft (very low)", "Soft (low)", "Soft (medium)", "Soft (high)", "Soft (ultra)"]:
+		softness.add_item(n)
+	softness.selected = clampi(int(GameSettings.get_value("graphics/shadow_quality")), 0, 5)
+	softness.item_selected.connect(func(i: int) -> void:
+		GameSettings.set_value("graphics/shadow_quality", i)
+		_apply())
+	p.add_child(UIKit.row("Shadow edges", softness))
+	_slide("graphics/shadow_distance", "Shadow distance (m)", 50, 250, 10, p)
+	_check("graphics/skin_scattering", "Skin light scattering", p)
 	_slide("graphics/render_scale", "Render scale (FSR 2 below 1.0)", 0.5, 1.0, 0.01, p)
+	_check("graphics/dynamic_resolution", "Dynamic resolution (keeps the frame rate up)", p)
 	_slide("graphics/view_distance", "View distance in the hills (chunks)", 3, 9, 1, p)
 	return p
 

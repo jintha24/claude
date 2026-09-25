@@ -69,6 +69,7 @@ func _ready() -> void:
 	var h := fixed_height if fixed_height > 0.0 else (1.72 if outfit == NPCBody.Outfit.LADY else _rng.randf_range(1.66, 1.8))
 	_setup_npc(walk_speed * 3.0, h)
 	far_glide = true
+	glide_lod = 1
 	victim_class = "merchant" if is_merchant else LootTable.class_for_outfit(outfit)
 	pockets = LootTable.roll(victim_class, _rng)
 	Stealth.bus().noise_made.connect(_on_noise)

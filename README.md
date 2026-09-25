@@ -108,7 +108,7 @@ and bite.
   - every sound built in code (footsteps on 8 surfaces, doors, locks, bow, rattle, dogs, hooves, bells, thunder)
   - ambience that follows weather, time and place, and chase and tension music
   - drop-in replacements for real recordings
-- **Performance:** occlusion culling, draw distances, NPC level of detail and an F3 performance overlay.
+- **Performance:** occlusion culling, draw distances, NPC level of detail, one-piece far bodies for distant people, merged building shadows, dynamic resolution, graphics presets picked for your PC on first run, and an F3 performance overlay.
 
 **Phase 11 — shipping:**
 - **Export presets:** Windows 64-bit (icon, version and company details in the .exe, and a console launcher for troubleshooting) and Linux.

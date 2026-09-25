@@ -60,9 +60,19 @@ const SLOTS := {
 	"dress": ["silk", 0.5, 0.0], "hat": ["felt", 0.55, 0.0], "hatband": ["silk", 0.4, 0.0], "cap": ["tweed", 0.95, 0.0],
 	"helmet": ["felt", 0.6, 0.0], "bonnet": ["felt", 0.8, 0.0], "trim": ["silk", 0.35, 0.8], "buttons": ["", 0.3, 0.9], "badge": ["", 0.25, 1.0],
 }
+## Pieces only drawn close to (faces), and small ones not drawn far away.
+const FINE_DETAIL: Array[String] = ["eyes", "lashes", "teeth"]
+const SMALL_DETAIL: Array[String] = ["collar", "cravat", "neckerchief", "cuffs", "belt", "gloves", "hair_bun", "beard_moustache", "beard_chops", "stockings"]
+## The pieces that cast shadows (the silhouette); the rest would add draw calls for nothing.
+const SHADOW_CASTERS: Array[String] = ["body", "coat", "cassock", "dress", "shawl", "trousers", "hat_top", "hat_bowler", "hat_cap", "hat_helmet", "hat_kepi", "hat_bonnet"]
 const MORPHS: Array[String] = ["heavy", "thin", "muscular", "old", "face_a", "face_b", "face_c"]
 
+const FAR_SHADER := "res://assets/characters/far_body.gdshader"
+## Cloth textures average about this bright, so a flat colour matches them from afar.
+const CLOTH_TONE := 0.78
+
 static var _scenes := {}
+static var _far_material: ShaderMaterial
 static var _materials := {}
 static var _textures := {}
 
@@ -142,9 +152,17 @@ static func dress(model: Node3D, look: String, seed: int) -> void:
 	for slot: String in palette:
 		var list: Array = palette[slot]
 		colours[slot] = list[rng.randi() % list.size()]
+	var has_far := model.find_child("far_body", true, false) != null
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
 		var n := String(mi.name)
+		for m: String in morph:
+			var idx := mi.find_blend_shape_by_name(m)
+			if idx >= 0:
+				mi.set_blend_shape_value(idx, morph[m])
+		if n == "far_body":
+			_dress_far(mi, look, colours, tone, hair, beard, hat_choice)
+			continue
 		# Optional pieces.
 		if n.begins_with("beard_"):
 			mi.visible = beard != "" and n == "beard_" + beard
@@ -156,19 +174,64 @@ static func dress(model: Node3D, look: String, seed: int) -> void:
 			mi.visible = hat_choice == "cap"
 		elif n.begins_with("hat_bonnet"):
 			mi.visible = hat_choice == "bonnet"
-		for m: String in morph:
-			var idx := mi.find_blend_shape_by_name(m)
-			if idx >= 0:
-				mi.set_blend_shape_value(idx, morph[m])
 		for s in mi.mesh.get_surface_count():
 			var src := mi.mesh.surface_get_material(s)
 			var slot := src.resource_name if src else ""
 			mi.set_surface_override_material(s, material(slot, look, colours, tone, eye, hair))
-		mi.visibility_range_end = PerfTuning.RANGE_PERSON
-		mi.visibility_range_end_margin = PerfTuning.RANGE_PERSON * 0.1
+		# Each piece is a draw call (and more for shadows): small details stop being drawn
+		# well before the person does, only the big pieces cast shadows, and beyond
+		# RANGE_NEAR the whole person is the one-piece far body instead.
+		var reach := PerfTuning.RANGE_NEAR if has_far else PerfTuning.RANGE_PERSON
+		if n in FINE_DETAIL or n.ends_with("_buttons"):
+			reach = minf(reach, PerfTuning.RANGE_FACE)
+		elif n in SMALL_DETAIL or n.ends_with("_band") or n.ends_with("_peak") or n.ends_with("_plate"):
+			reach = minf(reach, PerfTuning.RANGE_SMALL_DETAIL)
+		mi.visibility_range_end = reach
+		mi.visibility_range_end_margin = 2.0 if has_far and reach == PerfTuning.RANGE_NEAR else reach * 0.1
 		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-		if n in ["eyes", "lashes", "teeth", "beard_moustache", "hat_top_band", "hat_bowler_band", "hat_helmet_plate"] or n.ends_with("_buttons"):
+		var big := SHADOW_CASTERS.any(func(prefix: String) -> bool: return n.begins_with(prefix))
+		if not big or n.ends_with("_band") or n.ends_with("_peak") or n.ends_with("_plate"):
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## The one-piece far body (see far_body.gdshader): this person's colours and the optional
+## parts they wear, as instance parameters on a material shared by everyone.
+static func _dress_far(mi: MeshInstance3D, look: String, colours: Dictionary, tone: Color, hair: Color, beard: String, hat_choice: String) -> void:
+	if _far_material == null:
+		_far_material = ShaderMaterial.new()
+		_far_material.shader = load(FAR_SHADER) as Shader
+	mi.material_override = _far_material
+	var pick := func(slots: Array, fallback: Color) -> Color:
+		for slot: String in slots:
+			if colours.has(slot):
+				return colours[slot] * CLOTH_TONE
+		return fallback
+	var base_skin := Color(0.86, 0.66, 0.56) if look != "child" else Color(0.9, 0.7, 0.6)
+	mi.set_instance_shader_parameter("c_skin", base_skin * tone)
+	mi.set_instance_shader_parameter("c_hair", hair * 0.8)
+	mi.set_instance_shader_parameter("c_primary", pick.call(["coat", "dress", "cassock", "greatcoat"], Color(0.25, 0.22, 0.2)))
+	mi.set_instance_shader_parameter("c_secondary", pick.call(["waistcoat", "shawl"], Color(0.3, 0.3, 0.3)))
+	mi.set_instance_shader_parameter("c_legs", pick.call(["trousers", "dress"], Color(0.2, 0.2, 0.2)))
+	mi.set_instance_shader_parameter("c_dark", pick.call(["boots", "belt"], Color(0.04, 0.03, 0.03)))
+	mi.set_instance_shader_parameter("c_linen", pick.call(["shirt", "collar"], Color(0.9, 0.88, 0.84)))
+	mi.set_instance_shader_parameter("c_accent", pick.call(["cravat", "trim", "buttons", "badge"], Color(0.4, 0.1, 0.1)))
+	mi.set_instance_shader_parameter("c_hat", pick.call(["hat", "cap", "helmet", "bonnet"], Color(0.05, 0.05, 0.05)))
+	var mask := 0
+	match beard:
+		"full": mask |= 1 << 1
+		"moustache": mask |= 1 << 2
+		"chops": mask |= 1 << 3
+	match hat_choice:
+		"top": mask |= 1 << 4
+		"bowler": mask |= 1 << 5
+		"cap": mask |= 1 << 6
+		"bonnet": mask |= 1 << 7
+	mi.set_instance_shader_parameter("variants", mask)
+	mi.visibility_range_begin = PerfTuning.RANGE_NEAR
+	mi.visibility_range_begin_margin = 2.0
+	mi.visibility_range_end = PerfTuning.RANGE_PERSON
+	mi.visibility_range_end_margin = PerfTuning.RANGE_PERSON * 0.1
+	mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 
 
 static func _pick_weighted(rng: RandomNumberGenerator, table: Array) -> Color:
