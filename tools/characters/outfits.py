@@ -28,6 +28,17 @@ def part_of(bone):
     return "hand"  # hand, fingers and thumbs
 
 
+# Garment tubes: [bone a, bone b, body part, radius at a, radius at b, ramp] per limb
+# segment (bones without their _l/_r). Cloth hangs round a limb at least this far from
+# its bone, so trousers and sleeves read as cloth, not skin; `ramp` fades it in from
+# the joint at a (the hip, the shoulder) so the garment joins the body smoothly.
+TROUSER_LEGS = [("thigh", "calf", "thigh", 0.118, 0.096, 0.25), ("calf", "foot", "calf", 0.092, 0.084, 0.0)]
+BREECHES = [("thigh", "calf", "thigh", 0.12, 0.085, 0.25)]
+SHIRT_SLEEVES = [("upperarm", "lowerarm", "upperarm", 0.066, 0.058, 0.3), ("lowerarm", "hand", "lowerarm", 0.056, 0.048, 0.0)]
+COAT_SLEEVES = [("upperarm", "lowerarm", "upperarm", 0.078, 0.07, 0.3), ("lowerarm", "hand", "lowerarm", 0.067, 0.06, 0.0)]
+BODICE_SLEEVES = [("upperarm", "lowerarm", "upperarm", 0.07, 0.062, 0.3), ("lowerarm", "hand", "lowerarm", 0.058, 0.05, 0.0)]
+
+
 class Anatomy:
     """Face-level facts about the base body, computed once on the standard body."""
 
@@ -120,27 +131,75 @@ class Builder:
         faces = [a.faces[i] for i in ids]
         return shell_piece(state, key, faces, name, material, t, **kw)
 
+    def tubes(self, state, piece, spec):
+        """Lets a garment hang round each limb segment in `spec` (see TROUSER_LEGS)."""
+        vids = getattr(piece, "base_vids", None)
+        if vids is None or not spec:
+            return piece
+        nb = len(vids)
+        P = piece.positions
+        lib = state.lib
+        parts = np.array([part_of(lib.dominant[v]) for v in vids])
+        delta = np.zeros((nb, 3))
+        for bone_a, bone_b, part, r0, r1, ramp in spec:
+            for side in ("l", "r"):
+                A = state.joint(bone_a + "_" + side)
+                B = state.joint(bone_b + "_" + side)
+                d = B - A
+                L = float(np.linalg.norm(d))
+                d = d / L
+                sel = np.nonzero((parts == part) & (np.sign(state.v[vids][:, 0]) == np.sign(A[0])))[0]
+                if len(sel) == 0:
+                    continue
+                p = P[sel] - A
+                t = np.clip(p @ d / L, 0.0, 1.0)
+                radial = p - np.outer(t * L, d)
+                rlen = np.maximum(np.linalg.norm(radial, axis=1), 1e-6)
+                want = r0 + (r1 - r0) * t
+                w = np.clip(t / ramp, 0.0, 1.0) if ramp > 0 else np.ones_like(t)
+                w = w * w * (3.0 - 2.0 * w)
+                grow = np.maximum(want - rlen, 0.0) * w
+                delta[sel] = radial / rlen[:, None] * grow[:, None]
+        P[:nb] += delta
+        if len(piece.hem_src):
+            P[nb:nb + len(piece.hem_src)] += delta[piece.hem_src]
+        piece.normals = recompute_normals(P, piece.tris)
+        return piece
+
     def shirt(self, state, sleeves="wrist", key="shirt"):
         a = self.a
         y_end = a.wrist_y + 0.03 if sleeves == "wrist" else a.elbow[1] - 0.02
         pred = lambda i, c, p: (p in ("torso", "upperarm") or (p == "lowerarm" and c[1] > y_end) or (p == "pelvis" and c[1] > a.hip_y - 0.02) or (p == "head" and c[1] < a.neck_y + 0.03 and i not in a.face_region))
-        return self.shell(state, key, pred, "shirt", "shirt", 0.008, uv_scale=8.0, drape_iterations=10)
+        piece = self.shell(state, key, pred, "shirt", "shirt", 0.008, uv_scale=8.0, drape_iterations=10)
+        return self.tubes(state, piece, SHIRT_SLEEVES)
 
     def waistcoat(self, state):
         a = self.a
         pred = lambda i, c, p: p in ("torso", "pelvis") and a.hip_y - 0.03 < c[1] < a.neck_y - 0.04
         return self.shell(state, "waistcoat", pred, "waistcoat", "waistcoat", 0.016, uv_scale=8.0, drape_iterations=16, give=0.6)
 
-    def coat_body(self, state, key, y_low, sleeve_end, material="coat", t_body=0.03, t_arm=0.018, drape_iterations=30):
+    def coat_body(self, state, key, y_low, sleeve_end, material="coat", t_body=0.03, t_arm=0.018, drape_iterations=30, sleeves=None, open_front=0.0):
         a = self.a
         pred = lambda i, c, p: ((p in ("torso", "upperarm") or (p == "pelvis" and c[1] > y_low) or (p == "thigh" and c[1] > y_low)
                                  or (p == "lowerarm" and c[1] > sleeve_end)
                                  or (p == "head" and c[1] < a.neck_y + 0.01 and i not in a.face_region)))
+        if open_front > 0.0:
+            # Worn open: a V down the front from the collar to the hem shows what's under it.
+            base_pred = pred
+            chest_z = state.joint("spine_03")[2]
+
+            def pred(i, c, p):
+                if c[2] < chest_z - 0.03 and c[1] < a.neck_y - 0.03 and p in ("torso", "pelvis", "thigh"):
+                    width = open_front * (0.45 + 0.55 * np.clip((a.neck_y - c[1]) / 0.35, 0.0, 1.0))
+                    if abs(c[0]) < width:
+                        return False
+                return base_pred(i, c, p)
 
         def thick(st, vids):
             parts = np.array([part_of(st.lib.dominant[v]) for v in vids])
             return np.where(np.isin(parts, ["upperarm", "lowerarm", "hand"]), t_arm, t_body)
-        return self.shell(state, key, pred, "coat", material, thick, uv_scale=7.0, drape_iterations=drape_iterations, give=0.75)
+        piece = self.shell(state, key, pred, "coat", material, thick, uv_scale=7.0, drape_iterations=drape_iterations, give=0.75)
+        return self.tubes(state, piece, sleeves if sleeves is not None else COAT_SLEEVES)
 
     def coat_skirt(self, state, key, hem_y, front_open=0.0, flare=0.18, material="coat"):
         """Coat tails from MakeHuman's skirt helper, cut at the hem and flared."""
@@ -168,7 +227,7 @@ class Builder:
             return 0.012 + flare * depth ** 1.4 * 0.35
         return shell_piece(state, "skirt:" + key, sel, "coat_skirt", material, thick, uv_scale=7.0)
 
-    def trousers(self, state, hem=None, loose=0.012):
+    def trousers(self, state, hem=None, loose=0.012, straight=True):
         a = self.a
         hem = hem if hem is not None else a.ankle_y + 0.035
         pred = lambda i, c, p: (p in ("thigh",) or (p == "calf" and c[1] > hem) or (p == "pelvis" and c[1] < a.waist_y))
@@ -176,13 +235,74 @@ class Builder:
         def thick(st, vids):
             y = st.v[vids][:, 1]
             return loose + 0.012 * np.clip((a.hip_y - y) / a.hip_y, 0, 1)
-        return self.shell(state, "trousers:%.3f" % hem, pred, "trousers", "trousers", thick, uv_scale=8.0, drape_iterations=30)
+        piece = self.shell(state, "trousers:%.3f" % hem, pred, "trousers", "trousers", thick, uv_scale=8.0, drape_iterations=30)
+        # Straight legs hanging from the hips (or breeches, full only to the knee).
+        return self.tubes(state, piece, TROUSER_LEGS if straight else BREECHES)
 
     def boots(self, state, top=None, key="boots"):
         a = self.a
         top = top if top is not None else a.ankle_y + 0.16
         pred = lambda i, c, p: p == "foot" or (p == "calf" and c[1] < top)
-        return self.shell(state, key + ":%.3f" % top, pred, "boots", "boots", 0.009, uv_scale=6.0, hem=0.006)
+        # Thick leather smoothed right over the toes: a boot, not a foot.
+        piece = self.shell(state, key + ":%.3f" % top, pred, "boots", "boots", 0.013, uv_scale=6.0, hem=0.006, drape_iterations=60, give=0.3)
+        if key == "riding_boots":
+            piece.name = "riding_boots"  # worn over the breeches (see pieces.LAYER)
+        return self._boot_last(state, piece)
+
+    def _boot_last(self, state, piece):
+        """Shapes the foot of a boot on a last: every slice across the foot becomes a smooth
+        rounded outline (no toes), the sole stays flat."""
+        vids = piece.base_vids
+        nb = len(vids)
+        P = piece.positions
+        parts = np.array([part_of(state.lib.dominant[v]) for v in vids])
+        delta = np.zeros((nb, 3))
+        up = np.array([0.0, 1.0, 0.0])
+        for side in ("l", "r"):
+            A = state.joint("foot_" + side)
+            B = state.joint("ball_" + side)
+            f = B - A
+            f[1] = 0.0
+            f /= np.linalg.norm(f)
+            lat = np.cross(up, f)
+            sel = np.nonzero((parts == "foot") & (np.sign(state.v[vids][:, 0]) == np.sign(A[0])))[0]
+            if len(sel) < 10:
+                continue
+            q = P[sel] - A
+            u, v, w = q @ f, q @ lat, q[:, 1]
+            bins = np.floor((u - u.min()) / 0.015).astype(int)
+            nbins = bins.max() + 1
+            ext = np.zeros((nbins, 4))  # vmin, vmax, wmin, wmax
+            for k in range(nbins):
+                m = bins == k
+                if not np.any(m):
+                    ext[k] = ext[k - 1] if k > 0 else [v.min(), v.max(), w.min(), w.max()]
+                    continue
+                ext[k] = [v[m].min(), v[m].max(), w[m].min(), w[m].max()]
+            # Even out the slices along the foot (a last has no knuckles).
+            sm = ext.copy()
+            for _ in range(3):
+                pad = np.vstack([sm[:1], sm, sm[-1:]])
+                sm = (pad[:-2] + 2.0 * pad[1:-1] + pad[2:]) / 4.0
+            sm[:, 2] = np.minimum(sm[:, 2], ext[:, 2])  # keep the sole down
+            e = sm[bins]
+            cv, av = (e[:, 0] + e[:, 1]) * 0.5, np.maximum((e[:, 1] - e[:, 0]) * 0.5, 0.005)
+            cw, aw = (e[:, 2] + e[:, 3]) * 0.5, np.maximum((e[:, 3] - e[:, 2]) * 0.5, 0.005)
+            ang = np.arctan2((w - cw) / aw, (v - cv) / av)
+            c, s_ = np.cos(ang), np.sin(ang)
+            nv = cv + av * np.sign(c) * np.abs(c) ** (2.0 / 3.0)
+            nw = cw + aw * np.sign(s_) * np.abs(s_) ** (2.0 / 3.0)
+            delta[sel] = np.outer(nv - v, lat) + np.outer(nw - w, up)
+        P[:nb] += delta
+        if len(piece.hem_src):
+            P[nb:nb + len(piece.hem_src)] += delta[piece.hem_src]
+        piece.normals = recompute_normals(P, piece.tris)
+        return piece
+
+    def stockings(self, state, top):
+        """Knee stockings (boys in short trousers)."""
+        pred = lambda i, c, p: p == "calf" and c[1] < top
+        return self.shell(state, "stockings:%.3f" % top, pred, "stockings", "stockings", 0.003, uv_scale=8.0, hem=0.003)
 
     def gloves(self, state):
         a = self.a
@@ -431,16 +551,16 @@ def outfit_pieces(name, builder, state, male=True):
               b.collar(state, "clerical_collar", "collar", 0.03), b.hair(state)]
         P.append(b.buttons(state, "cassock_buttons", [a.hip_y + 0.05 + k * 0.05 for k in range(8)], bone="spine_02"))
     elif name == "lady":
-        P += [b.body_parts(state, {"head", "hand"}), b.coat_body(state, "bodice", a.hip_y + 0.02, a.wrist_y + 0.03, material="dress", t_body=0.012, t_arm=0.007, drape_iterations=30),
+        P += [b.body_parts(state, {"head", "hand"}), b.coat_body(state, "bodice", a.hip_y + 0.02, a.wrist_y + 0.03, material="dress", t_body=0.012, t_arm=0.007, drape_iterations=30, sleeves=BODICE_SLEEVES),
               b.bell_skirt(state, "crinoline", bell=1.15), b.shawl(state), b.collar(state, "lace_collar", "collar", 0.03), b.hair(state), b.bun(state)]
         P += b.bonnet(state)
     elif name == "child":
         P += [b.body_parts(state, {"head", "hand", "lowerarm"}), b.shirt(state, "elbow", "shirt_rolled"), b.coat_body(state, "jacket", a.hip_y - 0.05, a.elbow[1] - 0.04, t_body=0.018, t_arm=0.015),
-              b.trousers(state, hem=a.knee_y - 0.08, loose=0.016), b.boots(state, a.ankle_y + 0.07, "shoes"), b.hair(state)]
+              b.trousers(state, hem=a.knee_y - 0.08, loose=0.016), b.stockings(state, a.knee_y - 0.04), b.boots(state, a.ankle_y + 0.07, "shoes"), b.hair(state)]
         P += b.flat_cap(state)
     elif name == "harry":
-        P += [b.body_parts(state, {"head"}), b.shirt(state), b.waistcoat(state), b.coat_body(state, "greatcoat", a.hip_y - 0.14, a.wrist_y + 0.03, material="greatcoat", t_body=0.036, t_arm=0.022),
-              b.coat_skirt(state, "greatcoat", a.knee_y - 0.2, front_open=0.06, flare=0.24, material="greatcoat"), b.trousers(state), b.boots(state, a.knee_y - 0.03, "riding_boots"),
+        P += [b.body_parts(state, {"head"}), b.shirt(state), b.waistcoat(state), b.coat_body(state, "greatcoat:open", a.hip_y - 0.14, a.wrist_y + 0.03, material="greatcoat", t_body=0.036, t_arm=0.022, open_front=0.085),
+              b.coat_skirt(state, "greatcoat", a.knee_y - 0.2, front_open=0.06, flare=0.24, material="greatcoat"), b.trousers(state, straight=False), b.boots(state, a.knee_y - 0.03, "riding_boots"),
               b.gloves(state), b.band(state, "belt", a.hip_y + 0.03, a.hip_y + 0.08, "belt", "belt", 0.034), b.cravat(state), b.hair(state), b.beard(state, "chops")]
         P += b.top_hat(state)
     else:

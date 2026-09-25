@@ -248,7 +248,7 @@ def shell_piece(state, key, faces, name, material, thickness, uv_scale=6.0, hem=
 
 
 # Dressing order, inner first.
-LAYER = {"shirt": 0, "trousers": 1, "gloves": 1, "boots": 2, "waistcoat": 3, "coat": 4, "cuffs": 5, "belt": 5,
+LAYER = {"shirt": 0, "stockings": 0.2, "boots": 0.5, "trousers": 1, "gloves": 1, "riding_boots": 2, "waistcoat": 3, "coat": 4, "cuffs": 5, "belt": 5,
          "collar": 6, "neckerchief": 6, "cravat": 7, "shawl": 8}
 
 

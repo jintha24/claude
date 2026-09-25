@@ -37,7 +37,8 @@ const PALETTES := {
 		"trousers": [Color(0.25, 0.22, 0.18), Color(0.2, 0.2, 0.19), Color(0.3, 0.26, 0.2)], "cap": [Color(0.22, 0.2, 0.17), Color(0.15, 0.14, 0.13)],
 		"cravat": [Color(0.35, 0.12, 0.1), Color(0.2, 0.2, 0.25)], "boots": [Color(0.12, 0.09, 0.07)]},
 	"child": {"shirt": [Color(0.66, 0.63, 0.55), Color(0.55, 0.55, 0.52)], "coat": [Color(0.3, 0.25, 0.18), Color(0.24, 0.22, 0.2), Color(0.18, 0.2, 0.25)],
-		"trousers": [Color(0.28, 0.24, 0.18), Color(0.22, 0.2, 0.18)], "cap": [Color(0.25, 0.22, 0.18), Color(0.16, 0.15, 0.14)], "boots": [Color(0.12, 0.09, 0.07)]},
+		"trousers": [Color(0.28, 0.24, 0.18), Color(0.22, 0.2, 0.18)], "cap": [Color(0.25, 0.22, 0.18), Color(0.16, 0.15, 0.14)], "boots": [Color(0.12, 0.09, 0.07)],
+		"stockings": [Color(0.12, 0.12, 0.13), Color(0.22, 0.2, 0.18), Color(0.3, 0.3, 0.32)]},
 	"constable": {"coat": [Color(0.045, 0.055, 0.11)], "trousers": [Color(0.045, 0.05, 0.1)], "helmet": [Color(0.04, 0.05, 0.1)], "belt": [Color(0.02, 0.02, 0.02)],
 		"boots": [Color(0.02, 0.02, 0.02)], "buttons": [Color(0.8, 0.8, 0.82)], "badge": [Color(0.82, 0.82, 0.85)]},
 	"house_guard": {"coat": [Color(0.36, 0.06, 0.07)], "trim": [Color(0.78, 0.6, 0.26)], "trousers": [Color(0.08, 0.08, 0.08), Color(0.62, 0.55, 0.42)],
@@ -53,7 +54,7 @@ const PALETTES := {
 
 ## Which cloth texture each slot uses, and its roughness / metallic.
 const SLOTS := {
-	"shirt": ["linen", 0.9, 0.0], "collar": ["linen", 0.7, 0.0], "waistcoat": ["tweed", 0.85, 0.0], "coat": ["wool", 0.88, 0.0],
+	"shirt": ["linen", 0.9, 0.0], "stockings": ["wool", 0.95, 0.0], "collar": ["linen", 0.7, 0.0], "waistcoat": ["tweed", 0.85, 0.0], "coat": ["wool", 0.88, 0.0],
 	"greatcoat": ["leather", 0.5, 0.0], "cassock": ["wool", 0.9, 0.0], "trousers": ["wool", 0.9, 0.0], "boots": ["leather", 0.38, 0.0],
 	"gloves": ["leather", 0.45, 0.0], "belt": ["leather", 0.35, 0.0], "cravat": ["silk", 0.45, 0.0], "shawl": ["wool", 0.95, 0.0],
 	"dress": ["silk", 0.5, 0.0], "hat": ["felt", 0.55, 0.0], "hatband": ["silk", 0.4, 0.0], "cap": ["tweed", 0.95, 0.0],
