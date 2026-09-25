@@ -15,7 +15,7 @@ const LAMP_SHADOW_BUDGET := 6
 
 @export var sun_path: NodePath = ^"../Sun"
 @export var environment_path: NodePath = ^"../WorldEnvironment"
-@export var max_sun_energy: float = 2.7
+@export var max_sun_energy: float = 2.4
 @export var moon_energy: float = 0.12
 
 var sun_elevation: float = 0.0 # degrees
@@ -24,7 +24,6 @@ var sun_azimuth: float = 0.0 # degrees from north, clockwise
 var _sun: DirectionalLight3D
 var _moon: DirectionalLight3D
 var _env: Environment
-var _stars: Texture2D
 ## Daytime haze: the pale blue-grey of distance over a coal-burning city.
 var _day_fog := Color(0.68, 0.73, 0.8)
 var _night_fog := Color(0.05, 0.06, 0.09)
@@ -39,8 +38,6 @@ func _ready() -> void:
 	var we := get_node_or_null(environment_path) as WorldEnvironment
 	if we:
 		_env = we.environment
-		if _env and _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
-			_stars = _make_starfield()
 	_moon = DirectionalLight3D.new()
 	_moon.name = "Moon"
 	_moon.light_color = Color(0.62, 0.72, 0.95)
@@ -113,14 +110,17 @@ func update_now() -> void:
 		# Thin by day (clear air between the smoke), thicker at night so lamps glow in it.
 		_env.volumetric_fog_density = lerpf(0.012, 0.004, daylight) + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
 		_env.fog_density = 0.0011 + Weather.fog * 0.03 + Weather.rain * 0.004
-		if _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
-			var sky := _env.sky.sky_material as PhysicalSkyMaterial
-			sky.energy_multiplier = lerpf(1.0, 0.4, Weather.cloud * Weather.cloud)
-			sky.mie_coefficient = 0.005 + Weather.cloud * 0.03 + Weather.fog * 0.05
-			# Stars only once the sky is dark (the sky shader adds them over the daylight too).
-			var want_stars := daylight < 0.12 and Weather.cloud < 0.85
-			if want_stars != (sky.night_sky != null):
-				sky.night_sky = _stars if want_stars else null
+		if _env.sky and _env.sky.sky_material is ShaderMaterial:
+			# The sky shader (assets/sky/london_sky.gdshader): blue by day, clouds that follow
+			# the weather, sunset colours and stars.
+			var sky := _env.sky.sky_material as ShaderMaterial
+			sky.set_shader_parameter("day", smoothstep(-10.0, 8.0, sun_elevation))
+			# Fair-weather clouds even on a "clear" day; a lid of grey in rain and storms.
+			sky.set_shader_parameter("coverage", clampf(maxf(Weather.cloud, 0.32) + Weather.rain * 0.1, 0.0, 1.0))
+			sky.set_shader_parameter("darkness", clampf(Weather.rain * 0.65 + maxf(Weather.cloud - 0.65, 0.0) * 0.8, 0.0, 0.9))
+			sky.set_shader_parameter("haze", clampf(Weather.fog * 0.9 + Weather.snow * 0.3, 0.0, 1.0))
+			sky.set_shader_parameter("stars", (1.0 - smoothstep(-12.0, -4.0, sun_elevation)) * (1.0 - smoothstep(0.5, 0.85, Weather.cloud)))
+			sky.set_shader_parameter("sky_energy", lerpf(1.0, 0.55, Weather.cloud * Weather.cloud))
 	_update_windows(h)
 
 
@@ -183,19 +183,3 @@ func _update_windows(h: float) -> void:
 	for g in 3:
 		MaterialLibrary.set_window_lit(g, dark and bool(evening_on[g]))
 	MaterialLibrary.set_shop_window_lit(dark and h >= 15.0 and h < 20.0)
-
-
-func _make_starfield() -> ImageTexture:
-	var w := 2048
-	var hgt := 1024
-	var img := Image.create(w, hgt, false, Image.FORMAT_RGB8)
-	img.fill(Color(0.0, 0.0, 0.0))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1866
-	for i in 2600:
-		var x := rng.randi_range(0, w - 1)
-		var y := rng.randi_range(0, hgt / 2) # upper hemisphere only
-		var b := pow(rng.randf(), 3.0) * 0.9 + 0.05
-		var tint := Color(b, b, b * 1.1).lerp(Color(b, b * 0.9, b * 0.8), rng.randf() * 0.4)
-		img.set_pixel(x, y, tint)
-	return ImageTexture.create_from_image(img)

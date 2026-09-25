@@ -98,3 +98,65 @@ Now it is:
   - the size, the villages and their people
   - the fields and hedgerows, and the livestock
   - the London road to the east edge
+
+## A living world: sky, traffic, birds, crowds
+
+### Sky
+`assets/sky/london_sky.gdshader` replaces the old physical sky.
+
+**What it draws:**
+- **Daytime:** a deep blue sky that pales to haze at the horizon, the sun with its glow, and silver linings on the clouds.
+- **Clouds:** they sit on a curved dome and drift with the wind.
+  - **Clear days:** scattered fair-weather cumulus.
+  - **Overcast:** broken grey cloud.
+  - **Rain and storms:** a dark lid over the whole sky.
+- **Dawn and dusk:** warm colours towards the sun.
+- **Clear nights:** stars.
+
+**What drives it:**
+- `DayNightCycle` sets these every tenth of a second:
+  - daylight
+  - cloud coverage and darkness from `Weather`
+  - fog haze
+  - stars
+- `WeatherEffects` moves the clouds with the wind.
+
+**Exposure:**
+- The daytime exposure target is lower than before.
+- Pale paving is toned down so sunlit streets no longer glare.
+- There is more fill light from the sky in the shade.
+
+### Traffic (`scripts/city/horse_vehicle.gd`, `city_traffic.gd`)
+**The vehicles:**
+- **Kinds:** hansom cabs, four-wheeled growlers, carriers' carts, brewers' drays laden with barrels, and two-horse omnibuses carrying advertisements.
+- **Details:** trotting horses in harness, turning wheels, and a driver up on the box.
+
+**How they drive:**
+- They follow the main roads, keep to the left, and turn at the junctions.
+- They queue behind each other.
+- They pull up for Harry ("Mind yerself!") and for people in the road.
+- They are solid, and push people out of the way.
+
+**How many:**
+- About 18 round the player by day, fewer at night and in fog or snow.
+- Only a few while Harry is inside the old streets.
+- In the hills (`scripts/wilderness/road_traffic.gd`), carts, wagons and the odd cab travel the London road and the village lanes.
+
+### Birds (`scripts/world/bird_life.gd`)
+- **Flying flocks:**
+  - In the city: pigeons and starlings wheel over the rooftops, and gulls work the Thames.
+  - In the hills: rooks.
+- **On the ground:** pigeons peck in the streets, and rooks in the fields.
+  - Walk or drive at them and they clatter up and away, then settle again a little way off.
+- **How they're drawn:** each flock is one draw call, with the wings flapping in the vertex shader.
+
+### Crowds and dogs
+- The city streets hold up to about 56 passers-by round the player at the busiest hours.
+- Some walk their dogs (`scripts/world/street_dog.gd`), which trot at their owner's heel.
+
+### Tests
+`tests/test_life.gd` (16 checks):
+- **Sky:** the sky shader is in use, clouds follow the weather and drift with the wind, and daytime is starless.
+- **Traffic:** vehicles come in several kinds, drive along, keep to the left, and pull up for Harry.
+- **Birds:** flocks are about, and pigeons fly up when approached.
+- **Crowds:** the streets are crowded by day, and dogs keep to their owners' heels.

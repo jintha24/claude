@@ -1,22 +1,47 @@
 [gd_resource type="Environment" format=3]
 
-[sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_idi28"]
-rayleigh_coefficient = 2.0
-rayleigh_color = Color(0.3, 0.48, 0.76, 1)
-mie_coefficient = 0.005
-mie_eccentricity = 0.86
-mie_color = Color(0.86, 0.76, 0.6, 1)
-turbidity = 6.0
-sun_disk_scale = 1.0
-ground_color = Color(0.12, 0.11, 0.1, 1)
+[ext_resource type="Shader" path="res://assets/sky/london_sky.gdshader" id="1_sky"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_clouds"]
+seed = 7
+frequency = 0.007
+fractal_octaves = 5
+fractal_gain = 0.55
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_clouds"]
+width = 512
+height = 512
+generate_mipmaps = true
+seamless = true
+noise = SubResource("FastNoiseLite_clouds")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_detail"]
+seed = 19
+frequency = 0.02
+fractal_octaves = 4
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_detail"]
+width = 256
+height = 256
+generate_mipmaps = true
+seamless = true
+noise = SubResource("FastNoiseLite_detail")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("1_sky")
+shader_parameter/cloud_noise = SubResource("NoiseTexture2D_clouds")
+shader_parameter/cloud_detail = SubResource("NoiseTexture2D_detail")
 
 [sub_resource type="Sky" id="Sky_16jpr"]
-sky_material = SubResource("PhysicalSkyMaterial_idi28")
+sky_material = SubResource("ShaderMaterial_sky")
+process_mode = 2
+radiance_size = 2
 
 [resource]
 background_mode = 2
 sky = SubResource("Sky_16jpr")
 ambient_light_source = 3
+ambient_light_energy = 1.5
 reflected_light_source = 2
 tonemap_mode = 4
 ssr_enabled = true

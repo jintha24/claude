@@ -430,6 +430,7 @@ func _add_lamps(node: Node3D, data: Dictionary, lod: int) -> void:
 		for i in lamps.size():
 			mm.set_instance_transform(i, Transform3D(Basis.IDENTITY, lamps[i]))
 		var mmi := MultiMeshInstance3D.new()
+		mmi.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 		mmi.name = part[1]
 		mmi.multimesh = mm
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -449,6 +450,7 @@ func _add_trees(node: Node3D, data: Dictionary, lod: int) -> void:
 		var s: float = t[1]
 		mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, t[2]).scaled(Vector3(s, s, s)), t[0]))
 	var mmi := MultiMeshInstance3D.new()
+	mmi.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	mmi.name = "Trees"
 	mmi.multimesh = mm
 	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if lod == 0 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -621,6 +623,7 @@ func _build_distant() -> void:
 		mm.set_instance_transform(i, xforms[i])
 		mm.set_instance_color(i, colors[i])
 	_distant = MultiMeshInstance3D.new()
+	_distant.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	_distant.name = "DistantCity"
 	_distant.multimesh = mm
 	_distant.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

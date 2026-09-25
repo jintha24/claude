@@ -13,7 +13,7 @@ extends Node3D
 @export var streamer_path: NodePath = NodePath("../City")
 @export var player_path: NodePath = NodePath("../Harry")
 ## Passers-by kept within SPAWN_MAX of the player at the busiest hour.
-@export var max_people: int = 34
+@export var max_people: int = 56
 @export var max_constables: int = 3
 
 const SPAWN_MIN := 28.0
@@ -61,7 +61,7 @@ func _process(delta: float) -> void:
 		return
 	var want := _wanted_people(p)
 	var spawned := 0
-	while _people.size() < want and spawned < 2:
+	while _people.size() < want and spawned < 3:
 		if not _spawn_person(p, doors):
 			break
 		spawned += 1
@@ -72,7 +72,7 @@ func _process(delta: float) -> void:
 ## Fewer people at night and in foul weather; none while the player is deep in the old
 ## streets (they have their own crowds).
 func _wanted_people(p: Vector3) -> int:
-	var inner := CityPlan.CORE.grow(-25.0)
+	var inner := CityPlan.CORE.grow(-8.0)
 	if inner.has_point(Vector2(p.x, p.z)):
 		return 0
 	var h := GameClock.hours()
@@ -97,7 +97,7 @@ func _wanted_people(p: Vector3) -> int:
 
 
 func _wanted_constables(p: Vector3) -> int:
-	if CityPlan.CORE.grow(-25.0).has_point(Vector2(p.x, p.z)):
+	if CityPlan.CORE.grow(-8.0).has_point(Vector2(p.x, p.z)):
 		return 0
 	return max_constables
 
@@ -194,6 +194,14 @@ func _spawn_person(p: Vector3, doors: Array) -> bool:
 			if _rng.randf() < 0.3 and district in ["east", "south", "city"]:
 				c.set_drunk(true)
 	_people.append(c)
+	# Some take their dog out with them.
+	if not seller and _rng.randf() < 0.18:
+		var dog := StreetDog.new()
+		dog.name = "Dog%d" % _counter
+		dog.owner_node = c
+		dog.ground_fn = plan.ground_y
+		add_child(dog)
+		dog.global_position = start
 	return true
 
 

@@ -23,6 +23,8 @@
 [ext_resource type="Script" path="res://scripts/story/story_director.gd" id="23_story"]
 [ext_resource type="Script" path="res://scripts/city/city_streamer.gd" id="24_city"]
 [ext_resource type="Script" path="res://scripts/city/city_life.gd" id="25_clife"]
+[ext_resource type="Script" path="res://scripts/city/city_traffic.gd" id="26_traffic"]
+[ext_resource type="Script" path="res://scripts/world/bird_life.gd" id="27_birds"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -88,6 +90,12 @@ script = ExtResource("13_popul")
 
 [node name="CityLife" type="Node3D" parent="."]
 script = ExtResource("25_clife")
+
+[node name="Traffic" type="Node3D" parent="."]
+script = ExtResource("26_traffic")
+
+[node name="Birds" type="Node3D" parent="."]
+script = ExtResource("27_birds")
 
 [node name="Patrols" type="Node3D" parent="."]
 script = ExtResource("10_patrl")

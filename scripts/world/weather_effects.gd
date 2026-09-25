@@ -23,6 +23,8 @@ var _puddles: Array[Decal] = []
 var _last_wetness := -1.0
 var _last_snow := -1.0
 var _cloud_offset := Vector2.ZERO
+var _sky_offset := Vector2.ZERO
+var _sky_wind_timer := 0.0
 
 
 func _ready() -> void:
@@ -66,6 +68,16 @@ func _process(delta: float) -> void:
 	var wind_vec := Weather.wind_direction * Weather.wind
 	_cloud_offset += Vector2(wind_vec.x, wind_vec.z) * delta * 0.004
 	_cloud_mat.set_shader_parameter("offset", _cloud_offset)
+	_sky_wind_timer -= delta
+	if _sky_wind_timer <= 0.0:
+		# The sky's clouds drift too (a few updates a second: the sky's lighting is re-drawn
+		# each time).
+		_sky_wind_timer = 0.25
+		_sky_offset += Vector2(wind_vec.x, wind_vec.z) * 0.25 * 0.0012 + Vector2(0.0002, 0.0001)
+		var we := get_tree().current_scene.get_node_or_null("WorldEnvironment") as WorldEnvironment if get_tree().current_scene else null
+		if we and we.environment and we.environment.sky and we.environment.sky.sky_material is ShaderMaterial:
+			(we.environment.sky.sky_material as ShaderMaterial).set_shader_parameter("wind_offset", _sky_offset)
+			_clouds.visible = false
 	# Lightning flash decays quickly.
 	if _flash_energy > 0.0:
 		_flash_energy = maxf(_flash_energy - delta * 30.0, 0.0)

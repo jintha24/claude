@@ -25,6 +25,16 @@ func _ready() -> void:
 	var farm := FarmAnimals.new()
 	farm.name = "FarmAnimals"
 	add_child(farm)
+	var traffic := RoadTraffic.new()
+	traffic.name = "RoadTraffic"
+	add_child(traffic)
+	var birds := BirdLife.new()
+	birds.name = "Birds"
+	birds.place = "hills"
+	birds.flying_flocks = 3
+	birds.ground_flocks = 3
+	birds.set_height_fn(gen.height)
+	add_child(birds)
 	var audio := get_node_or_null("Audio") as AudioDirector
 	if audio:
 		audio.add_zone("water_lap", Vector3(TerrainGenerator.LAKE.x, TerrainGenerator.WATER_Y, TerrainGenerator.LAKE.y), TerrainGenerator.LAKE_RADIUS - 15.0, 45.0, 0.7)

@@ -20,12 +20,12 @@ const TEXTURE_ROOT := "res://assets/textures"
 const DEFS := {
 	"brick_yellow": {"tile_proc": Vector2(0.9, 0.6), "tile_real": 1.5, "mode": "world"},
 	"brick_red": {"tile_proc": Vector2(0.9, 0.6), "tile_real": 1.5, "mode": "world"},
-	"stucco": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 2.0, "mode": "world"},
+	"stucco": {"tile_proc": Vector2(3.0, 3.0), "tile_real": 2.0, "mode": "world", "tint": 0.86},
 	"stone_trim": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world"},
 	"slate_roof": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 2.0, "mode": "uv"},
-	"cobblestone": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 2.0, "mode": "uv", "parallax": 0.6},
-	"pavement": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world"},
-	"curb_granite": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.0, "mode": "world"},
+	"cobblestone": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 2.0, "mode": "uv", "parallax": 0.6, "tint": 0.72},
+	"pavement": {"tile_proc": Vector2(2.0, 2.0), "tile_real": 2.0, "mode": "world", "tint": 0.7},
+	"curb_granite": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.0, "mode": "world", "tint": 0.8},
 	"wood_planks": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "world"},
 	"wood_planks_local": {"folder": "wood_planks", "tile_proc": Vector2(1.0, 1.0), "tile_real": 1.5, "mode": "local"},
 	"wood_painted": {"tile_proc": Vector2(1.0, 1.0), "tile_real": 1.0, "mode": "world"},
@@ -199,6 +199,9 @@ static func _textured(key: String) -> StandardMaterial3D:
 	mat.roughness = 1.0
 	mat.metallic = 0.0
 	mat.ao_light_affect = 0.4
+	# Pale stone reads too bright in full sun: soot and grime darken it.
+	var tint: float = def.get("tint", 1.0)
+	mat.albedo_color = Color(tint, tint, tint)
 	mat.set_meta("tile_size", tile)
 
 	match def["mode"]:
