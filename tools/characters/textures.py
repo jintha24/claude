@@ -267,6 +267,13 @@ def bake_skin(state, out_dir, name, male, size=1024, seed=7):
     palm = (np.char.startswith(names.astype(str), "hand") & (N[:, 1] > 0.3)) | np.isin(names, ["ball_l", "ball_r"])
     col = np.where(palm[:, None], col * 1.06, col)
     albedo = col.reshape(size, size, 3)
+    # Pores, fine capillaries and freckles: skin is never an even tone close up.
+    pores = tile_noise(size, 384, seed + 31) * 0.5 + tile_noise(size, 192, seed + 32) * 0.5
+    albedo = albedo * (1.0 - 0.07 * np.clip(pores, 0, 1))[..., None]
+    capil = np.clip(tile_fbm(size, 48, seed + 33, 3) * 2.0 - 0.6, 0, 1)
+    albedo = albedo * (1.0 - capil[..., None] * np.array([0.0, 0.06, 0.05]))
+    freck = (tile_noise(size, 256, seed + 34) > 0.78) * np.clip(tile_fbm(size, 8, seed + 35, 2) + 0.2, 0, 1)
+    albedo = albedo * (1.0 - freck[..., None] * np.array([0.05, 0.1, 0.12]))
     save_rgb(albedo, os.path.join(out_dir, name + ".jpg"))
     return albedo
 

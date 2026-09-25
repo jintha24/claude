@@ -54,11 +54,11 @@ const PALETTES := {
 
 ## Which cloth texture each slot uses, and its roughness / metallic.
 const SLOTS := {
-	"shirt": ["linen", 0.9, 0.0], "stockings": ["wool", 0.95, 0.0], "collar": ["linen", 0.7, 0.0], "waistcoat": ["tweed", 0.85, 0.0], "coat": ["wool", 0.88, 0.0],
-	"greatcoat": ["leather", 0.5, 0.0], "cassock": ["wool", 0.9, 0.0], "trousers": ["wool", 0.9, 0.0], "boots": ["leather", 0.38, 0.0],
-	"gloves": ["leather", 0.45, 0.0], "belt": ["leather", 0.35, 0.0], "cravat": ["silk", 0.45, 0.0], "shawl": ["wool", 0.95, 0.0],
-	"dress": ["silk", 0.5, 0.0], "hat": ["felt", 0.55, 0.0], "hatband": ["silk", 0.4, 0.0], "cap": ["tweed", 0.95, 0.0],
-	"helmet": ["felt", 0.6, 0.0], "bonnet": ["felt", 0.8, 0.0], "trim": ["silk", 0.35, 0.8], "buttons": ["", 0.3, 0.9], "badge": ["", 0.25, 1.0],
+	"shirt": ["linen", 0.93, 0.0], "stockings": ["wool", 0.97, 0.0], "collar": ["linen", 0.8, 0.0], "waistcoat": ["tweed", 0.93, 0.0], "coat": ["wool", 0.96, 0.0],
+	"greatcoat": ["leather", 0.66, 0.0], "cassock": ["wool", 0.96, 0.0], "trousers": ["wool", 0.96, 0.0], "boots": ["leather", 0.52, 0.0],
+	"gloves": ["leather", 0.62, 0.0], "belt": ["leather", 0.55, 0.0], "cravat": ["silk", 0.7, 0.0], "shawl": ["wool", 0.98, 0.0],
+	"dress": ["silk", 0.72, 0.0], "hat": ["felt", 0.75, 0.0], "hatband": ["silk", 0.5, 0.0], "cap": ["tweed", 0.97, 0.0],
+	"helmet": ["felt", 0.8, 0.0], "bonnet": ["felt", 0.9, 0.0], "trim": ["silk", 0.35, 0.8], "buttons": ["", 0.3, 0.9], "badge": ["", 0.25, 1.0],
 }
 ## Pieces only drawn close to (faces), and small ones not drawn far away.
 const FINE_DETAIL: Array[String] = ["eyes", "lashes", "teeth"]
@@ -274,14 +274,13 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			var skin := "skin_female" if look == "lady" else ("skin_child" if look == "child" else "skin_male")
 			m.albedo_texture = _tex(skin + ".jpg")
 			m.albedo_color = tone
-			m.roughness = 0.58
-			m.metallic_specular = 0.38
+			# Real skin: a soft, slightly oily sheen and only a little light passing through
+			# (too much scattering and a glowing rim are what make faces look like wax).
+			m.roughness = 0.52
+			m.metallic_specular = 0.45
 			m.subsurf_scatter_enabled = true
-			m.subsurf_scatter_strength = 0.35
+			m.subsurf_scatter_strength = 0.12
 			m.subsurf_scatter_skin_mode = true
-			m.rim_enabled = true
-			m.rim = 0.12
-			m.rim_tint = 0.6
 		"eye":
 			m.albedo_texture = _tex(eye + ".png")
 			m.roughness = 0.08
@@ -320,6 +319,15 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			m.uv1_triplanar_sharpness = 2.0
 			m.roughness = spec[1]
 			m.metallic = spec[2]
+			if spec[0] in ["wool", "tweed", "felt", "linen", "silk"]:
+				# Fabric: fibres catch the light at grazing angles (a soft sheen at the
+				# silhouette) and there's no hard highlight anywhere.
+				m.rim_enabled = true
+				m.rim = 0.45
+				m.rim_tint = 0.85
+				m.metallic_specular = 0.25
+			elif spec[0] == "leather":
+				m.metallic_specular = 0.35
 			m.vertex_color_use_as_albedo = true
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_materials[key] = m

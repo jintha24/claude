@@ -148,6 +148,9 @@ static func make_horse_trough() -> StaticBody3D:
 	return body
 
 
+const HAY_TEX := "res://assets/textures/hay/"
+
+
 ## A loose heap of hay (no collision) with a HidingSpot inside it.
 static func make_hay_heap(color: Color = Color(0.72, 0.6, 0.33)) -> Node3D:
 	var root := Node3D.new()
@@ -166,6 +169,15 @@ static func make_hay_heap(color: Color = Color(0.72, 0.6, 0.33)) -> Node3D:
 	hay.normal_texture = noise
 	hay.uv1_triplanar = true
 	hay.uv1_scale = Vector3(3, 3, 3)
+	# Straw, not a smooth lump (baked by tools/textures/bake_world.py).
+	if ResourceLoader.exists(HAY_TEX + "hay_diff.jpg"):
+		hay.albedo_color = Color.WHITE.lerp(color / Color(0.72, 0.6, 0.33), 0.25)
+		hay.albedo_texture = load(HAY_TEX + "hay_diff.jpg")
+		hay.normal_texture = load(HAY_TEX + "hay_nor_gl.jpg")
+		hay.normal_scale = 1.4
+		hay.roughness_texture = load(HAY_TEX + "hay_rough.jpg")
+		hay.uv1_scale = Vector3(1.4, 1.4, 1.4)
+		hay.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	var blobs := [
 		[Vector3(0, 0.45, 0), Vector3(1.9, 1.05, 1.7)],
 		[Vector3(0.45, 0.35, 0.35), Vector3(1.2, 0.8, 1.1)],
