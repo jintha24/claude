@@ -15,7 +15,7 @@ const LAMP_SHADOW_BUDGET := 6
 
 @export var sun_path: NodePath = ^"../Sun"
 @export var environment_path: NodePath = ^"../WorldEnvironment"
-@export var max_sun_energy: float = 2.4
+@export var max_sun_energy: float = 2.7
 @export var moon_energy: float = 0.12
 
 var sun_elevation: float = 0.0 # degrees
@@ -84,8 +84,11 @@ func update_now() -> void:
 		_sun.visible = e > -3.0
 		var low := Color(1.0, 0.42, 0.18)
 		var golden := Color(1.0, 0.72, 0.45)
-		var noon := Color(1.0, 0.95, 0.88)
+		var noon := Color(1.0, 0.93, 0.84)
 		_sun.light_color = low.lerp(golden, smoothstep(0.0, 8.0, e)).lerp(noon, smoothstep(12.0, 35.0, e))
+		# Shafts of light in the haze when the sun is low; a high sun only lightens it a little
+		# (otherwise the whole view goes milky looking towards it).
+		_sun.light_volumetric_fog_energy = lerpf(1.1, 0.25, smoothstep(6.0, 25.0, e))
 	# The moon: roughly opposite the sun (a simple full-moon approximation).
 	var moon_el := -sun_elevation * 0.8 + 10.0
 	var moon_dir := direction_from(moon_el, fposmod(sun_azimuth + 180.0, 360.0))
@@ -107,12 +110,13 @@ func update_now() -> void:
 		fog = fog.lerp(Color(0.5, 0.47, 0.35) * maxf(daylight, 0.12), Weather.fog * 0.7)
 		_env.fog_light_color = fog
 		_env.volumetric_fog_albedo = Color(0.88, 0.88, 0.9).lerp(Color(0.5, 0.55, 0.65), 1.0 - daylight)
-		_env.volumetric_fog_density = 0.007 + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
+		# Thin by day (clear air between the smoke), thicker at night so lamps glow in it.
+		_env.volumetric_fog_density = lerpf(0.012, 0.004, daylight) + Weather.fog * 0.1 + Weather.rain * 0.012 + Weather.snow * 0.02
 		_env.fog_density = 0.0011 + Weather.fog * 0.03 + Weather.rain * 0.004
 		if _env.sky and _env.sky.sky_material is PhysicalSkyMaterial:
 			var sky := _env.sky.sky_material as PhysicalSkyMaterial
 			sky.energy_multiplier = lerpf(1.0, 0.4, Weather.cloud * Weather.cloud)
-			sky.mie_coefficient = 0.009 + Weather.cloud * 0.03 + Weather.fog * 0.05
+			sky.mie_coefficient = 0.005 + Weather.cloud * 0.03 + Weather.fog * 0.05
 			# Stars only once the sky is dark (the sky shader adds them over the daylight too).
 			var want_stars := daylight < 0.12 and Weather.cloud < 0.85
 			if want_stars != (sky.night_sky != null):
