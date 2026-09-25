@@ -25,6 +25,7 @@
 [ext_resource type="Script" path="res://scripts/city/city_life.gd" id="25_clife"]
 [ext_resource type="Script" path="res://scripts/city/city_traffic.gd" id="26_traffic"]
 [ext_resource type="Script" path="res://scripts/world/bird_life.gd" id="27_birds"]
+[ext_resource type="Script" path="res://scripts/world/encounters.gd" id="28_enc"]
 
 [sub_resource type="NavigationMesh" id="NavigationMesh_street"]
 geometry_parsed_geometry_type = 1
@@ -96,6 +97,9 @@ script = ExtResource("26_traffic")
 
 [node name="Birds" type="Node3D" parent="."]
 script = ExtResource("27_birds")
+
+[node name="Encounters" type="Node3D" parent="."]
+script = ExtResource("28_enc")
 
 [node name="Patrols" type="Node3D" parent="."]
 script = ExtResource("10_patrl")

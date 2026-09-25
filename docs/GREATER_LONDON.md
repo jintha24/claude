@@ -154,8 +154,34 @@ Now it is:
 - The city streets hold up to about 56 passers-by round the player at the busiest hours.
 - Some walk their dogs (`scripts/world/street_dog.gd`), which trot at their owner's heel.
 
+### Night
+- A stronger, bluer moonlight lets the shaded side of a street read instead of going black.
+- The night sky is deep blue rather than black, and the clouds are lit by the moon.
+- Gas lamps and lit windows give warm pools of light against it.
+
+### People in the hills (`scripts/wilderness/hills_people.gd`, `traveller.gd`)
+- **On the roads:** up to 9 travellers walk the London road and the village lanes: pedlars, drovers, farm hands, market women, a parson, a gentleman, a vagrant, dairymaids.
+  - They rest by the road now and then, and pass the time of day with Harry.
+  - Fewer walk at night and in rain or snow.
+- **In the fields:** up to 6 hands work the wheat, hay and ploughland by day.
+
+### Encounters (`scripts/world/encounters.gd`, `encounter_action.gd`)
+Every minute and a half or so, something happens near Harry. He can step in or walk on.
+
+| Encounter | Where | What Harry can do |
+|---|---|---|
+| Purse snatch | London | Grab the cutpurse and give the lady her purse back (6d, Legend) |
+| Brawl | London | Break up the fight (Legend) |
+| Street preacher | London | Listen to the sermon |
+| Beggar child | London | Give a penny (Legend) |
+| Highwayman | Hills | Come near and he bolts; the traveller pays two shillings (Legend) |
+| Stuck cart | Hills | Help push the cart (3d, Legend) |
+
+### Hunting
+Red foxes join the deer and rabbits: one or two about, more at dawn and dusk. They are quick (9.5 m/s at a run) and wary. A fox skins for a pelt worth 42d at the trader.
+
 ### Tests
-`tests/test_life.gd` (16 checks):
+`tests/test_countryside.gd` also covers travellers, carts, rooks, the highwayman and foxes. `tests/test_life.gd` covers the purse snatch as well as:
 - **Sky:** the sky shader is in use, clouds follow the weather and drift with the wind, and daytime is starless.
 - **Traffic:** vehicles come in several kinds, drive along, keep to the left, and pull up for Harry.
 - **Birds:** flocks are about, and pigeons fly up when approached.

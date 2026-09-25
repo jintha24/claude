@@ -77,12 +77,14 @@ func _wanted_people(p: Vector3) -> int:
 		return 0
 	var h := GameClock.hours()
 	var busy := 1.0
-	if h < 5.0 or h >= 23.0:
-		busy = 0.12
+	if h >= 1.0 and h < 5.0:
+		busy = 0.15
+	elif h < 1.0 or h >= 23.0:
+		busy = 0.3 # pubs turning out, cabmen, night workers
 	elif h < 7.0:
 		busy = 0.4
 	elif h >= 20.0:
-		busy = 0.45
+		busy = 0.65 # theatres, music halls and gin palaces
 	elif (h >= 8.0 and h < 10.0) or (h >= 17.0 and h < 19.0):
 		busy = 1.0 # going to work and coming home
 	else:

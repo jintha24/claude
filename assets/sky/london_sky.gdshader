@@ -45,7 +45,7 @@ void sky() {
 	col = mix(col, vec3(1.0, 0.5, 0.24), low_sun * t * (0.25 + 0.75 * toward * toward));
 	col = mix(col, vec3(0.4, 0.28, 0.42), low_sun * (1.0 - t) * 0.25);
 	// Night: a deep blue-black.
-	vec3 night = mix(vec3(0.004, 0.007, 0.02), vec3(0.02, 0.026, 0.045), t);
+	vec3 night = mix(vec3(0.008, 0.013, 0.035), vec3(0.03, 0.038, 0.065), t);
 	col = mix(night, col, day);
 	// The sun's glow.
 	float cs = max(dot(d, sun), 0.0);
@@ -67,6 +67,8 @@ void sky() {
 		base = mix(base, base * 0.42, darkness);
 		vec3 lit = mix(vec3(1.0), sun_col, 0.55 + low_sun * 0.45);
 		ccol = base * lit * mix(0.035, 1.0, day);
+		// Moonlit clouds at night: faint blue-grey.
+		ccol = mix(ccol, vec3(0.05, 0.06, 0.09) * (0.6 + shade * 0.4), (1.0 - day) * 0.8);
 		// Silver linings round the sun.
 		ccol += sun_col * pow(cs, 10.0) * 0.5 * (1.0 - dens) * day;
 		a = dens * smoothstep(0.0, 0.1, d.y) * mix(0.82, 1.0, coverage);

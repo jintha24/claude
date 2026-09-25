@@ -45,6 +45,10 @@ func _boot() -> void:
 	main = make_scene()
 	root.add_child(main)
 	current_scene = main
+	# Chance encounters would wander into other tests; test_life and test_countryside start theirs.
+	var enc := main.get_node_or_null("Encounters")
+	if enc:
+		enc.set("random_encounters", false)
 	if not keep_guards:
 		for g in get_nodes_in_group_safe("guards"):
 			g.free()

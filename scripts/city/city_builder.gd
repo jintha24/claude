@@ -139,12 +139,15 @@ static func _lamps_for(b: Dictionary, f: Rect2, out: Dictionary) -> void:
 		[pave[CityPlan.Side.W], Vector3(r.position.x + inset, 0, r.position.y), Vector3(r.position.x + inset, 0, r.end.y)],
 	]
 	if b["kind"] == CityPlan.Kind.SLAB:
-		# The ring round the core: lamps down its middle.
+		# The ring round the core: lamps along its kerb (the side away from the core).
 		var c := r.get_center()
+		var core_c := CityPlan.CORE.get_center()
 		if r.size.x > r.size.y:
-			sides = [[1.0, Vector3(r.position.x, 0, c.y), Vector3(r.end.x, 0, c.y)]]
+			var z := r.position.y + inset if c.y < core_c.y else r.end.y - inset
+			sides = [[1.0, Vector3(r.position.x, 0, z), Vector3(r.end.x, 0, z)]]
 		else:
-			sides = [[1.0, Vector3(c.x, 0, r.position.y), Vector3(c.x, 0, r.end.y)]]
+			var x := r.position.x + inset if c.x < core_c.x else r.end.x - inset
+			sides = [[1.0, Vector3(x, 0, r.position.y), Vector3(x, 0, r.end.y)]]
 	for s: Array in sides:
 		if float(s[0]) < 1.5:
 			continue
@@ -683,11 +686,50 @@ static func nav_area(plan: CityPlan, center: Vector2i, radius: int) -> Dictionar
 				if r.size.x <= 0.0 or r.size.y <= 0.0:
 					continue
 				walk.append(r)
+				blockers.append_array(_kerb_strips(b, cr))
 				if b["kind"] != CityPlan.Kind.SLAB:
-					var f := plan.lot_rect(b).intersection(cr)
+					# Keep clear of the house fronts: area railings and front steps stand
+					# up to 1.3 m out on the pavement.
+					var margin := 1.4 if b["kind"] in [CityPlan.Kind.TERRACE, CityPlan.Kind.FILL, CityPlan.Kind.WAREHOUSE] else 0.4
+					var f := plan.lot_rect(b).grow(margin).intersection(b["rect"]).intersection(cr)
 					if f.size.x > 0.0 and f.size.y > 0.0:
 						blockers.append(f)
 	return _grid_nav(walk, blockers)
+
+
+## The lamp-post strip along a block's kerbs (0.7 m), left open for 3.5 m at each corner
+## where people cross the road.
+static func _kerb_strips(b: Dictionary, cr: Rect2) -> Array:
+	var r: Rect2 = b["rect"]
+	var pave: Array = b["pave"]
+	var out := []
+	var w := 0.7
+	var gap := 3.5
+	if b["kind"] == CityPlan.Kind.SLAB:
+		# The ring: the kerb is on the side away from the core.
+		var core_c := CityPlan.CORE.get_center()
+		var c := r.get_center()
+		if r.size.x > r.size.y:
+			var z := r.position.y if c.y < core_c.y else r.end.y - w
+			out.append(Rect2(r.position.x + gap, z, r.size.x - gap * 2.0, w))
+		else:
+			var x := r.position.x if c.x < core_c.x else r.end.x - w
+			out.append(Rect2(x, r.position.y + gap, w, r.size.y - gap * 2.0))
+	else:
+		if float(pave[CityPlan.Side.N]) >= 1.5:
+			out.append(Rect2(r.position.x + gap, r.position.y, r.size.x - gap * 2.0, w))
+		if float(pave[CityPlan.Side.S]) >= 1.5:
+			out.append(Rect2(r.position.x + gap, r.end.y - w, r.size.x - gap * 2.0, w))
+		if float(pave[CityPlan.Side.W]) >= 1.5:
+			out.append(Rect2(r.position.x, r.position.y + gap, w, r.size.y - gap * 2.0))
+		if float(pave[CityPlan.Side.E]) >= 1.5:
+			out.append(Rect2(r.end.x - w, r.position.y + gap, w, r.size.y - gap * 2.0))
+	var clipped := []
+	for s: Rect2 in out:
+		var i := s.intersection(cr)
+		if i.size.x > 0.0 and i.size.y > 0.0:
+			clipped.append(i)
+	return clipped
 
 
 static func _grid_nav(walk: Array, blockers: Array) -> Dictionary:

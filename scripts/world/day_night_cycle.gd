@@ -16,7 +16,7 @@ const LAMP_SHADOW_BUDGET := 6
 @export var sun_path: NodePath = ^"../Sun"
 @export var environment_path: NodePath = ^"../WorldEnvironment"
 @export var max_sun_energy: float = 2.4
-@export var moon_energy: float = 0.12
+@export var moon_energy: float = 0.32
 
 var sun_elevation: float = 0.0 # degrees
 var sun_azimuth: float = 0.0 # degrees from north, clockwise
@@ -40,7 +40,7 @@ func _ready() -> void:
 		_env = we.environment
 	_moon = DirectionalLight3D.new()
 	_moon.name = "Moon"
-	_moon.light_color = Color(0.62, 0.72, 0.95)
+	_moon.light_color = Color(0.55, 0.66, 1.0)
 	_moon.shadow_enabled = true
 	_moon.directional_shadow_max_distance = 80.0
 	_moon.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY

@@ -1,6 +1,6 @@
 class_name WildAnimal
 extends CharacterBody3D
-## Game in the hills: red deer (herds of hinds, the odd stag) and rabbits.
+## Game in the hills: red deer (herds of hinds, the odd stag), rabbits and red foxes.
 ##
 ## They graze and wander near their herd, and are wary:
 ##   * eyes: see movement and a man in the open (less if he's crouched, still, in shadow)
@@ -19,7 +19,7 @@ extends CharacterBody3D
 signal died(animal: WildAnimal)
 signal fled(animal: WildAnimal)
 
-enum Species { DEER, RABBIT }
+enum Species { DEER, RABBIT, FOX }
 
 const STEER: Array[float] = [0.0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6, 2.3, -2.3]
 enum State { GRAZE, WANDER, ALERT, FLEE, DYING, DEAD }
@@ -149,7 +149,7 @@ func _physics_process(delta: float) -> void:
 				state = State.GRAZE
 				_timer = randf_range(3.0, 6.0)
 		State.FLEE:
-			var run := 11.0 if species == Species.DEER else 7.0
+			var run := 11.0 if species == Species.DEER else (9.5 if species == Species.FOX else 7.0)
 			var dir := _flee_dir
 			if species == Species.RABBIT:
 				_zig += delta * 6.0
@@ -351,6 +351,40 @@ func _build_body() -> void:
 			var lb := MeshBuilder.new()
 			lb.add_box(Vector3(0.07, 0.85, 0.08), Vector3(0, -0.42, 0), coat)
 			lb.add_box(Vector3(0.06, 0.06, 0.07), Vector3(0, -0.84, -0.01), dark)
+			lb.build_into(hip, "Leg")
+			_legs.append(hip)
+	elif species == Species.FOX:
+		# A red fox: russet coat, white bib and tail tip, black stockings, a big brush.
+		coat.albedo_color = Color(0.62, 0.3, 0.1)
+		pale.albedo_color = Color(0.9, 0.87, 0.8)
+		var mb := MeshBuilder.new()
+		var body := CapsuleMesh.new()
+		body.radius = 0.1
+		body.height = 0.55
+		mb.add_mesh(body, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0, 0.32, 0)), coat)
+		mb.add_box(Vector3(0.12, 0.1, 0.12), Vector3(0, 0.28, -0.22), pale) # bib
+		var brush := CapsuleMesh.new()
+		brush.radius = 0.06
+		brush.height = 0.42
+		mb.add_mesh(brush, Transform3D(Basis(Vector3.RIGHT, PI * 0.5 - 0.4), Vector3(0, 0.3, 0.42)), coat)
+		mb.add_box(Vector3(0.07, 0.07, 0.07), Vector3(0, 0.22, 0.62), pale) # tip
+		mb.build_into(_visual, "Torso")
+		_head = Node3D.new()
+		_head.position = Vector3(0, 0.4, -0.3)
+		_visual.add_child(_head)
+		var hb := MeshBuilder.new()
+		hb.add_box(Vector3(0.12, 0.11, 0.14), Vector3(0, 0.0, -0.04), coat)
+		hb.add_box(Vector3(0.05, 0.05, 0.12), Vector3(0, -0.02, -0.16), coat) # muzzle
+		hb.add_box(Vector3(0.02, 0.02, 0.02), Vector3(0, -0.01, -0.22), dark)
+		for side: float in [-1.0, 1.0]:
+			hb.add_box(Vector3(0.04, 0.08, 0.02), Vector3(side * 0.04, 0.09, 0.0), dark, Basis(Vector3.FORWARD, side * 0.2))
+		hb.build_into(_head, "Head")
+		for i in 4:
+			var hip := Node3D.new()
+			hip.position = Vector3(-0.05 if i % 2 == 0 else 0.05, 0.27, -0.2 if i < 2 else 0.2)
+			_visual.add_child(hip)
+			var lb := MeshBuilder.new()
+			lb.add_box(Vector3(0.035, 0.27, 0.04), Vector3(0, -0.13, 0), dark)
 			lb.build_into(hip, "Leg")
 			_legs.append(hip)
 	else:

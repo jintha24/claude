@@ -20,6 +20,7 @@ func run_tests() -> void:
 	await _test_traffic()
 	await _test_birds()
 	await _test_crowds()
+	await _test_encounters()
 
 
 func _test_sky() -> void:
@@ -125,3 +126,32 @@ func _test_crowds() -> void:
 		var d := dogs[0] as StreetDog
 		await wait(60)
 		check("a dog keeps to its owner's heel", is_instance_valid(d) and is_instance_valid(d.owner_node) and d.global_position.distance_to(d.owner_node.global_position) < 4.0)
+
+
+func _test_encounters() -> void:
+	var enc := main.get_node("Encounters") as Encounters
+	check("encounters happen in the streets", enc != null)
+	if enc == null:
+		return
+	if enc.active != "":
+		enc._end("test") # one may have begun by chance during the waits above
+	var ok := enc.start("purse_snatch")
+	check("a purse is snatched near Harry", ok and enc.active == "purse_snatch")
+	if not ok:
+		return
+	var thief := enc._state["thief"] as StoryNPC
+	var lady := enc._state["lady"] as StoryNPC
+	var t0 := thief.global_position
+	await wait(120)
+	check("the cutpurse runs for it", thief.global_position.distance_to(t0) > 3.0, "%.1f m" % thief.global_position.distance_to(t0))
+	var grab := thief.get_children().filter(func(n: Node) -> bool: return n is EncounterAction)[0] as EncounterAction
+	check("Harry can grab the thief", grab.get_prompt(harry) == "Grab the thief")
+	grab.interact(harry)
+	var give := lady.get_children().filter(func(n: Node) -> bool: return n is EncounterAction)[0] as EncounterAction
+	check("...and give the lady her purse back", give.get_prompt(harry).begins_with("Give the lady"))
+	var legend := Progress.legend
+	var money := harry.inventory.money
+	give.interact(harry)
+	check("she thanks him with sixpence, and his Legend grows", harry.inventory.money == money + 6 and Progress.legend > legend)
+	await wait(420)
+	check("then the street goes back to normal", enc.active == "", enc.active)

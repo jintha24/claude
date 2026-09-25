@@ -20,14 +20,20 @@ func get_interact_point() -> Vector3:
 func get_prompt(_harry: Harry) -> String:
 	if _done:
 		return ""
-	return "Butcher the deer" if species == WildAnimal.Species.DEER else "Take the rabbit"
+	match species:
+		WildAnimal.Species.DEER:
+			return "Butcher the deer"
+		WildAnimal.Species.FOX:
+			return "Skin the fox"
+	return "Take the rabbit"
 
 
 func interact(harry: Harry) -> void:
 	if _done:
 		return
-	var secs := 4.0 if species == WildAnimal.Species.DEER else 0.6
-	harry.interaction.begin_hold(self, "Butchering" if species == WildAnimal.Species.DEER else "Picking up", secs, func() -> void: _butcher(harry))
+	var secs := 4.0 if species == WildAnimal.Species.DEER else (2.5 if species == WildAnimal.Species.FOX else 0.6)
+	var label := "Butchering" if species == WildAnimal.Species.DEER else ("Skinning" if species == WildAnimal.Species.FOX else "Picking up")
+	harry.interaction.begin_hold(self, label, secs, func() -> void: _butcher(harry))
 
 
 func items() -> Array[Dictionary]:
@@ -36,6 +42,9 @@ func items() -> Array[Dictionary]:
 			{"name": "Venison", "value": 60 if not is_stag else 84, "kind": "provision", "victim_class": "game"},
 			{"name": "Stag's hide" if is_stag else "Deer hide", "value": 96 if is_stag else 72, "kind": "valuable", "victim_class": "game"},
 		]
+	if species == WildAnimal.Species.FOX:
+		# A good winter fox pelt fetched a furrier several shillings.
+		return [{"name": "Fox pelt", "value": 42, "kind": "valuable", "victim_class": "game"}]
 	return [
 		{"name": "Rabbit", "value": 4, "kind": "provision", "victim_class": "game"},
 		{"name": "Rabbit pelt", "value": 3, "kind": "valuable", "victim_class": "game"},

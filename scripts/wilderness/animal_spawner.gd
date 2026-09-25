@@ -32,6 +32,7 @@ func _process(delta: float) -> void:
 	var p := player.global_position
 	var deer := 0
 	var bunnies := 0
+	var foxes := 0
 	var herds_seen := {}
 	for n in get_children():
 		var a := n as WildAnimal
@@ -43,6 +44,8 @@ func _process(delta: float) -> void:
 		if a.species == WildAnimal.Species.DEER:
 			if not a.is_dead():
 				herds_seen[a.get_meta("herd", 0)] = true
+		elif a.species == WildAnimal.Species.FOX:
+			foxes += 1 if not a.is_dead() else 0
 		elif not a.is_dead():
 			bunnies += 1
 	deer = herds_seen.size()
@@ -50,6 +53,11 @@ func _process(delta: float) -> void:
 		spawn_herd(_find_spot(p), _rng.randi_range(3, 6))
 	if bunnies < rabbits:
 		spawn_rabbit(_find_spot(p))
+	# A fox or two about, most of all at dawn and dusk.
+	var h := GameClock.hours()
+	var want_foxes := 2 if (h < 8.0 or h > 17.0) else 1
+	if foxes < want_foxes:
+		spawn_fox(_find_spot(p))
 
 
 func _find_spot(around: Vector3) -> Vector3:
@@ -96,6 +104,21 @@ func spawn_rabbit(at: Vector3) -> WildAnimal:
 		_streamer = get_tree().get_first_node_in_group("world_streamer") as WorldStreamer
 	var a := WildAnimal.new()
 	a.species = WildAnimal.Species.RABBIT
+	a.position = at
+	add_child(a)
+	a.setup(_streamer, at)
+	var alone: Array[WildAnimal] = [a]
+	a.herd = alone
+	return a
+
+
+func spawn_fox(at: Vector3) -> WildAnimal:
+	if at == Vector3.INF:
+		return null
+	if _streamer == null:
+		_streamer = get_tree().get_first_node_in_group("world_streamer") as WorldStreamer
+	var a := WildAnimal.new()
+	a.species = WildAnimal.Species.FOX
 	a.position = at
 	add_child(a)
 	a.setup(_streamer, at)

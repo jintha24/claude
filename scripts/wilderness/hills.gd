@@ -35,6 +35,13 @@ func _ready() -> void:
 	birds.ground_flocks = 3
 	birds.set_height_fn(gen.height)
 	add_child(birds)
+	var people := HillsPeople.new()
+	people.name = "HillsPeople"
+	add_child(people)
+	var encounters := Encounters.new()
+	encounters.name = "Encounters"
+	encounters.place = "hills"
+	add_child(encounters)
 	var audio := get_node_or_null("Audio") as AudioDirector
 	if audio:
 		audio.add_zone("water_lap", Vector3(TerrainGenerator.LAKE.x, TerrainGenerator.WATER_Y, TerrainGenerator.LAKE.y), TerrainGenerator.LAKE_RADIUS - 15.0, 45.0, 0.7)

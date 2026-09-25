@@ -61,3 +61,47 @@ func run_tests() -> void:
 	check("sheep or cattle graze the pastures", get_nodes_in_group_safe("livestock").size() >= 3, str(get_nodes_in_group_safe("livestock").size()))
 	var post := main.get_node("ToLondon") as Node3D
 	check("the London road runs to the east edge", post.global_position.x > TerrainGenerator.HALF_SIZE - 120.0 and gen.road_info(post.global_position.x, post.global_position.z).x < 5.0)
+
+	await _test_country_life()
+
+
+func _test_country_life() -> void:
+	var people := main.get_node("HillsPeople") as HillsPeople
+	var gen := streamer.generator
+	var road: Vector2 = TerrainGenerator.ROAD[4]
+	await tp(Vector3(road.x, gen.height(road.x, road.y) + 1.0, road.y))
+	streamer.prime(harry.global_position)
+	await wait_until(func() -> bool: return people.walker_count() >= 4, 900)
+	check("travellers on the London road", people.walker_count() >= 4, str(people.walker_count()))
+	var traffic := main.get_node("RoadTraffic") as RoadTraffic
+	await wait_until(func() -> bool: return traffic.vehicle_count() >= 2, 900)
+	check("carts and wagons on the road", traffic.vehicle_count() >= 2, str(traffic.vehicle_count()))
+	var birds := main.get_node("Birds") as BirdLife
+	await wait_until(func() -> bool: return birds.flock_count() >= 2, 600)
+	check("rooks over the hills", birds.flock_count() >= 2)
+	var enc := main.get_node("Encounters") as Encounters
+	if enc.active != "":
+		enc._end("test") # one may have begun by chance during the waits above
+	var ok := enc.start("highwayman")
+	check("a highwayman holds up a traveller on the road", ok and enc.active == "highwayman")
+	if not ok:
+		return
+	var robber := enc._state["robber"] as StoryNPC
+	await tp(robber.global_position + Vector3(6.0, 1.0, 0.0))
+	await wait(30)
+	check("he bolts when the Fox comes", enc._state["phase"] == "fled", str(enc._state["phase"]))
+	var victim := enc._state["victim"] as StoryNPC
+	var acts := victim.get_children().filter(func(n: Node) -> bool: return n is EncounterAction)
+	var money := harry.inventory.money
+	if not acts.is_empty():
+		(acts[0] as EncounterAction).interact(harry)
+	check("the traveller rewards him", harry.inventory.money == money + 24)
+
+	# Foxes to hunt as well as deer and rabbits.
+	var animals := main.get_node("Animals")
+	var fox: WildAnimal = animals.call("spawn_fox", harry.global_position + Vector3(25, 0, 0))
+	check("red foxes roam the hills", fox != null and fox.species == WildAnimal.Species.FOX)
+	var c := Carcass.new()
+	c.species = WildAnimal.Species.FOX
+	check("a fox gives a pelt worth selling", c.items().size() == 1 and c.items()[0]["name"] == "Fox pelt" and c.get_prompt(harry) == "Skin the fox")
+	c.free()

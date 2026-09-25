@@ -65,10 +65,19 @@ func run_tests() -> void:
 	await wait_until(func() -> bool: return trader.state == Civilian.State.TEND_STALL and trader.global_position.distance_to(trader.stall_point) < 0.7, 300)
 	await wait(30)
 	var f := trader.get_facing_dir()
-	await tp(trader.global_position + f * 0.9, atan2(f.x, f.z)) # in front, facing him
-	await wait(5)
+	# In front, facing him. The stall can shove Harry aside, so make sure he really is in
+	# front (well inside the trader's view) before judging.
+	var in_front := false
+	for d: float in [0.9, 1.1, 1.25, 0.75]:
+		await tp(trader.global_position + f * d, atan2(f.x, f.z))
+		await wait(5)
+		var rel := harry.global_position - trader.global_position
+		rel.y = 0.0
+		if rel.length() < 1.3 and trader.get_facing_dir().dot(rel.normalized()) > 0.6:
+			in_front = true
+			break
 	# (Another shopper with his back to Harry may be fair game: it's this trader who isn't.)
-	check("no pickpocket prompt from the front", harry.thievery.prompt_target != trader and not trader.can_be_pickpocketed_from(harry.global_position))
+	check("no pickpocket prompt from the front", harry.thievery.prompt_target != trader and not trader.can_be_pickpocketed_from(harry.global_position), "" if in_front else "couldn't stand in front of him")
 	await tp(trader.global_position - f * 0.85, atan2(-f.x, -f.z)) # behind, facing his back
 	await wait(5)
 	check("pickpocket prompt from behind", harry.thievery.prompt_target == trader)
@@ -123,6 +132,7 @@ func run_tests() -> void:
 	await wait(5)
 	harry.thievery.try_start()
 	var w_alone := harry.thievery.zone_width
+	var c_alone := harry.thievery.crowd
 	harry.thievery.cancel()
 	harry.set_state(Harry.State.IDLE)
 	lone.suspicion = 0.0
@@ -133,9 +143,12 @@ func run_tests() -> void:
 	await wait(5)
 	harry.thievery.try_start()
 	var w_crowd := harry.thievery.zone_width
+	var c_crowd := harry.thievery.crowd
 	harry.thievery.cancel()
 	harry.set_state(Harry.State.IDLE)
-	check("a crowd widens the sweet spot", w_crowd > w_alone * 1.2, "%.2f vs %.2f" % [w_crowd, w_alone])
+	# (Market shoppers may wander by during either try, so compare with the crowds counted.)
+	var expect := (1.0 + 0.15 * minf(c_crowd, 4)) / (1.0 + 0.15 * minf(c_alone, 4))
+	check("a crowd widens the sweet spot", c_crowd > c_alone and w_crowd > w_alone and absf(w_crowd / w_alone - expect) < 0.02, "%.2f vs %.2f, crowd %d vs %d" % [w_crowd, w_alone, c_crowd, c_alone])
 	await wait(15)
 	check("standing in a crowd lowers visibility", harry.stealth.crowd_cover >= 2)
 

@@ -73,12 +73,12 @@ floorboards, dim rooms and gaslight, and for servants who notice an open door or
 Two mastiffs are let loose at night: they track you by scent according to the wind, outrun you,
 and bite.
 
-**Greater London:** the city is now 3.4 km × 3.4 km (11.6 km²) round the old streets. It has about 1,240 blocks of terraces, shops, pubs and warehouses, the Thames with four bridges, St Paul's and Westminster, squares, churches and parks. Passers-by, street sellers and constables fill the streets, and all of it streams in around the player. The hills are now 4.1 km × 4.1 km (16.8 km²), with four villages, their people, farms, hedgerows and livestock. See [docs/GREATER_LONDON.md](docs/GREATER_LONDON.md).
+**Greater London:** the city is now 3.4 km × 3.4 km (11.6 km²) round the old streets. It has about 1,240 blocks of terraces, shops, pubs and warehouses, the Thames with four bridges, St Paul's and Westminster, squares, churches and parks. Passers-by, street sellers and constables fill the streets, and all of it streams in around the player. The hills are now 4.1 km × 4.1 km (16.8 km²), with four villages, their people, farms, hedgerows and livestock, and travellers on the roads and hands in the fields. Chance encounters happen round Harry in both: a purse snatched in the street, a brawl, a street preacher, a beggar child, a highwayman on the London road, a carter with his wheel stuck in a rut. See [docs/GREATER_LONDON.md](docs/GREATER_LONDON.md).
 
 **Phase 8 — the hills:** downs and woods north of London (first 2 km × 2 km, since grown to 4 km × 4 km):
 - **Streaming:** the land streams in 64 m chunks on background threads, with levels of detail.
 - **Harry's cave:** loaded on a background thread when he nears it. It has a fire, a bed (sleep), a loot chest and a fletching bench.
-- **Wildlife:** red deer and rabbits with sight, hearing and wind-borne scent. Hunt them with broadhead arrows (never at a man: the Outlaw's Code).
+- **Wildlife:** red deer, rabbits and red foxes with sight, hearing and wind-borne scent. Hunt them with broadhead arrows (never at a man: the Outlaw's Code).
 - **Cinder:** his horse walks, trots, canters and gallops, and has stamina. He jumps logs, fences and walls, refuses what's too high, and comes when whistled.
 - **Travel:** finger-posts link London and the hills, and Harry's belongings come with him.
 
