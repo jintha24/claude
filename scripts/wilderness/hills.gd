@@ -38,6 +38,9 @@ func _ready() -> void:
 	var people := HillsPeople.new()
 	people.name = "HillsPeople"
 	add_child(people)
+	var camp := CampLife.new()
+	camp.name = "Camp"
+	add_child(camp)
 	var encounters := Encounters.new()
 	encounters.name = "Encounters"
 	encounters.place = "hills"

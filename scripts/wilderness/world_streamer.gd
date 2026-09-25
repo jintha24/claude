@@ -492,7 +492,9 @@ void fragment() {
 	c = mix(c, d, COLOR.r);
 	float shore = 1.0 - smoothstep(water_y + 0.2, water_y + 1.4, wpos.y);
 	c = mix(c, d * 0.75, shore);
-	c = mix(c, r, smoothstep(0.26, 0.42, slope));
+	// Steep banks: bare chalk and flint, weathered and part grassed over (not snow-white).
+	vec3 bank = mix(r * vec3(0.62, 0.62, 0.56), g * 0.8, 0.3);
+	c = mix(c, bank, smoothstep(0.26, 0.42, slope));
 	ALBEDO = c;
 	ROUGHNESS = mix(0.92, 0.75, shore);
 }

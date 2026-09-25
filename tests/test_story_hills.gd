@@ -79,8 +79,9 @@ func _test_cold_hearth() -> void:
 	check("...the venison went in the pot", harry.inventory.items.all(func(it: Dictionary) -> bool: return it.get("name", "") != "Venison"))
 	check("next: Crowded Pockets, in London", Story.next_mission()["id"] == "crowded_pockets" and Story.next_mission()["place"] == "london")
 	await wait(30)
-	var aldous := get_nodes_in_group_safe("story_npcs").filter(func(n: Node) -> bool: return (n as StoryNPC).display_name == "Aldous" and n.visible)
-	check("Aldous stays by the clearing to talk to", aldous.size() == 1)
+	var camp := main.get_node("Camp") as CampLife
+	var aldous := camp.person("aldous")
+	check("Aldous stays on at the camp, to talk to", aldous != null and (aldous.visible or camp.activity("aldous") == "away"), camp.activity("aldous"))
 
 
 func _test_hills_sound() -> void:

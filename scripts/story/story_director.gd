@@ -2,7 +2,7 @@ class_name StoryDirector
 extends Node3D
 ## Puts the story into a place: the StoryUI, the mission givers for missions played here,
 ## and the characters Harry has met, going about their lives once their missions are done
-## (Aldous at the clearing, Pip in the market, Big Tom and Father Bernard at the soup
+## (Pip in the market, Big Tom and Father Bernard at the soup
 ## kitchen...). Talk to them with E.
 
 ## Where each mission is offered. "pos" is on the ground (hills: x, z; the height is
@@ -20,11 +20,9 @@ const GIVERS := {
 		"npc": {"name": "Newsboy", "outfit": NPCBody.Outfit.RAGGED, "height": 1.45, "pose": NPCBody.Pose.WAVE}, "prompt": "Buy a newspaper (1d)"},
 }
 
-## The people Harry has met, after their missions: [after mission, place, name, outfit,
+## The people Harry has met, after their missions (Aldous lives at the camp: CampLife): [after mission, place, name, outfit,
 ## height, position, face, pose, hours, lines].
 const RESIDENTS: Array = [
-	["cold_hearth", "hills", "Aldous", NPCBody.Outfit.WORKER, 1.72, Vector3(-114.5, 0.0, 99.5), Vector3(-120.0, 0.0, 96.0), NPCBody.Pose.SIT, Vector2(-1, -1),
-		["Keep the wind in your face and they'll never know you're there.", "Tench bite best when the light's going.", "London's no place for a hill man. Mind yourself down there."]],
 	["crowded_pockets", "london", "Pip", NPCBody.Outfit.RAGGED, 1.42, Vector3(-19.5, 0.05, -60.5), Vector3(0.0, 0.0, -70.0), NPCBody.Pose.TALK, Vector2(7, 19),
 		["Mornin', Fox. Pockets are fat today.", "Watch the big peeler by the fountain. He's quicker than he looks.", "Toffs keep their watches on the left. Always the left."]],
 	["the_collector", "london", "Mrs Hale", NPCBody.Outfit.LADY, 1.6, Vector3(-5.3, 0.15, 13.0), Vector3(0.0, 0.0, 13.0), NPCBody.Pose.NORMAL, Vector2(8, 20),

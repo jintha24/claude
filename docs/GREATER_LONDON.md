@@ -159,9 +159,36 @@ Now it is:
 - The night sky is deep blue rather than black, and the clouds are lit by the moon.
 - Gas lamps and lit windows give warm pools of light against it.
 
+### The camp (`scripts/wilderness/camp_life.gd`)
+The clearing in front of Harry's cave is a camp, a few steps from where a new game starts. It has a campfire that lights the clearing at night, log seats, three tents, a chopping block and a woodpile.
+
+**Who lives there:**
+- **Aldous**, once Cold Hearth is done, with his old dog at his heel.
+- **Pip and Big Tom**, once they join the Lantern Men. They work in London by day and come up to the camp in the evening.
+
+**Aldous's day:**
+
+| From | What he does |
+|---|---|
+| 5:30 | Tends the fire |
+| 6:30 | Breakfast at the fire |
+| 7:30 | Splits wood at the block |
+| 10:00 | Off into the woods |
+| 12:30 | Dinner at the fire |
+| 13:30 | Whittles arrows on the stump |
+| 16:00 | Off into the woods again |
+| 18:30 | Sits by the fire |
+| 22:30 | Sleeps in his tent |
+
+**How it plays:**
+- They walk from one thing to the next, and come and go from the woods or the London road.
+- Round the fire they swap yarns when Harry's near; at work they mutter to themselves.
+- Talk to any of them with E. What they say depends on what they're doing, and a sleeping man won't answer.
+- While Harry's away the camp keeps its hours, and everyone is where they should be when he comes back.
+
 ### People in the hills (`scripts/wilderness/hills_people.gd`, `traveller.gd`)
 - **On the roads:** up to 9 travellers walk the London road and the village lanes: pedlars, drovers, farm hands, market women, a parson, a gentleman, a vagrant, dairymaids.
-  - They rest by the road now and then, and pass the time of day with Harry.
+  - They rest by the road now and then, and pass the time of day with Harry. At the end of a road in plain sight they turn back rather than vanish.
   - Fewer walk at night and in rain or snow.
 - **In the fields:** up to 6 hands work the wheat, hay and ploughland by day.
 
@@ -181,7 +208,7 @@ Every minute and a half or so, something happens near Harry. He can step in or w
 Red foxes join the deer and rabbits: one or two about, more at dawn and dusk. They are quick (9.5 m/s at a run) and wary. A fox skins for a pelt worth 42d at the trader.
 
 ### Tests
-`tests/test_countryside.gd` also covers travellers, carts, rooks, the highwayman and foxes. `tests/test_life.gd` covers the purse snatch as well as:
+`tests/test_camp.gd` covers the camp: Aldous's day, the dog, the band in the evening, sleep, and the day going on while Harry's away. `tests/test_countryside.gd` also covers travellers, carts, rooks, the highwayman and foxes. `tests/test_life.gd` covers the purse snatch as well as:
 - **Sky:** the sky shader is in use, clouds follow the weather and drift with the wind, and daytime is starless.
 - **Traffic:** vehicles come in several kinds, drive along, keep to the left, and pull up for Harry.
 - **Birds:** flocks are about, and pigeons fly up when approached.

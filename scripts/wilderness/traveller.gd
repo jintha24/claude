@@ -86,6 +86,11 @@ func _physics_process(delta: float) -> void:
 			_yaw = rotate_toward(_yaw, atan2(-dir.x, -dir.z), step * 4.0)
 			var fwd := Vector3(-sin(_yaw), 0.0, -cos(_yaw))
 			global_position += fwd * speed * step
+	elif route.size() > 1 and d < 150.0:
+		# The end of the road in plain sight: turn back rather than vanish.
+		route.reverse()
+		_i = 1
+		_pause = _rng.randf_range(2.0, 6.0)
 	if gen:
 		global_position.y = gen.height(global_position.x, global_position.z)
 	# A word for Harry as they pass.

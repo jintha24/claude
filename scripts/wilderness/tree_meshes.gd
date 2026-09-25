@@ -107,10 +107,14 @@ void fragment() {
 		discard;
 	}
 	float h = 1.0 - UV.y;
-	vec3 base = vec3(0.08, 0.14, 0.04);
-	vec3 tip = vec3(0.32, 0.4, 0.15) * (0.85 + 0.3 * texture(blades, UV * vec2(3.0, 0.2)).g);
+	// (Toned to the turf they grow from, so tufts read as grass, not pale cards.)
+	vec3 base = vec3(0.045, 0.075, 0.025);
+	vec3 tip = vec3(0.17, 0.22, 0.075) * (0.85 + 0.3 * texture(blades, UV * vec2(3.0, 0.2)).g);
 	ALBEDO = mix(base, tip, h);
-	ROUGHNESS = 0.9;
+	ROUGHNESS = 0.95;
+	SPECULAR = 0.05; // no sky sheen off the upright cards
+	// Lit like the ground they grow from, not like upright cards facing the sun or moon.
+	NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz, 0.8));
 	BACKLIGHT = vec3(0.08, 0.1, 0.03);
 }
 """
