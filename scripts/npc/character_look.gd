@@ -78,7 +78,7 @@ static var _textures := {}
 
 
 static func has_look(look: String) -> bool:
-	return ResourceLoader.exists(DIR + look + ".glb")
+	return RealPeople.has_look(look) or ResourceLoader.exists(DIR + look + ".glb")
 
 
 ## The look for an NPCBody outfit (and height, for children).
@@ -98,6 +98,10 @@ static func for_outfit(outfit: int, height: float) -> String:
 
 ## A dressed instance of `look`, varied by `seed`. `age` 0..1 (0.5 = the model's own age).
 static func instantiate(look: String, seed: int) -> Node3D:
+	# Professionally modelled people where there are any for this look.
+	var real := RealPeople.instantiate(look, seed)
+	if real:
+		return real
 	if not _scenes.has(look):
 		_scenes[look] = load(DIR + look + ".glb") as PackedScene
 	var packed: PackedScene = _scenes[look]

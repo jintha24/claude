@@ -151,6 +151,8 @@ func _test_bodies() -> void:
 	await wait(40)
 	var skel := (walker.get_node("Body") as NPCBody).get_look_model().find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
 	var thigh := skel.find_bone("thigh_l")
+	if thigh < 0:
+		thigh = skel.find_bone("Bip01 L Thigh") # (the Rocketbox people)
 	var samples: Array[Quaternion] = []
 	for i in 6:
 		walker.go_to(harry.global_position + Vector3(6.0, 0.0, 3.0 - i * 2.0), "wander")

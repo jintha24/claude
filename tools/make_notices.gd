@@ -20,6 +20,11 @@ func _init() -> void:
 	out.append("under CC0 1.0 (public domain): https://github.com/makehumancommunity/mpfb2 and")
 	out.append("https://github.com/makehumancommunity/makehuman. With thanks.")
 	out.append("")
+	out.append("=== Microsoft Rocketbox avatars ===")
+	out.append("Most of the people in London are Microsoft Rocketbox avatars")
+	out.append("(https://github.com/microsoft/Microsoft-Rocketbox), dressed for 1866:")
+	out.append(FileAccess.get_file_as_string("res://assets/characters/rocketbox/LICENSE.md"))
+	out.append("")
 	out.append("=== Components built into Godot ===")
 	for info: Dictionary in Engine.get_copyright_info():
 		out.append("")

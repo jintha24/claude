@@ -6,10 +6,11 @@ extends RefCounted
 ## walking, running, crouching, climbing, fighting and falling; each frame its joint
 ## rotations are copied onto the matching bones of the realistic body.
 ##
-## The generated skeletons have every bone axis-aligned at rest, so a pivot's rotation
-## (relative to the character) is the bone's rotation, after one fixed correction per limb
-## that swings the model's relaxed A-pose arms and legs to the mannequin's straight-down
-## rest pose.
+## Works for any skeleton: the generated ones (every bone axis-aligned at rest, MakeHuman
+## bone names) and the Rocketbox people (3ds Max biped: "Bip01 L Thigh"..., bones at
+## arbitrary rest angles, a T-pose, facing +Z). A bone's pose is the mannequin joint's
+## rotation, then one fixed correction per limb that swings the model's rest arm or leg to
+## the mannequin's straight-down rest, then the bone's own rest orientation.
 
 const DOWN := Vector3(0, -1, 0)
 
@@ -34,6 +35,29 @@ var _root_pivot: Node3D
 var _unit := 1.0
 var _plan := PackedInt32Array()
 var _blend_t := {}
+## Each bone's rest orientation in skeleton space (identity for the generated rigs).
+var _rest_q: Array[Quaternion] = []
+## The skeleton's frame relative to the character (the Rocketbox models face +Z and are
+## turned round; the generated ones match).
+var _frame_fix := Quaternion.IDENTITY
+var _hips_rest_skel := Vector3.INF
+## The model's bone names for the mannequin's (MakeHuman) names, when they differ.
+const BIPED := {
+	"pelvis": "Bip01 Pelvis", "spine_01": "Bip01 Spine", "spine_02": "Bip01 Spine1", "spine_03": "Bip01 Spine2",
+	"neck_01": "Bip01 Neck", "head": "Bip01 Head",
+	"clavicle_l": "Bip01 L Clavicle", "upperarm_l": "Bip01 L UpperArm", "lowerarm_l": "Bip01 L Forearm", "hand_l": "Bip01 L Hand",
+	"clavicle_r": "Bip01 R Clavicle", "upperarm_r": "Bip01 R UpperArm", "lowerarm_r": "Bip01 R Forearm", "hand_r": "Bip01 R Hand",
+	"thigh_l": "Bip01 L Thigh", "calf_l": "Bip01 L Calf", "foot_l": "Bip01 L Foot", "ball_l": "Bip01 L Toe0",
+	"thigh_r": "Bip01 R Thigh", "calf_r": "Bip01 R Calf", "foot_r": "Bip01 R Foot", "ball_r": "Bip01 R Toe0",
+}
+
+
+## The bone called `mh_name` (MakeHuman naming) in this skeleton, or its biped twin.
+func find(mh_name: String) -> int:
+	var b := skeleton.find_bone(mh_name)
+	if b < 0 and BIPED.has(mh_name):
+		b = skeleton.find_bone(BIPED[mh_name])
+	return b
 
 
 ## skeleton: the model's (facing -Z like the mannequin, and scaled like the mannequin
@@ -50,43 +74,53 @@ func setup(skel: Skeleton3D, drivers: Dictionary, hips_pivot: Node3D, hips_rest:
 	var n := skel.get_bone_count()
 	_parent.resize(n)
 	_globals.resize(n)
+	_rest_q.resize(n)
 	for b in n:
 		_parent[b] = skel.get_bone_parent(b)
+		_rest_q[b] = Quaternion(skel.get_bone_global_rest(b).basis.orthonormalized())
+	var body := hips_pivot.get_parent() as Node3D if hips_pivot else null
+	if body and body.is_inside_tree() and skel.is_inside_tree():
+		_frame_fix = (Quaternion(body.global_basis.orthonormalized()).inverse() * Quaternion(skel.global_basis.orthonormalized())).normalized()
 	# Parent-first order.
 	var done := {}
 	for b in n:
 		_visit(b, done)
 	for bone_name: String in drivers:
-		var b := skel.find_bone(bone_name)
+		var b := find(bone_name)
 		if b >= 0:
 			_driver[b] = drivers[bone_name]
-	_pelvis = skel.find_bone("pelvis")
-	_root_bone = skel.find_bone("Root")
+	_pelvis = find("pelvis")
+	_root_bone = find("Root")
 	if _pelvis >= 0:
 		_pelvis_rest = skel.get_bone_rest(_pelvis).origin
+		if _root_bone < 0 and hips_pivot and hips_pivot.is_inside_tree() and skel.is_inside_tree():
+			# No root bone to carry the body (the Rocketbox skeletons): the pelvis follows
+			# the hips pivot in the world, so a knocked-down body lies on the ground.
+			_hips_rest_skel = skel.global_transform.affine_inverse() * hips_pivot.global_position
 	# Hands follow forearms, feet follow shins, clavicles and the upper spine follow the
 	# chest, the neck sits between chest and head.
 	for pair: Array in [["hand_l", "lowerarm_l"], ["hand_r", "lowerarm_r"], ["foot_l", "calf_l"], ["foot_r", "calf_r"],
 			["ball_l", "calf_l"], ["ball_r", "calf_r"], ["clavicle_l", "spine_03"], ["clavicle_r", "spine_03"]]:
-		var b := skel.find_bone(pair[0])
-		var f := skel.find_bone(pair[1])
+		var b := find(pair[0])
+		var f := find(pair[1])
 		if b >= 0 and f >= 0 and not _driver.has(b):
 			_follow[b] = f
 	for spec: Array in [["spine_02", "pelvis", "spine_03", 0.5], ["spine_01", "pelvis", "spine_03", 0.2], ["neck_01", "spine_03", "head", 0.5]]:
-		var b := skel.find_bone(spec[0])
-		var x := skel.find_bone(spec[1])
-		var y := skel.find_bone(spec[2])
+		var b := find(spec[0])
+		var x := find(spec[1])
+		var y := find(spec[2])
 		if b >= 0 and x >= 0 and y >= 0 and not _driver.has(b):
 			_blend[b] = [x, y, spec[3]]
 	# Limb corrections: the model's rest limb direction -> straight down.
 	for pair: Array in [["upperarm_l", "lowerarm_l"], ["upperarm_r", "lowerarm_r"], ["lowerarm_l", "hand_l"], ["lowerarm_r", "hand_r"],
 			["thigh_l", "calf_l"], ["thigh_r", "calf_r"], ["calf_l", "foot_l"], ["calf_r", "foot_r"]]:
-		var b := skel.find_bone(pair[0])
-		var c := skel.find_bone(pair[1])
+		var b := find(pair[0])
+		var c := find(pair[1])
 		if b < 0 or c < 0:
 			continue
+		# (In the skeleton's frame: the mannequin's "down" seen from the model.)
 		var d := (_rest_global(c) - _rest_global(b)).normalized()
-		_offset[b] = _arc(d, DOWN)
+		_offset[b] = _arc(d, (_frame_fix.inverse() * DOWN).normalized())
 	_curl_fingers()
 
 
@@ -100,12 +134,7 @@ func _visit(b: int, done: Dictionary) -> void:
 
 
 func _rest_global(b: int) -> Vector3:
-	var p := Vector3.ZERO
-	var i := b
-	while i >= 0:
-		p += skeleton.get_bone_rest(i).origin
-		i = _parent[i]
-	return p
+	return skeleton.get_bone_global_rest(b).origin
 
 
 static func _arc(from: Vector3, to: Vector3) -> Quaternion:
@@ -159,24 +188,38 @@ func update() -> void:
 		var q: Quaternion
 		match kind:
 			0: # driven by a pivot
-				q = inv * Quaternion((_driver[b] as Node3D).global_basis.orthonormalized())
+				q = inv * Quaternion((_driver[b] as Node3D).global_basis.orthonormalized()) * _frame_fix
 				if _offset.has(b):
 					q = q * _offset[b]
+				q = q * _rest_q[b]
 			1: # the root, tilted with the whole body
-				q = inv * Quaternion(_root_pivot.global_basis.orthonormalized())
-			2: # follows another bone
-				q = _globals[a]
+				q = inv * Quaternion(_root_pivot.global_basis.orthonormalized()) * _frame_fix * _rest_q[b]
+			2: # follows another bone (keeping how it sat against it at rest)
+				q = _globals[a] * _rest_q[a].inverse() * _rest_q[b]
 			3: # between two bones
-				q = _globals[a].slerp(_globals[c], _blend_t[b])
+				q = (_globals[a] * _rest_q[a].inverse()).slerp(_globals[c] * _rest_q[c].inverse(), _blend_t[b]) * _rest_q[b]
 			_: # holds its rest relative to its parent
-				_globals[b] = parent_q
+				var pr := _rest_q[parent] if parent >= 0 else Quaternion.IDENTITY
+				_globals[b] = parent_q * pr.inverse() * _rest_q[b]
 				continue
 		_globals[b] = q
 		skeleton.set_bone_pose_rotation(b, (parent_q.inverse() * q).normalized())
-	if _pelvis >= 0 and _hips_pivot:
-		skeleton.set_bone_pose_position(_pelvis, _pelvis_rest + (_hips_pivot.position - _hips_rest) * _unit)
+	if _pelvis >= 0 and _hips_pivot and _hips_rest_skel != Vector3.INF:
+		var target := frame.affine_inverse() * _hips_pivot.global_position
+		var at := skeleton.get_bone_global_rest(_pelvis).origin + (target - _hips_rest_skel)
+		var pp0 := _parent[_pelvis]
+		if pp0 >= 0:
+			at = skeleton.get_bone_global_rest(pp0).affine_inverse() * at
+		skeleton.set_bone_pose_position(_pelvis, at)
+	elif _pelvis >= 0 and _hips_pivot:
+		# The hips' move, from the character's frame into the pelvis's parent's.
+		var move := _frame_fix.inverse() * ((_hips_pivot.position - _hips_rest) * _unit)
+		var pp := _parent[_pelvis]
+		if pp >= 0:
+			move = _rest_q[pp].inverse() * move
+		skeleton.set_bone_pose_position(_pelvis, _pelvis_rest + move)
 	if _root_bone >= 0 and _root_pivot:
-		skeleton.set_bone_pose_position(_root_bone, frame.affine_inverse() * _root_pivot.global_position)
+		skeleton.set_bone_pose_position(_root_bone, skeleton.get_bone_rest(_root_bone).origin + frame.affine_inverse() * _root_pivot.global_position)
 
 
 ## The bones worth touching each frame, flattened as [bone, kind, a, b] in parent-first

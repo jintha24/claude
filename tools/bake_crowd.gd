@@ -15,6 +15,7 @@ func _init() -> void:
 
 
 func _run() -> void:
+	RealPeople.enabled = false # (the one-piece far bodies are the generated looks')
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	for look in LOOKS:
 		var body := NPCBody.new()
