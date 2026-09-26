@@ -18,6 +18,9 @@ const AVATARS := {
 	"constable": ["Police_Male_03", "Pilot_Male_01", "Pilot_Male_02"],
 	"lady": ["Business_Female_02", "Business_Female_03", "Female_Adult_02", "Female_Adult_09", "Female_Adult_11", "Female_Adult_14"],
 	"child": ["Male_Child_01", "Male_Child_02", "Female_Child_01", "Female_Child_02"],
+	# Clergy in black, with the white collar; a great house's men in its livery.
+	"priest": ["Business_Male_01", "Business_Male_02", "Business_Male_03", "Business_Male_05"],
+	"house_guard": ["Police_Male_03", "Pilot_Male_01", "Pilot_Male_02", "Male_Adult_05"],
 	# The Hill Fox himself: a young man in a dark jacket, browned to his leather greatcoat.
 	"harry": ["Male_Adult_07"],
 }
@@ -26,6 +29,7 @@ const CLOTH_TINT := {
 	"gentleman": Color(0.8, 0.78, 0.76), "worker": Color(0.86, 0.8, 0.7), "ragged": Color(0.72, 0.66, 0.56),
 	"constable": Color(0.55, 0.58, 0.72), "lady": Color(0.9, 0.86, 0.84), "child": Color(0.82, 0.76, 0.66),
 	"harry": Color(0.7, 0.52, 0.38),
+	"priest": Color(0.34, 0.32, 0.32), "house_guard": Color(0.45, 0.5, 0.42),
 }
 const SKIRTS: Array[Color] = [Color(0.2, 0.06, 0.22), Color(0.36, 0.05, 0.08), Color(0.06, 0.22, 0.14), Color(0.06, 0.09, 0.24), Color(0.25, 0.17, 0.1), Color(0.12, 0.11, 0.12)]
 
@@ -206,11 +210,23 @@ static func _add_period_clothes(skel: Skeleton3D, model: Node3D, look: String, r
 			hat = "bonnet" if rng.randf() < 0.7 else ""
 		"child":
 			hat = "cap" if rng.randf() < 0.5 else ""
+		"priest":
+			hat = "top" if rng.randf() < 0.4 else ""
+		"house_guard":
+			hat = "bowler"
 		"harry":
 			hat = "top"
 	if hat != "" and head >= 0:
 		# (Heads are longer front to back than across: so are hats.)
 		_attach(skel, rel, head, _hat_mesh(hat, look, rng), _head_top(skel, rel, head), Vector3(1.04, 1.0, 1.22))
+	if look == "priest":
+		var neck := skel.find_bone("Bip01 Neck")
+		if neck >= 0:
+			# The white clerical collar, round the neck just above the coat.
+			var at := rel * skel.get_bone_global_rest(neck).origin
+			var mb := MeshBuilder.new()
+			mb.add_cylinder(0.066, 0.07, 0.035, Vector3.ZERO, _cloth(Color(0.92, 0.91, 0.88), 0.5), 20)
+			_attach(skel, rel, neck, mb.build(), at + Vector3(0, 0.005, 0.008), Vector3(1.0, 1.0, 1.15))
 	var cloth: Array[ClothSway] = []
 	if look == "lady" and pelvis >= 0:
 		var waist := rel * skel.get_bone_global_rest(pelvis).origin + Vector3(0, 0.08, 0)

@@ -15,6 +15,8 @@ notices). They are professionally modelled and textured, with photographed faces
 | constable | Police_Male_03, Pilot_Male_01, 02 (tunics toned navy) | the custodian helmet |
 | lady | Business_Female_02, 03, Female_Adult_02, 09, 11, 14 | a small straw or felt hat, and a long, full skirt |
 | child | Male_Child_01, 02, Female_Child_01, 02 | sometimes a cap |
+| priest | Business_Male_01, 02, 03, 05 (suits toned black) | the white clerical collar, sometimes a top hat |
+| house_guard | Police_Male_03, Pilot_Male_01, 02, Male_Adult_05 (livery toned green-grey) | a bowler |
 | harry | Male_Adult_07, browned to his greatcoat | his top hat |
 
 Each look picks an avatar by the person's seed. The body texture is toned for the period
@@ -23,8 +25,9 @@ from the pelvis, gathered into folds, fuller behind, with a waistband. They swin
 `ClothSway` (`scripts/npc/cloth_sway.gd`) is a damped spring on how the waist moves. The
 skirt trails as she walks, swings out on a turn and settles with a little bounce. It
 is cheap enough for a whole street; there is no cloth simulation. The faces look along
--Z in the model, so cap peaks, helmet badges and the tilt of a lady's hat point that way. Looks with no
-avatars (priest, house guard) stay the generated MakeHuman people (`CharacterLook`).
+-Z in the model, so cap peaks, helmet badges and the tilt of a lady's hat point that way. Every look has
+avatars now; the generated MakeHuman people (`CharacterLook`) remain only as a fallback
+and for the baked far crowd.
 
 ## Materials
 

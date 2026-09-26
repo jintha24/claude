@@ -6,6 +6,7 @@ extends "res://tests/test_base.gd"
 const LOOKS := {
 	"gentleman": NPCBody.Outfit.GENTLEMAN, "worker": NPCBody.Outfit.WORKER, "ragged": NPCBody.Outfit.RAGGED,
 	"constable": NPCBody.Outfit.CONSTABLE, "lady": NPCBody.Outfit.LADY,
+	"priest": NPCBody.Outfit.PRIEST, "house_guard": NPCBody.Outfit.HOUSE_GUARD,
 }
 
 
@@ -64,7 +65,7 @@ func _test_look(look: String, outfit: int) -> void:
 		angles.append(rad_to_deg(atan2(k.z, -k.y)))
 	check("%s walks with a stride" % look, angles.max() - angles.min() > 25.0, "%.0f degrees" % (angles.max() - angles.min()))
 	match look:
-		"gentleman", "constable":
+		"gentleman", "constable", "house_guard":
 			check("%s wears his hat" % look, not sk.find_children("*", "BoneAttachment3D", false, false).is_empty())
 		"lady":
 			var skirt := sk.find_children("*", "BoneAttachment3D", false, false).filter(func(n: Node) -> bool: return (n as BoneAttachment3D).bone_idx == sk.find_bone("Bip01 Pelvis"))
