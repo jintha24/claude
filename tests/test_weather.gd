@@ -121,6 +121,25 @@ func run_tests() -> void:
 	check("snow in January", Weather.kind == Weather.Kind.SNOW and Weather.snow > 0.5)
 	GameClock.start_month = old_month
 
+	# --- The seasons ------------------------------------------------------------------------
+	# Walk the chain a long way in January and in July: winter is mostly grey and wet.
+	for month: int in [1, 7]:
+		GameClock.start_month = month
+		var counts := {}
+		var k := Weather.Kind.CLOUDY
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 5
+		for i in 4000:
+			k = Weather.pick_after(k, rng.randf())
+			counts[k] = int(counts.get(k, 0)) + 1
+		var clear := float(counts.get(Weather.Kind.CLEAR, 0)) / 4000.0
+		var dark := float(counts.get(Weather.Kind.CLOUDY, 0) + counts.get(Weather.Kind.LIGHT_RAIN, 0) + counts.get(Weather.Kind.STORM, 0) + counts.get(Weather.Kind.FOG, 0) + counts.get(Weather.Kind.SNOW, 0)) / 4000.0
+		if month == 1:
+			check("winter is mostly dark: overcast, rain and fog, hardly a clear day", clear < 0.08 and dark > 0.9, "clear %.0f%%, grey or wet %.0f%%" % [clear * 100.0, dark * 100.0])
+		else:
+			check("summer has its clear days", clear > 0.18, "clear %.0f%%" % (clear * 100.0))
+	GameClock.start_month = old_month
+
 	# --- Automatic changes ---------------------------------------------------------------
 	Weather.set_weather(Weather.Kind.CLEAR, true)
 	Weather.automatic = true

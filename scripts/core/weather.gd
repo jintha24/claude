@@ -4,7 +4,9 @@ extends Node
 ##
 ## Six kinds: clear, cloudy, light rain, storm, London fog and snow (winter only). Every
 ## 1-4 in-game hours the weather moves on (a Markov chain of believable successions: fog
-## tends to come on still mornings, storms clear through rain). Every parameter blends
+## tends to come on still mornings, storms clear through rain). The seasons weigh it: from
+## November to March it is mostly dark - low cloud, rain and fog for days on end, the skies
+## heavier and the grey spells longer, a clear day rare. Every parameter blends
 ## smoothly over ~12 in-game minutes; nothing ever switches abruptly.
 ##
 ## Everything else reads the blended values: WeatherEffects (visuals), DayNightCycle (sun,
@@ -36,6 +38,16 @@ const NEXT := {
 	Kind.STORM: {Kind.LIGHT_RAIN: 0.6, Kind.CLOUDY: 0.4},
 	Kind.FOG: {Kind.CLOUDY: 0.4, Kind.CLEAR: 0.4, Kind.FOG: 0.2},
 	Kind.SNOW: {Kind.CLOUDY: 0.5, Kind.SNOW: 0.5},
+}
+## The same in the dead of winter: London's dark season - day after day of low grey cloud,
+## rain and fog; a clear sky is rare and never lasts.
+const WINTER_NEXT := {
+	Kind.CLEAR: {Kind.CLOUDY: 0.6, Kind.FOG: 0.22, Kind.LIGHT_RAIN: 0.1, Kind.CLEAR: 0.08},
+	Kind.CLOUDY: {Kind.CLOUDY: 0.36, Kind.LIGHT_RAIN: 0.38, Kind.FOG: 0.12, Kind.STORM: 0.06, Kind.SNOW: 0.05, Kind.CLEAR: 0.03},
+	Kind.LIGHT_RAIN: {Kind.LIGHT_RAIN: 0.46, Kind.CLOUDY: 0.32, Kind.STORM: 0.12, Kind.FOG: 0.06, Kind.SNOW: 0.04},
+	Kind.STORM: {Kind.LIGHT_RAIN: 0.6, Kind.CLOUDY: 0.28, Kind.STORM: 0.12},
+	Kind.FOG: {Kind.FOG: 0.3, Kind.CLOUDY: 0.42, Kind.LIGHT_RAIN: 0.24, Kind.CLEAR: 0.04},
+	Kind.SNOW: {Kind.SNOW: 0.4, Kind.CLOUDY: 0.4, Kind.LIGHT_RAIN: 0.2},
 }
 
 static var kind: Kind = Kind.CLEAR
@@ -81,7 +93,7 @@ static func set_weather(new_kind: Kind, instant: bool = false) -> void:
 	# Snow only falls in winter; outside winter it comes down as rain.
 	if new_kind == Kind.SNOW and not GameClock.is_winter():
 		new_kind = Kind.LIGHT_RAIN
-	elif new_kind in [Kind.LIGHT_RAIN, Kind.STORM] and GameClock.is_winter() and _rng.randf() < 0.5:
+	elif new_kind in [Kind.LIGHT_RAIN, Kind.STORM] and GameClock.is_winter() and _rng.randf() < 0.3:
 		new_kind = Kind.SNOW
 	kind = new_kind
 	if instant:
@@ -93,8 +105,24 @@ static func set_weather(new_kind: Kind, instant: bool = false) -> void:
 		wind = p[4]
 		wetness = 1.0 if rain > 0.3 else wetness
 		puddles = wetness * 0.8
-	_next_change_minute = _now() + _rng.randf_range(60.0, 240.0)
+	# In winter the grey spells settle in for longer.
+	var w := winter_factor()
+	var longest := 240.0 + (180.0 * w if kind != Kind.CLEAR else -120.0 * w)
+	_next_change_minute = _now() + _rng.randf_range(60.0 + 60.0 * w * float(kind != Kind.CLEAR), longest)
 	bus().kind_changed.emit(kind)
+
+
+## How far into the dark season we are: 1 in December to February, 0.75 in November and
+## March, 0.4 in October and April, 0 from May to September.
+static func winter_factor() -> float:
+	match GameClock.date()[1]:
+		12, 1, 2:
+			return 1.0
+		11, 3:
+			return 0.75
+		10, 4:
+			return 0.4
+	return 0.0
 
 
 ## A thunderclap drowns out every other sound for a few seconds.
@@ -122,6 +150,9 @@ static func _now() -> float:
 
 func _ready() -> void:
 	_rng.randomize()
+	# Waking up in the dark season: it's grey out.
+	if automatic and kind == Kind.CLEAR and winter_factor() >= 0.75:
+		Weather.set_weather(Kind.CLOUDY if _rng.randf() < 0.6 else Kind.LIGHT_RAIN, true)
 	if _next_change_minute < 0.0:
 		_next_change_minute = Weather._now() + _rng.randf_range(60.0, 240.0)
 
@@ -130,12 +161,19 @@ func _process(delta: float) -> void:
 	var game_minutes := 0.0 if GameClock.paused else delta * 1440.0 / (GameClock.real_minutes_per_game_day * 60.0)
 	if automatic and Weather._now() >= _next_change_minute:
 		Weather.set_weather(_pick_next())
-	# Blend towards the target profile.
+	# Blend towards the target profile; winter skies hang lower and darker, and the air is
+	# murkier.
 	var p: Array = PROFILES[kind]
 	var step := game_minutes / maxf(transition_minutes, 0.01)
-	cloud = move_toward(cloud, p[0], step)
+	var w := winter_factor()
+	var cloud_target: float = p[0]
+	if kind == Kind.CLEAR:
+		cloud_target = maxf(cloud_target, 0.3 * w)
+	else:
+		cloud_target = lerpf(cloud_target, 1.0, 0.6 * w)
+	cloud = move_toward(cloud, cloud_target, step)
 	rain = move_toward(rain, p[1], step)
-	fog = move_toward(fog, p[2], step * 0.6) # fog rolls in slowly
+	fog = move_toward(fog, minf(p[2] + 0.12 * w, 1.0), step * 0.6) # fog rolls in slowly
 	snow = move_toward(snow, p[3], step)
 	wind = move_toward(wind, p[4], step)
 	# Wind slowly veers.
@@ -159,11 +197,24 @@ func _process(delta: float) -> void:
 
 
 func _pick_next() -> Kind:
-	var options: Dictionary = NEXT[kind]
-	var r := _rng.randf()
+	return Weather.pick_after(kind, _rng.randf())
+
+
+## The weather to follow `from`, for a roll `r` in 0..1: the season's odds (the usual
+## succession blended towards WINTER_NEXT by winter_factor).
+static func pick_after(from: Kind, r: float) -> Kind:
+	var w := winter_factor()
+	var odds := {}
+	var base: Dictionary = NEXT[from]
+	var dark: Dictionary = WINTER_NEXT[from]
+	for k: Kind in Kind.values():
+		odds[k] = lerpf(float(base.get(k, 0.0)), float(dark.get(k, 0.0)), w)
+	var total := 0.0
+	for k: Kind in odds:
+		total += odds[k]
 	var acc := 0.0
-	for k: Kind in options:
-		acc += float(options[k])
+	for k: Kind in odds:
+		acc += odds[k] / total
 		if r <= acc:
 			return k
 	return Kind.CLOUDY

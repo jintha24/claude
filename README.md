@@ -54,7 +54,9 @@ night watch carries bullseye lanterns.
 changing on their own and always blending smoothly. Rain stops at roofs and splashes. Streets turn
 wet and glossy and puddles form, then dry out slowly. Wind moves smoke and washing lines. Rain
 masks footsteps, fog blinds the constables, and wet slate roofs are slippery. Fewer people are out
-in bad weather, and they shelter or carry umbrellas.
+in bad weather, and they shelter or carry umbrellas. The seasons weigh it. From November to March London is mostly dark: low grey
+cloud, rain and fog for days on end, heavier skies, longer grey spells, and hardly a clear
+day (about 2% in deep winter). Summer keeps its fine days.
 
 **Phase 7 — Ashcombe House:** Lord Ashcombe's walled mansion east of the market, the first great
 break-in. There are seven ways in:
