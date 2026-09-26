@@ -27,6 +27,8 @@ enum Outfit { CONSTABLE, GENTLEMAN, WORKER, LADY, HOUSE_GUARD, PRIEST, RAGGED }
 @export var variation_seed: int = -1
 
 var pose: Pose = Pose.NORMAL
+## Had a skinful: stands swaying and staggers along (motion capture only).
+var drunk := false
 var head_yaw: float = 0.0
 
 var _has_model := false
@@ -55,6 +57,12 @@ static var _shared_material: StandardMaterial3D
 ## The realistic character, when there is one.
 var _look_model: Node3D
 var _rig: CharacterRig
+## Motion capture (the real people): what the actors recorded, with the rig blended over
+## it by `_proc` (0 = all recorded, 1 = all procedural) and by arm or head where a pose
+## needs it (`_masks`).
+var _mocap: Mocap
+var _proc := 1.0
+var _masks := {"arm_l": 0.0, "arms": 0.0, "browse": 0.0, "head": 0.0}
 
 
 func _ready() -> void:
@@ -146,8 +154,21 @@ func _attach_look() -> void:
 		"upperarm_l": _shoulder[0], "upperarm_r": _shoulder[1], "lowerarm_l": _elbow[0], "lowerarm_r": _elbow[1],
 	}
 	_rig.setup(skel[0] as Skeleton3D, drivers, _hips, Vector3(0, 0.92, 0), _root_pivot)
+	_rig.set_mask("arm_l", ["upperarm_l", "lowerarm_l"])
+	_rig.set_mask("arms", ["upperarm_l", "lowerarm_l", "upperarm_r", "lowerarm_r"])
+	_rig.set_mask("browse", ["head", "upperarm_r", "lowerarm_r"])
+	_rig.set_mask("head", ["head"])
+	if _look_model.has_meta("pelvis_height") and Mocap.available(bool(_look_model.get_meta("female", false))):
+		_mocap = Mocap.new()
+		if not _mocap.setup(skel[0] as Skeleton3D, bool(_look_model.get_meta("female", false)), variation_seed,
+				float(_look_model.get_meta("pelvis_height")), s):
+			_mocap = null
 	_pose_mannequin(0.0)
-	_rig.update()
+	if _mocap:
+		_mocap.update(0.0, 0.0, "loco")
+		_proc = 0.0
+	else:
+		_rig.update()
 
 
 ## Called by the owning NPC every physics frame.
@@ -157,10 +178,74 @@ func update_body(speed: float, new_pose: Pose, delta: float) -> void:
 	_speed = lerpf(_speed, speed, 1.0 - exp(-8.0 * delta))
 	if _has_model:
 		_drive_model()
+	elif _mocap:
+		_drive_mocap(delta)
 	else:
 		_pose_mannequin(delta)
 		if _rig:
 			_rig.update()
+	if _look_model:
+		RealPeople.step_cloth(_look_model, delta)
+
+
+## True while this person moves by motion capture (see Mocap).
+func is_mocap() -> bool:
+	return _mocap != null
+
+
+## What the recorded clips can do for the pose, and what the rig still must.
+func _drive_mocap(delta: float) -> void:
+	var act := "loco"
+	var proc := 0.0
+	var want := {"arm_l": 0.0, "arms": 0.0, "browse": 0.0, "head": 0.0}
+	match pose:
+		Pose.NORMAL:
+			if drunk:
+				act = "drunk_walk" if _speed > 0.3 else "drunk"
+		Pose.LOOK_AROUND:
+			act = "look_around"
+		Pose.TALK:
+			# Talking and listening by turns.
+			act = "talk" if (int(_t / 7.0) + absi(variation_seed)) % 2 == 0 else "listen"
+		Pose.SIT:
+			act = "sit"
+		Pose.WAVE:
+			act = "wave"
+		Pose.BROWSE:
+			want["browse"] = 1.0
+		Pose.ALERT, Pose.RATTLE, Pose.SHOUT:
+			want["arms"] = 1.0
+		Pose.GUARD, Pose.WINDUP, Pose.PUNCH, Pose.STUNNED:
+			# Fists and staggers are the rig's; on the move the legs still walk.
+			if _speed < 0.6 or pose == Pose.STUNNED:
+				proc = 1.0
+			else:
+				want["arms"] = 1.0
+		Pose.UNCONSCIOUS:
+			proc = 1.0
+	if has_umbrella_open():
+		want["arm_l"] = 1.0
+	if pose == Pose.NORMAL:
+		want["head"] = clampf(absf(head_yaw) / 0.25, 0.0, 1.0)
+	# Knocked out is a fall, not a blend: quick. The rest ease in and out.
+	_proc = move_toward(_proc, proc, delta * (6.0 if pose == Pose.UNCONSCIOUS else 4.0))
+	var any := _proc > 0.001
+	for m: String in _masks:
+		_masks[m] = move_toward(_masks[m], want[m], delta * 4.0)
+		any = any or _masks[m] > 0.001
+	# Lying out cold: the clips stop (the rig has the whole body).
+	_mocap.update(delta, _speed if _proc < 0.999 else 0.0, act)
+	if any:
+		# Fading the rig out, it holds its last pose (a procedural pose changes at once;
+		# the fade is what makes it smooth).
+		var wanted := proc > 0.0
+		for m: String in want:
+			wanted = wanted or want[m] > 0.0
+		if wanted:
+			_pose_mannequin(delta)
+		_rig.update(_proc, _masks)
+	else:
+		_down = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -270,7 +355,7 @@ func _pose_mannequin(delta: float) -> void:
 	var knee_amp := deg_to_rad(lerpf(35.0, 95.0, run_t)) * move
 	var arm_amp := deg_to_rad(lerpf(15.0, 50.0, run_t)) * move
 	var target_down := 1.0 if pose == Pose.UNCONSCIOUS else 0.0
-	_down = move_toward(_down, target_down, delta * 1.8)
+	_down = move_toward(_down, target_down, delta * 1.4)
 	for i in 2:
 		var p := _phase + (PI if i == 1 else 0.0)
 		_thigh[i].rotation.x = sin(p) * leg_amp
@@ -383,8 +468,10 @@ func _pose_mannequin(delta: float) -> void:
 		_shoulder[0].rotation.z = deg_to_rad(-15.0)
 		_elbow[0].rotation.x = deg_to_rad(80.0)
 	# Unconscious: collapse onto his back.
-	_root_pivot.rotation.x = _down * deg_to_rad(88.0)
-	_root_pivot.position = Vector3(0, _down * 0.12, _down * 0.35)
+	# (Toppling: slow to start, quicker as they go, like a body falling.)
+	var fall := _down * _down if target_down > 0.0 else _down
+	_root_pivot.rotation.x = fall * deg_to_rad(88.0)
+	_root_pivot.position = Vector3(0, fall * 0.12, fall * 0.35)
 	if _down > 0.0:
 		for i in 2:
 			_shoulder[i].rotation.x = lerpf(_shoulder[i].rotation.x, deg_to_rad(20.0), _down)

@@ -331,6 +331,8 @@ func set_drunk(on: bool) -> void:
 		return
 	drunk = on
 	walk_speed *= 0.7 if on else 1.0 / 0.7
+	if _body:
+		_body.drunk = on
 	_sing_timer = _rng.randf_range(3.0, 10.0)
 
 

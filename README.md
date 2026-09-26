@@ -129,7 +129,7 @@ and bite.
 - a columned bank front and a classically dressed Ashcombe House
 - Harry in a flared leather greatcoat and top hat
 
-**Real people:** most Londoners, and Harry himself, are professionally modelled people with photographed faces and skin: 27 [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars (MIT licence). Gentlemen in dark suits, working men, constables, ladies and children, dressed for 1866 with top hats, bowlers, caps, the custodian helmet, ladies' hats and long, full skirts. They are driven by the same rig as everyone else (walking, fighting, falling, sitting). See [docs/REAL_PEOPLE.md](docs/REAL_PEOPLE.md).
+**Real people:** most Londoners, and Harry himself, are professionally modelled people with photographed faces and skin: 27 [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars (MIT licence). Gentlemen in dark suits, working men, constables, ladies and children, dressed for 1866 with top hats, bowlers, caps, the custodian helmet, ladies' hats and long, full skirts. They stand about, walk, run, sprint, talk, sit and wave by Rocketbox motion capture from real actors, with feet planted and no sliding. The procedural rig blends over the capture for fighting, climbing, falling and parkour. See [docs/REAL_PEOPLE.md](docs/REAL_PEOPLE.md).
 
 **Generated people:** the other looks (priests, house guards, the background crowd) are built from the MakeHuman data: everyone in the game used to be a real human body (from the CC0 MakeHuman
 data) in period clothes: gentlemen in frock coats and top hats, ladies in crinolines and

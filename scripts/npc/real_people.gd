@@ -34,6 +34,7 @@ static var enabled := true
 static var _scenes := {}
 static var _materials := {}
 static var _available := {}
+static var _skins := {}
 
 
 ## The avatars actually present for `look` (the list above, as far as they've been
@@ -77,8 +78,50 @@ static func instantiate(look: String, seed: int) -> Node3D:
 		_dress_mesh(n as MeshInstance3D, name, look)
 	var skel := avatar.find_children("*", "Skeleton3D", true, false)
 	if not skel.is_empty():
-		_add_period_clothes(skel[0] as Skeleton3D, model, look, rng)
+		var sk := skel[0] as Skeleton3D
+		_biped_names(sk, avatar, path)
+		_add_period_clothes(sk, model, look, rng)
+		model.set_meta("female", name.contains("Female"))
+		model.set_meta("pelvis_height", _pelvis_height(sk, model))
 	return model
+
+
+## The children's bipeds are "Bip02": renamed "Bip01" like everyone else's, so the rig,
+## the clothes and the motion capture all find their bones. (The skin binds bones by
+## name, so it gets the new names too: one renamed copy per avatar.)
+static func _biped_names(sk: Skeleton3D, avatar: Node, path: String) -> void:
+	if sk.find_bone("Bip02 Pelvis") < 0:
+		return
+	for b in sk.get_bone_count():
+		var bn := sk.get_bone_name(b)
+		if bn.begins_with("Bip02"):
+			sk.set_bone_name(b, "Bip01" + bn.substr(5))
+	for n in avatar.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.skin == null:
+			continue
+		var key := "%s:skin:%s" % [path, mi.name]
+		if not _skins.has(key):
+			var skin := mi.skin.duplicate() as Skin
+			for i in skin.get_bind_count():
+				var bn := String(skin.get_bind_name(i))
+				if bn.begins_with("Bip02"):
+					skin.set_bind_name(i, "Bip01" + bn.substr(5))
+			_skins[key] = skin
+		mi.skin = _skins[key]
+
+
+## How high the hips are at rest (model space, before the model is scaled).
+static func _pelvis_height(sk: Skeleton3D, model: Node3D) -> float:
+	var pelvis := sk.find_bone("Bip01 Pelvis")
+	if pelvis < 0:
+		return 0.9
+	var rel := Transform3D()
+	var n: Node = sk
+	while n and n != model:
+		rel = (n as Node3D).transform * rel
+		n = n.get_parent()
+	return (rel * sk.get_bone_global_rest(pelvis).origin).y
 
 
 static func _dress_mesh(mi: MeshInstance3D, name: String, look: String) -> void:
@@ -168,9 +211,24 @@ static func _add_period_clothes(skel: Skeleton3D, model: Node3D, look: String, r
 	if hat != "" and head >= 0:
 		# (Heads are longer front to back than across: so are hats.)
 		_attach(skel, rel, head, _hat_mesh(hat, look, rng), _head_top(skel, rel, head), Vector3(1.04, 1.0, 1.22))
+	var cloth: Array[ClothSway] = []
 	if look == "lady" and pelvis >= 0:
 		var waist := rel * skel.get_bone_global_rest(pelvis).origin + Vector3(0, 0.08, 0)
-		_attach(skel, rel, pelvis, _skirt_mesh(waist.y, SKIRTS[rng.randi() % SKIRTS.size()]), Vector3(0, waist.y, waist.z))
+		var sway := ClothSway.new()
+		sway.drag = 0.035
+		sway.max_angle = 0.18
+		_attach(skel, rel, pelvis, _skirt_mesh(waist.y, SKIRTS[rng.randi() % SKIRTS.size()]), Vector3(0, waist.y, waist.z), Vector3.ONE, sway)
+		cloth.append(sway)
+	model.set_meta("cloth", cloth)
+
+
+## Swings the skirts of a model made here (see ClothSway).
+static func step_cloth(model: Node3D, delta: float) -> void:
+	if model == null or not model.has_meta("cloth"):
+		return
+	for c: ClothSway in model.get_meta("cloth"):
+		if is_instance_valid(c):
+			c.step(delta)
 
 
 ## Where a hat sits on this head (model space, at rest).
@@ -184,19 +242,31 @@ static func _head_top(skel: Skeleton3D, rel: Transform3D, head: int) -> Vector3:
 	return Vector3(p.x, brows + 0.045, p.z + 0.012)
 
 
-## Fixes `mesh` to bone `bone`, placed level at `at` (model space, rest pose).
-static func _attach(skel: Skeleton3D, rel: Transform3D, bone: int, mesh: Mesh, at: Vector3, scale := Vector3.ONE) -> void:
+## Fixes `mesh` to bone `bone`, placed level at `at` (model space, rest pose). With
+## `sway`, the mesh hangs from it (and swings).
+static func _attach(skel: Skeleton3D, rel: Transform3D, bone: int, mesh: Mesh, at: Vector3, scale := Vector3.ONE, sway: ClothSway = null) -> void:
 	var ba := BoneAttachment3D.new()
 	ba.bone_idx = bone
 	skel.add_child(ba)
 	var mi := MeshInstance3D.new()
-	mi.name = "Period_%s" % skel.get_bone_name(bone).get_slice(" ", 1)
+	var part := skel.get_bone_name(bone).get_slice(" ", 1)
+	mi.name = "Period_%s" % part
 	mi.mesh = mesh
 	mi.visibility_range_end = PerfTuning.RANGE_PERSON
 	mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	ba.add_child(mi)
 	# From the bone's rest frame, through the skeleton's, to a level placement in the model.
-	mi.transform = skel.get_bone_global_rest(bone).affine_inverse() * rel.affine_inverse() * Transform3D(Basis.IDENTITY.scaled(scale), at)
+	var place := skel.get_bone_global_rest(bone).affine_inverse() * rel.affine_inverse() * Transform3D(Basis.IDENTITY.scaled(scale), at)
+	if sway == null:
+		ba.add_child(mi)
+		mi.transform = place
+		return
+	var holder := Node3D.new()
+	holder.name = "Hang_%s_%d" % [part, ba.get_index()]
+	ba.add_child(holder)
+	holder.transform = place
+	sway.name = "Sway"
+	holder.add_child(sway)
+	sway.add_child(mi)
 
 
 static func _cloth(c: Color, rough := 0.85) -> StandardMaterial3D:
@@ -239,7 +309,8 @@ static func _hat_mesh(kind: String, look: String, rng: RandomNumberGenerator) ->
 			crown.height = 0.1
 			crown.is_hemisphere = true
 			mb.add_mesh(crown, Transform3D(Basis.IDENTITY.scaled(Vector3(1.0, 1.0, 1.08)), Vector3(0, -0.035, 0.012)), c)
-			mb.add_box(Vector3(0.17, 0.012, 0.075), Vector3(0, -0.035, 0.125), c, Basis(Vector3.RIGHT, -0.15))
+			# (Faces look along -Z: the peak goes there, dipping a little.)
+			mb.add_box(Vector3(0.17, 0.012, 0.075), Vector3(0, -0.035, -0.125), c, Basis(Vector3.RIGHT, -0.15))
 		"helmet":
 			var navy := _cloth(Color(0.03, 0.04, 0.09), 0.7)
 			var dome := SphereMesh.new()
@@ -247,17 +318,17 @@ static func _hat_mesh(kind: String, look: String, rng: RandomNumberGenerator) ->
 			dome.height = 0.34
 			mb.add_mesh(dome, Transform3D(Basis.IDENTITY, Vector3(0, 0.03, 0)), navy)
 			mb.add_cylinder(0.13, 0.13, 0.012, Vector3(0, -0.06, 0), navy, 24)
-			mb.add_box(Vector3(0.06, 0.07, 0.01), Vector3(0, 0.02, 0.11), _cloth(Color(0.75, 0.75, 0.78), 0.3))
+			mb.add_box(Vector3(0.06, 0.07, 0.01), Vector3(0, 0.02, -0.11), _cloth(Color(0.75, 0.75, 0.78), 0.3))
 		"bonnet":
 			# A lady's small hat: straw or felt, a shallow crown, a narrow brim and a ribbon,
 			# worn tipped forward.
 			var straw := rng.randf() < 0.5
 			var c := _cloth(Color(0.74, 0.62, 0.4) if straw else [Color(0.08, 0.08, 0.08), Color(0.12, 0.2, 0.14), Color(0.3, 0.1, 0.12)][rng.randi() % 3], 0.9)
 			var ribbon := _cloth([Color(0.35, 0.05, 0.1), Color(0.05, 0.1, 0.3), Color(0.06, 0.06, 0.06)][rng.randi() % 3], 0.5)
-			var tip := Basis(Vector3.RIGHT, 0.18)
-			mb.add_cylinder(0.075, 0.085, 0.07, Vector3(0, 0.005, 0.01), c, 20, tip)
-			mb.add_cylinder(0.14, 0.14, 0.01, Vector3(0, -0.03, 0.012), c, 24, tip)
-			mb.add_cylinder(0.087, 0.087, 0.022, Vector3(0, -0.012, 0.011), ribbon, 20, tip)
+			var tip := Basis(Vector3.RIGHT, -0.18)
+			mb.add_cylinder(0.075, 0.085, 0.07, Vector3(0, 0.005, -0.01), c, 20, tip)
+			mb.add_cylinder(0.14, 0.14, 0.01, Vector3(0, -0.03, -0.012), c, 24, tip)
+			mb.add_cylinder(0.087, 0.087, 0.022, Vector3(0, -0.012, -0.011), ribbon, 20, tip)
 	return mb.build()
 
 
@@ -274,8 +345,8 @@ static func _skirt_mesh(waist_y: float, colour: Color) -> Mesh:
 		var t := float(r) / rings
 		for k in seg + 1:
 			var a := TAU * k / seg
-			# Fuller behind (a Victorian skirt), folds deepening towards the hem.
-			var back := 1.0 + 0.18 * maxf(-sin(a), 0.0) * t
+			# Fuller behind (+Z: a Victorian skirt), folds deepening towards the hem.
+			var back := 1.0 + 0.18 * maxf(sin(a), 0.0) * t
 			var fold := 1.0 + (0.025 + 0.07 * t) * sin(a * folds + sin(a * 3.0) * 0.8)
 			var rad := lerpf(0.16, 0.43, pow(t, 1.25)) * back * fold
 			var hem := 0.02 * sin(a * 5.0 + 1.3) * t * t

@@ -41,6 +41,9 @@ var _rest_q: Array[Quaternion] = []
 ## turned round; the generated ones match).
 var _frame_fix := Quaternion.IDENTITY
 var _hips_rest_skel := Vector3.INF
+## Blend weight per bone this frame, and the named bone groups (set_mask).
+var _w := PackedFloat32Array()
+var _masks := {}
 ## The model's bone names for the mannequin's (MakeHuman) names, when they differ.
 const BIPED := {
 	"pelvis": "Bip01 Pelvis", "spine_01": "Bip01 Spine", "spine_02": "Bip01 Spine1", "spine_03": "Bip01 Spine2",
@@ -167,12 +170,32 @@ func _curl_fingers() -> void:
 				skeleton.set_bone_pose_rotation(b, Quaternion(axis, amount))
 
 
+## Names a group of bones (mannequin names) that can be blended in on their own: an arm
+## holding an umbrella over a recorded walk, say.
+func set_mask(mask: String, mh_names: Array) -> void:
+	var bones := PackedInt32Array()
+	for n: String in mh_names:
+		var b := find(n)
+		if b >= 0:
+			bones.append(b)
+	_masks[mask] = bones
+
+
 ## Copies the mannequin's pose onto the skeleton. Call after the mannequin is posed.
-func update() -> void:
+## `weight` < 1 blends it over whatever pose the skeleton already has (motion capture);
+## `masks` (mask name -> weight) blends named groups in by more.
+func update(weight: float = 1.0, masks: Dictionary = {}) -> void:
 	if skeleton == null or not is_instance_valid(skeleton):
 		return
 	if _plan.is_empty():
 		_make_plan()
+	if _w.size() != _parent.size():
+		_w.resize(_parent.size())
+	_w.fill(clampf(weight, 0.0, 1.0))
+	for m: String in masks:
+		var mw := clampf(float(masks[m]), 0.0, 1.0)
+		for b in _masks.get(m, PackedInt32Array()):
+			_w[b] = maxf(_w[b], mw)
 	var frame := skeleton.global_transform
 	var inv := Quaternion(frame.basis.orthonormalized()).inverse()
 	var i := 0
@@ -196,6 +219,7 @@ func update() -> void:
 				q = inv * Quaternion(_root_pivot.global_basis.orthonormalized()) * _frame_fix * _rest_q[b]
 			2: # follows another bone (keeping how it sat against it at rest)
 				q = _globals[a] * _rest_q[a].inverse() * _rest_q[b]
+				_w[b] = maxf(_w[b], _w[a])
 			3: # between two bones
 				q = (_globals[a] * _rest_q[a].inverse()).slerp(_globals[c] * _rest_q[c].inverse(), _blend_t[b]) * _rest_q[b]
 			_: # holds its rest relative to its parent
@@ -203,21 +227,28 @@ func update() -> void:
 				_globals[b] = parent_q * pr.inverse() * _rest_q[b]
 				continue
 		_globals[b] = q
-		skeleton.set_bone_pose_rotation(b, (parent_q.inverse() * q).normalized())
-	if _pelvis >= 0 and _hips_pivot and _hips_rest_skel != Vector3.INF:
+		var wb := _w[b]
+		if wb >= 0.999:
+			skeleton.set_bone_pose_rotation(b, (parent_q.inverse() * q).normalized())
+		elif wb > 0.001:
+			skeleton.set_bone_pose_rotation(b, skeleton.get_bone_pose_rotation(b).slerp((parent_q.inverse() * q).normalized(), wb))
+	var pw := _w[_pelvis] if _pelvis >= 0 else 0.0
+	if pw <= 0.001:
+		pass
+	elif _pelvis >= 0 and _hips_pivot and _hips_rest_skel != Vector3.INF:
 		var target := frame.affine_inverse() * _hips_pivot.global_position
 		var at := skeleton.get_bone_global_rest(_pelvis).origin + (target - _hips_rest_skel)
 		var pp0 := _parent[_pelvis]
 		if pp0 >= 0:
 			at = skeleton.get_bone_global_rest(pp0).affine_inverse() * at
-		skeleton.set_bone_pose_position(_pelvis, at)
+		skeleton.set_bone_pose_position(_pelvis, skeleton.get_bone_pose_position(_pelvis).lerp(at, pw))
 	elif _pelvis >= 0 and _hips_pivot:
 		# The hips' move, from the character's frame into the pelvis's parent's.
 		var move := _frame_fix.inverse() * ((_hips_pivot.position - _hips_rest) * _unit)
 		var pp := _parent[_pelvis]
 		if pp >= 0:
 			move = _rest_q[pp].inverse() * move
-		skeleton.set_bone_pose_position(_pelvis, _pelvis_rest + move)
+		skeleton.set_bone_pose_position(_pelvis, skeleton.get_bone_pose_position(_pelvis).lerp(_pelvis_rest + move, pw))
 	if _root_bone >= 0 and _root_pivot:
 		skeleton.set_bone_pose_position(_root_bone, skeleton.get_bone_rest(_root_bone).origin + frame.affine_inverse() * _root_pivot.global_position)
 

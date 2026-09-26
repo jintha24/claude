@@ -38,6 +38,12 @@ var _climb_phase := 0.0
 ## The realistic Harry, when there is one.
 var _look: Node3D
 var _rig: CharacterRig
+## Motion capture for what the actors recorded (standing, walking, running, sprinting,
+## crouching); the rig blended over it (`_proc`, and by arms for the bow and the light
+## fingers) for everything else: jumps, falls, climbing, vaults, fights, riding.
+var _mocap: Mocap
+var _proc := 0.0
+var _masks := {"arms": 0.0, "aim": 0.0}
 
 
 func _ready() -> void:
@@ -160,6 +166,12 @@ func _use_realistic_body() -> void:
 		"upperarm_l": _shoulder[0], "upperarm_r": _shoulder[1], "lowerarm_l": _elbow[0], "lowerarm_r": _elbow[1],
 	}
 	_rig.setup(skel[0] as Skeleton3D, drivers, _hips, Vector3(0, HIP_HEIGHT, 0), null, 1.0 / s)
+	_rig.set_mask("arms", ["upperarm_l", "lowerarm_l", "upperarm_r", "lowerarm_r", "head"])
+	_rig.set_mask("aim", ["upperarm_l", "lowerarm_l", "upperarm_r", "lowerarm_r", "head", "spine_03"])
+	if look.has_meta("pelvis_height") and Mocap.available(false):
+		_mocap = Mocap.new()
+		if not _mocap.setup(skel[0] as Skeleton3D, false, 0, float(look.get_meta("pelvis_height")), s):
+			_mocap = null
 	_rig.update()
 
 
@@ -403,7 +415,45 @@ func update_pose(h: Harry, delta: float) -> void:
 		_hips.position.y = 0.55
 		_spine.rotation.x = -deg_to_rad(50.0)
 	if _rig:
-		_rig.update()
+		if _mocap:
+			_drive_mocap(h, speed, delta)
+		else:
+			_rig.update()
+		RealPeople.step_cloth(_look, delta)
+
+
+## Which of Harry's states the recorded clips play (the rest are the rig's).
+func _drive_mocap(h: Harry, speed: float, delta: float) -> void:
+	var act := "loco"
+	var proc := 1.0
+	var want := {"arms": 0.0, "aim": 0.0}
+	var fighting := h.brawl != null and is_instance_valid(h.brawl)
+	match h.state:
+		Harry.State.IDLE, Harry.State.WALK, Harry.State.RUN, Harry.State.SPRINT:
+			proc = 0.0
+		Harry.State.CROUCH_IDLE:
+			act = "crouch"
+			proc = 0.0
+		Harry.State.PICKPOCKET:
+			proc = 0.0
+			want["arms"] = 1.0
+		Harry.State.LOCKPICK:
+			if not h.is_crouching:
+				proc = 0.0
+				want["arms"] = 1.0
+	if fighting:
+		proc = 1.0
+	if _aim_blend > 0.0:
+		want["aim"] = _aim_blend
+	# Into a jump, a grab or a fall quickly; back on to the recorded feet a little slower.
+	_proc = move_toward(_proc, proc, delta * (9.0 if proc > _proc else 5.0))
+	var any := _proc > 0.001
+	for m: String in _masks:
+		_masks[m] = move_toward(_masks[m], want[m], delta * 6.0)
+		any = any or _masks[m] > 0.001
+	_mocap.update(delta, speed if _proc < 0.999 else 0.0, act)
+	if any:
+		_rig.update(_proc, _masks)
 
 
 ## Poses for hanging, shimmying, drainpipes, climbing up and vaulting.

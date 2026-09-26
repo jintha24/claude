@@ -33,7 +33,8 @@ https://github.com/makehumancommunity/makehuman. With thanks.
 
 === Microsoft Rocketbox avatars ===
 Most of the people in London are Microsoft Rocketbox avatars
-(https://github.com/microsoft/Microsoft-Rocketbox), dressed for 1866:
+(https://github.com/microsoft/Microsoft-Rocketbox), dressed for 1866, and they move by its
+motion-capture animations:
 MIT License
 
 Copyright (c) 2020 Microsoft
