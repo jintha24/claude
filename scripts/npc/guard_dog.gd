@@ -416,10 +416,23 @@ func _apply_movement(delta: float) -> void:
 # ---------------------------------------------------------------------------
 # Body: a procedural mastiff (swap in a rigged model in Phase 10)
 # ---------------------------------------------------------------------------
+var _body: AnimalBody
+
+
 func _build_body() -> void:
 	_visual = Node3D.new()
 	_visual.name = "Body"
 	add_child(_visual)
+	if AnimalLook.has_species("mastiff"):
+		# The real mastiff: heavy, broad-headed, and it runs like a dog.
+		_body = AnimalBody.new()
+		_body.species = "mastiff"
+		_body.variation_seed = hash(str(get_path()) if is_inside_tree() else name)
+		_visual.add_child(_body)
+		if _body.is_ok():
+			return
+		_body.queue_free()
+		_body = null
 	var coat := StandardMaterial3D.new()
 	coat.albedo_color = Color(0.2, 0.15, 0.1)
 	coat.roughness = 0.9
@@ -460,6 +473,16 @@ func _build_body() -> void:
 func _animate(delta: float) -> void:
 	_visual.rotation.y = _yaw
 	var v := Vector2(velocity.x, velocity.z).length()
+	if _body:
+		var alert := state in [State.ALERT, State.TRACK, State.CHASE, State.BAY]
+		_body.want("alert", 1.0 if alert and state != State.TRACK else 0.0, 3.0)
+		# Nose down on a scent; lying by the kennel.
+		_body.want("graze", 0.7 if state == State.TRACK else 0.0, 2.0)
+		_body.want("lie", 1.0 if state == State.KENNEL and v < 0.1 else 0.0, 1.0)
+		var bark := sin(_state_time * 18.0) * 0.08 if state == State.BAY or (state == State.CHASE and _bark_timer > 1.2) else 0.0
+		_body.look_at_angle(0.0, bark)
+		_body.update_body(delta, v, 0.0, _yaw)
+		return
 	_gait_phase += delta * (2.0 + v * 2.2)
 	var swing := clampf(v / 3.0, 0.0, 1.0) * 0.6
 	for i in 4:

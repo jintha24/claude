@@ -17,6 +17,7 @@ var _timer := 0.0
 var _visual: Node3D
 var _t := 0.0
 var _rng := RandomNumberGenerator.new()
+var _body: AnimalBody
 
 static var _meshes := {}
 
@@ -34,10 +35,28 @@ func _ready() -> void:
 	cs.rotation.x = PI * 0.5
 	cs.position = Vector3(0, 0.55 if kind == Kind.SHEEP else 0.9, 0)
 	add_child(cs)
-	_visual = MeshInstance3D.new()
-	(_visual as MeshInstance3D).mesh = _mesh(kind, _rng.randi() % 3)
-	(_visual as MeshInstance3D).visibility_range_end = 260.0
-	add_child(_visual)
+	var species := "sheep" if kind == Kind.SHEEP else "cow"
+	if AnimalLook.has_species(species):
+		# The real beast, grazing, ambling and trotting on its own legs.
+		_visual = Node3D.new()
+		add_child(_visual)
+		_body = AnimalBody.new()
+		_body.species = species
+		_body.variation_seed = _rng.randi()
+		_body.size = _rng.randf_range(0.92, 1.06)
+		# (Livestock walk towards +Z; the bodies face -Z.)
+		_body.rotation.y = PI
+		_visual.add_child(_body)
+		if not _body.is_ok():
+			_body.queue_free()
+			_body = null
+			_visual.queue_free()
+			_visual = null
+	if _visual == null:
+		_visual = MeshInstance3D.new()
+		(_visual as MeshInstance3D).mesh = _mesh(kind, _rng.randi() % 3)
+		(_visual as MeshInstance3D).visibility_range_end = 260.0
+		add_child(_visual)
 	_yaw = _rng.randf() * TAU
 	_timer = _rng.randf_range(1.0, 8.0)
 	_target = global_position
@@ -75,6 +94,12 @@ func _physics_process(delta: float) -> void:
 	if gen:
 		global_position.y = gen.height(global_position.x, global_position.z)
 	_visual.rotation.y = _yaw
+	if _body:
+		_body.want("graze", 1.0 if speed < 0.1 else 0.0, 1.2)
+		# Now and then one lies down to chew the cud.
+		_body.want("lie", 1.0 if speed < 0.1 and fmod(_t + _rng.seed % 100, 90.0) > 70.0 else 0.0, 0.5)
+		_body.update_body(step, speed, 0.0, _yaw)
+		return
 	# Heads down grazing; a small bob when walking.
 	_visual.rotation.x = 0.06 * sin(_t * 1.3) if speed < 0.1 else 0.0
 	_visual.position.y = absf(sin(_t * 6.0)) * 0.04 if speed > 0.1 else 0.0

@@ -64,6 +64,9 @@ var _neck: Node3D
 var _tail: Node3D
 var _phase := 0.0
 var _rear := 0.0
+## The real body, when the horse model exists (else the stand-in shapes below).
+var _body: AnimalBody
+var _graze_t := 0.0
 var _body_shape: CollisionShape3D
 var _progress_timer := 0.0
 var _progress_dist := INF
@@ -432,6 +435,18 @@ func _build_body() -> void:
 			_legs.append(d1)
 			_knees.append(d2)
 		return
+	if AnimalLook.has_species("horse"):
+		# The real horse: sculpted, walked by its gaits, saddled and bridled.
+		_body = AnimalBody.new()
+		_body.species = "horse"
+		_body.tack = "saddle"
+		_body.coat = 1 # Cinder is a dark bay
+		_body.variation_seed = 7
+		_visual.add_child(_body)
+		if _body.is_ok():
+			return
+		_body.queue_free()
+		_body = null
 	var coat := StandardMaterial3D.new()
 	coat.albedo_color = Color(0.09, 0.06, 0.045)
 	coat.roughness = 0.72
@@ -523,6 +538,16 @@ func _build_body() -> void:
 
 func _animate(delta: float) -> void:
 	_visual.rotation.y = _yaw
+	if _body:
+		_rear = move_toward(_rear, 0.0, delta * 1.2)
+		_body.want("rear", clampf(_rear * 1.6, 0.0, 1.0), 6.0)
+		_body.want("jump", 1.0 if is_jumping else 0.0, 7.0)
+		# Standing about on his own he puts his head down to the grass now and then.
+		var idle := gait == Gait.STAND and rider == null and not called
+		_graze_t += delta
+		_body.want("graze", 1.0 if idle and fmod(_graze_t, 40.0) > 14.0 else 0.0, 0.6)
+		_body.update_body(delta, speed, 0.0, _yaw)
+		return
 	var v := absf(speed)
 	_phase += delta * TAU * (0.0 if v < 0.2 else clampf(v / STRIDE[gait], 0.6, 2.6))
 	var amp := [0.0, 0.35, 0.5, 0.65, 0.85][gait] as float

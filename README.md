@@ -131,6 +131,8 @@ and bite.
 
 **Real people:** most Londoners, and Harry himself, are professionally modelled people with photographed faces and skin: 27 [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars (MIT licence). Gentlemen in dark suits, working men, constables, ladies and children, dressed for 1866 with top hats, bowlers, caps, the custodian helmet, ladies' hats and long, full skirts. They stand about, walk, run, sprint, talk, sit and wave by Rocketbox motion capture from real actors, with feet planted and no sliding. The procedural rig blends over the capture for fighting, climbing, falling and parkour. See [docs/REAL_PEOPLE.md](docs/REAL_PEOPLE.md).
 
+**Animals:** every horse, deer, stag, fox, rabbit, dog, sheep and cow has a sculpted, skinned body. Each is built from its real anatomy, with real coat colours, hair for manes, tails and brushes, and antlers and horns. They move by their real gaits (walk, trot, canter and gallop, with correct footfalls), with hooves planted where they land. They also graze, look up alert, lie down, rear, and fall dead on their side. Cinder has a saddle and bridle, and the London cabs and carts are drawn by harnessed horses. See [docs/ANIMALS.md](docs/ANIMALS.md).
+
 **Generated people:** the other looks (priests, house guards, the background crowd) are built from the MakeHuman data: everyone in the game used to be a real human body (from the CC0 MakeHuman
 data) in period clothes: gentlemen in frock coats and top hats, ladies in crinolines and
 bonnets, costermongers, constables, rookery folk and Harry himself, each one different

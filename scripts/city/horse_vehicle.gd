@@ -152,7 +152,10 @@ func _animate(delta: float) -> void:
 	for i in _wheels.size():
 		_wheels[i].rotation.x -= delta * speed / _wheel_r[i]
 	for h in _horses:
-		h.position.y = absf(sin(_phase)) * 0.05 * trot
+		if h is AnimalBody:
+			(h as AnimalBody).update_body(delta, speed)
+		else:
+			h.position.y = absf(sin(_phase)) * 0.05 * trot
 	if _driver and _near and _far_frame % 6 == 0:
 		_driver.update_body(0.0, NPCBody.Pose.SIT, delta * 6.0)
 
@@ -208,6 +211,25 @@ func _build() -> void:
 
 
 func _add_horse(at: Vector3, coat: Color) -> void:
+	if AnimalLook.has_species("horse"):
+		# A real horse in harness, trotting when the cab does.
+		var body := AnimalBody.new()
+		body.species = "horse"
+		body.tack = "harness"
+		body.variation_seed = _rng.randi()
+		body.size = 1.08 if kind in [Kind.DRAY, Kind.CART] else 1.0
+		body.position = at
+		add_child(body)
+		if body.is_ok():
+			_horses.append(body)
+			# The traces back to the vehicle.
+			var tmb := MeshBuilder.new()
+			var harness := _mat(Color(0.06, 0.04, 0.03), 0.45)
+			for s: float in [-1.0, 1.0]:
+				tmb.add_box(Vector3(0.03, 0.03, 2.2), Vector3(s * 0.34, 1.3 * body.size, 1.0), harness)
+			tmb.build_into(body, "Traces")
+			return
+		body.queue_free()
 	var horse := Node3D.new()
 	horse.position = at
 	add_child(horse)

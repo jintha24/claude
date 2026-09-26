@@ -13,6 +13,7 @@ var _yaw := 0.0
 var _side := 1.0
 var _last := Vector3.ZERO
 var _speed := 0.0
+var _body: AnimalBody
 
 static var _meshes := {}
 
@@ -25,6 +26,17 @@ func _ready() -> void:
 	var coats: Array[Color] = [Color(0.3, 0.2, 0.12), Color(0.08, 0.07, 0.06), Color(0.75, 0.7, 0.62), Color(0.5, 0.38, 0.22)]
 	var coat := coats[rng.randi() % coats.size()]
 	var s := rng.randf_range(0.75, 1.15)
+	if AnimalLook.has_species("dog"):
+		# A real mongrel, trotting at its owner's heel.
+		_body = AnimalBody.new()
+		_body.species = "dog"
+		_body.variation_seed = rng.randi()
+		_body.size = s
+		add_child(_body)
+		if _body.is_ok():
+			return
+		_body.queue_free()
+		_body = null
 	scale = Vector3(s, s, s)
 	var key := coat.to_html(false)
 	if not _meshes.has(key):
@@ -94,6 +106,11 @@ func _process(delta: float) -> void:
 	var gy: float = ground_fn.call(global_position.x, global_position.z) if ground_fn.is_valid() else o.y
 	global_position.y = gy
 	rotation.y = _yaw
+	if _body:
+		# Standing about, it has its nose to the ground.
+		_body.want("graze", 1.0 if _speed < 0.2 else 0.0, 1.5)
+		_body.update_body(delta, _speed, 0.0, _yaw)
+		return
 	_phase += delta * (4.0 + _speed * 4.0)
 	for i in 4:
 		_legs[i].rotation.x = sin(_phase + (0.0 if i in [0, 3] else PI)) * 0.6 * clampf(_speed / 2.0, 0.0, 1.0)

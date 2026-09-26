@@ -47,6 +47,8 @@ var _phase := 0.0
 var _visual: Node3D
 var _head: Node3D
 var _legs: Array[Node3D] = []
+## The real body, when the model exists (else the stand-in shapes).
+var _body: AnimalBody
 
 
 func _ready() -> void:
@@ -316,6 +318,23 @@ func _build_body() -> void:
 	_visual = Node3D.new()
 	_visual.name = "Body"
 	add_child(_visual)
+	var kind := "rabbit"
+	match species:
+		Species.DEER:
+			kind = "stag" if is_stag else "deer"
+		Species.FOX:
+			kind = "fox"
+	if AnimalLook.has_species(kind):
+		# The real animal: sculpted, coated, and walked, trotted and galloped by its gaits.
+		_body = AnimalBody.new()
+		_body.species = kind
+		_body.variation_seed = get_instance_id()
+		_body.size = randf_range(0.92, 1.06)
+		_visual.add_child(_body)
+		if _body.is_ok():
+			return
+		_body.queue_free()
+		_body = null
 	var coat := StandardMaterial3D.new()
 	var pale := StandardMaterial3D.new()
 	var dark := StandardMaterial3D.new()
@@ -414,6 +433,13 @@ func _build_body() -> void:
 
 
 func _animate(delta: float) -> void:
+	if _body:
+		_visual.rotation.y = _yaw
+		_body.want("dead", 1.0 if state == State.DEAD else 0.0, 2.5)
+		_body.want("graze", 1.0 if state == State.GRAZE else 0.0, 1.5)
+		_body.want("alert", 1.0 if state == State.ALERT else 0.0, 3.0)
+		_body.update_body(delta, 0.0 if state == State.DEAD else _speed, 0.0, _yaw)
+		return
 	if state == State.DEAD:
 		_visual.rotation = Vector3(0, _yaw, PI * 0.5)
 		_visual.position = Vector3(0, 0.3 if species == Species.DEER else 0.05, 0)
