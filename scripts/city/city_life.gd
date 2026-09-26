@@ -15,6 +15,8 @@ extends Node3D
 ## Passers-by kept within SPAWN_MAX of the player at the busiest hour.
 @export var max_people: int = 56
 @export var max_constables: int = 3
+## Street scenes going on round the player at once (each one to four people).
+@export var max_scenes: int = 12
 
 const SPAWN_MIN := 28.0
 const SPAWN_MAX := 85.0
@@ -28,6 +30,31 @@ var _routes: Array[PatrolRoute] = []
 var _rng := RandomNumberGenerator.new()
 var _timer := 0.0
 var _counter := 0
+var _scenes: Array[Dictionary] = []
+var _used_doors := {}
+
+## What goes on at each kind of door, and when: [what, door kind, hours, people, outfits,
+## pose, second pose, lines]. People "1-3" come as a group round the doorstep.
+const SCENES: Array = [
+	["sweep", "house", Vector2(6.5, 10.5), 1, [NPCBody.Outfit.LADY, NPCBody.Outfit.RAGGED], NPCBody.Pose.BROWSE, NPCBody.Pose.NORMAL,
+		["These steps won't scrub themselves.", "Soot, soot, soot. Every blessed day.", "Morning, love."]],
+	["gossip", "house", Vector2(9.5, 18.5), 2, [NPCBody.Outfit.LADY], NPCBody.Pose.TALK, NPCBody.Pose.NORMAL,
+		["...and she never even said thank you.", "Her at number nine's expecting again.", "I heard the Hill Fox gave a whole guinea to the widow Pratt.", "Price of coal! It's robbery."]],
+	["pipe", "house", Vector2(18.0, 22.5), 1, [NPCBody.Outfit.WORKER, NPCBody.Outfit.GENTLEMAN], NPCBody.Pose.LOOK_AROUND, NPCBody.Pose.NORMAL,
+		["Evenin'.", "Mild night for it.", "Don't let the missus see you out here."]],
+	["keeper", "shop", Vector2(8.0, 19.0), 1, [NPCBody.Outfit.WORKER, NPCBody.Outfit.GENTLEMAN], NPCBody.Pose.NORMAL, NPCBody.Pose.WAVE,
+		["Come in, come in! Best prices in the street.", "Fresh in today, madam!", "Mind the step, sir."]],
+	["window", "shop", Vector2(9.0, 19.0), 2, [NPCBody.Outfit.LADY, NPCBody.Outfit.GENTLEMAN], NPCBody.Pose.BROWSE, NPCBody.Pose.TALK,
+		["Oh, isn't that lovely.", "Far too dear.", "Perhaps for Christmas."]],
+	["drinkers", "pub", Vector2(12.0, 0.5), 3, [NPCBody.Outfit.WORKER, NPCBody.Outfit.RAGGED], NPCBody.Pose.TALK, NPCBody.Pose.WAVE,
+		["Your round, Charlie!", "Another pint of porter!", "And I says to him, I says...", "Here's to the Hill Fox!", "Ha! Pull the other one."]],
+	["loading", "work", Vector2(6.5, 18.0), 2, [NPCBody.Outfit.WORKER], NPCBody.Pose.BROWSE, NPCBody.Pose.NORMAL,
+		["Mind your back!", "Up she goes.", "Who packed this, a giant?", "Two more and we're done."]],
+	["play", "house", Vector2(9.0, 18.0), 3, [NPCBody.Outfit.RAGGED], NPCBody.Pose.NORMAL, -1,
+		["You're it!", "Can't catch me!", "No fair!"]],
+	["beggar", "shop", Vector2(8.0, 21.0), 1, [NPCBody.Outfit.RAGGED], NPCBody.Pose.WAVE, NPCBody.Pose.NORMAL,
+		["Spare a copper, sir?", "God bless you, miss.", "Just a ha'penny for a crust."]],
+]
 
 
 func _ready() -> void:
@@ -67,6 +94,7 @@ func _process(delta: float) -> void:
 		spawned += 1
 	if _constables.size() < _wanted_constables(p):
 		_spawn_constable(p)
+	_update_scenes(p, doors)
 
 
 ## Fewer people at night and in foul weather; none while the player is deep in the old
@@ -205,6 +233,138 @@ func _spawn_person(p: Vector3, doors: Array) -> bool:
 		add_child(dog)
 		dog.global_position = start
 	return true
+
+
+# ---------------------------------------------------------------------------
+# Street scenes: people at their daily business round the doors near the player
+# ---------------------------------------------------------------------------
+func scene_count() -> int:
+	return _scenes.size()
+
+
+func scene_kinds() -> Array:
+	return _scenes.map(func(sc: Dictionary) -> String: return sc["what"])
+
+
+func _update_scenes(p: Vector3, doors: Array) -> void:
+	# Over when everyone's gone in, or the player's left them behind.
+	for sc: Dictionary in _scenes.duplicate():
+		var people: Array = (sc["people"] as Array).filter(func(c: Variant) -> bool: return is_instance_valid(c) and not (c as Node).is_queued_for_deletion())
+		sc["people"] = people
+		var spot: Vector3 = sc["spot"]
+		if people.is_empty() or spot.distance_to(p) > LET_GO:
+			for c: Variant in people:
+				(c as Node).queue_free()
+			_used_doors.erase(sc["door"])
+			_scenes.erase(sc)
+	var inner := CityPlan.CORE.grow(-8.0)
+	if inner.has_point(Vector2(p.x, p.z)) or _scenes.size() >= _wanted_scenes():
+		return
+	var h := GameClock.hours()
+	# Try a few doors near the player for something that fits the door and the hour.
+	for attempt in 6:
+		var d := _pick_door(doors, p, 14.0, 70.0)
+		if d.is_empty():
+			return
+		var at: Vector3 = d[0]
+		var key := Vector2i(roundi(at.x), roundi(at.z))
+		if _used_doors.has(key):
+			continue
+		var kinds := scene_kinds()
+		var fits := SCENES.filter(func(row: Array) -> bool:
+			var cap := 2 if row[0] in ["beggar", "keeper", "pipe"] else 3
+			return row[1] == d[1] and Civilian.in_hours(h, row[2]) and kinds.count(row[0]) < cap)
+		if fits.is_empty():
+			continue
+		_start_scene(fits[_rng.randi() % fits.size()], at, key)
+		return
+
+
+func _wanted_scenes() -> int:
+	var h := GameClock.hours()
+	var n := max_scenes
+	if h < 6.0 or h >= 23.5:
+		n = 3
+	if Weather.rain > 0.5:
+		n = 2
+	return n
+
+
+func _start_scene(row: Array, door: Vector3, key: Vector2i) -> void:
+	var plan := _streamer.plan
+	var what: String = row[0]
+	var out := _street_dir(door)
+	var spot := door + out * (1.2 if what in ["sweep", "keeper", "pipe"] else 2.2)
+	if what == "window" or what == "beggar":
+		spot = door + out * 1.3 + out.cross(Vector3.UP) * (2.0 if what == "window" else -1.6)
+	if what == "play":
+		spot = door + out * 2.6
+	spot.y = plan.ground_y(spot.x, spot.z)
+	var n: int = row[3]
+	var people: Array = []
+	for i in n:
+		var c := Civilian.new()
+		_counter += 1
+		c.name = "Street%s%d" % [what.capitalize(), _counter]
+		var outfits: Array = row[4]
+		c.outfit = outfits[_rng.randi() % outfits.size()]
+		c.display_name = {"sweep": "Housewife", "gossip": "Neighbour", "pipe": "Neighbour", "keeper": "Shopkeeper", "window": "Shopper",
+			"drinkers": "Drinker", "loading": "Carter", "play": "Urchin", "beggar": "Beggar"}.get(what, "Passer-by")
+		if what == "play":
+			c.fixed_height = _rng.randf_range(1.2, 1.42)
+		c.look_seed = _rng.randi() % 100000
+		c.walk_speed = _rng.randf_range(1.1, 1.4)
+		var from := door
+		from.y = plan.ground_y(from.x, from.z) + 0.05
+		c.position = from
+		add_child(c)
+		# Round the spot, facing into the group (or the door, the window, the street).
+		var place := spot
+		var look := spot + out
+		if n > 1:
+			var a := TAU * i / n + _rng.randf_range(-0.3, 0.3)
+			place = spot + Vector3(cos(a), 0, sin(a)) * (0.55 if n == 2 else 0.8)
+			look = spot
+		match what:
+			"sweep", "keeper":
+				look = spot + out.cross(Vector3.UP) * 2.0
+			"window":
+				look = place - out * 2.0
+			"loading":
+				look = door
+		var hours: Vector2 = row[2]
+		# Not everyone keeps quite the same hours.
+		hours += Vector2(0.0, _rng.randf_range(-0.6, 0.4))
+		if what == "drinkers" and GameClock.hours() >= 22.0 and _rng.randf() < 0.4:
+			c.set_drunk(true)
+		c.start_activity(what, place, look, row[5], row[6], hours, row[7], from)
+		if what == "play":
+			c.set("_target", place)
+		people.append(c)
+	_used_doors[key] = true
+	_scenes.append({"what": what, "people": people, "spot": spot, "door": key})
+
+
+## The way out from a door into the street: from the nearest edge of the block it's in.
+func _street_dir(p: Vector3) -> Vector3:
+	var plan := _streamer.plan
+	for bi in plan.blocks_overlapping(plan.coord_of(p)):
+		var r: Rect2 = (plan.blocks[bi] as Dictionary)["rect"]
+		if not r.grow(0.5).has_point(Vector2(p.x, p.z)):
+			continue
+		var dn := p.z - r.position.y
+		var ds := r.end.y - p.z
+		var dw := p.x - r.position.x
+		var de := r.end.x - p.x
+		var m := minf(minf(dn, ds), minf(dw, de))
+		if m == dn:
+			return Vector3(0, 0, -1)
+		if m == ds:
+			return Vector3(0, 0, 1)
+		if m == dw:
+			return Vector3(-1, 0, 0)
+		return Vector3(1, 0, 0)
+	return Vector3(0, 0, 1)
 
 
 func _outfit_for(district: String) -> NPCBody.Outfit:

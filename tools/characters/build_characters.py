@@ -156,8 +156,16 @@ def build(lib, outfit):
 def main():
     os.makedirs(OUT, exist_ok=True)
     os.makedirs(TEX, exist_ok=True)
-    wanted = sys.argv[1:] or list(OUTFITS)
     lib = Library()
+    if sys.argv[1:] == ["--skin"]:
+        # Only the skin and eye textures (the models stay as they are).
+        textures.bake_skin(BodyState(lib, OUTFITS["gentleman"][0]), TEX, "skin_male", True)
+        textures.bake_skin(BodyState(lib, OUTFITS["lady"][0]), TEX, "skin_female", False)
+        textures.bake_skin(BodyState(lib, OUTFITS["child"][0]), TEX, "skin_child", False, seed=9)
+        textures.bake_eyes(TEX)
+        print("skin done")
+        return
+    wanted = sys.argv[1:] or list(OUTFITS)
     states = {}
     for name in wanted:
         states[name] = build(lib, name)

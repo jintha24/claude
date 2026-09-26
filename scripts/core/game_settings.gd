@@ -197,6 +197,9 @@ static func apply_to_scene(root: Node) -> void:
 		env.ssao_enabled = bool(get_value("graphics/ssao"))
 		env.ssil_enabled = bool(get_value("graphics/ssil"))
 		env.volumetric_fog_enabled = bool(get_value("graphics/volumetric_fog"))
+	# The crowd's size follows the view distance.
+	for t in root.get_tree().get_nodes_in_group("throng"):
+		t.call("rebuild")
 	for s in root.get_tree().get_nodes_in_group("world_streamer"):
 		(s as WorldStreamer).far_radius = int(get_value("graphics/view_distance"))
 	for cam in root.find_children("*", "", true, false):

@@ -8,7 +8,7 @@ extends NPCCharacter
 ## to pickpockets. Merchants stay at their stall and cry their wares.
 ## Every person has real pocket contents rolled from LootTable for their class.
 
-enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE, TRAVEL, CHAT, SHELTER }
+enum State { WANDER, BROWSE, GAWK, SHOUT, TEND_STALL, FLEE, TRAVEL, CHAT, SHELTER, ACTIVITY }
 
 const CHATTER: Array[String] = [
 	"Did you hear about the Hill Fox?", "Terrible price of bread these days.", "Looks like rain again.",
@@ -60,6 +60,18 @@ var _chat_partner: Civilian = null
 var _sing_timer := 0.0
 var _shelter: Node3D = null
 var _rain_check := 0.0
+## A street scene (CityLife): what they're doing, where, till when, then home.
+var activity := ""
+var activity_point := Vector3.ZERO
+var activity_look := Vector3.ZERO
+var activity_pose: int = NPCBody.Pose.NORMAL
+## A second pose they switch to now and then (-1: none): sweeping, lifting, a swig.
+var activity_alt: int = -1
+## The hours they keep at it (x to y, wrapping past midnight).
+var activity_hours := Vector2(0, 24)
+var activity_lines: Array = []
+var home_door := Vector3.ZERO
+var _line_timer := 0.0
 
 
 func _ready() -> void:
@@ -172,6 +184,8 @@ func _physics_process(delta: float) -> void:
 			if _timer <= 0.0 or _chat_partner == null or not is_instance_valid(_chat_partner):
 				_chat_partner = null
 				_resume()
+		State.ACTIVITY:
+			_do_activity(delta)
 		State.FLEE:
 			var away := (global_position - _flee_from)
 			away.y = 0.0
@@ -334,6 +348,49 @@ func go_to(target: Vector3, then: String) -> void:
 	state = State.TRAVEL
 
 
+## Goes to `point` and keeps at `what` there through `hours`, then walks home to `door`
+## and goes in. Play (children) is running about near the point instead of standing.
+func start_activity(what: String, point: Vector3, look: Vector3, pose: int, alt: int, hours: Vector2, lines: Array, door: Vector3) -> void:
+	activity = what
+	activity_point = point
+	activity_look = look
+	activity_pose = pose
+	activity_alt = alt
+	activity_hours = hours
+	activity_lines = lines
+	home_door = door
+	_line_timer = _rng.randf_range(4.0, 20.0)
+	state = State.ACTIVITY
+
+
+static func in_hours(h: float, hours: Vector2) -> bool:
+	return (h >= hours.x and h < hours.y) if hours.x <= hours.y else (h >= hours.x or h < hours.y)
+
+
+func _do_activity(delta: float) -> void:
+	if not in_hours(GameClock.hours(), activity_hours) or (activity != "play" and Weather.rain > 0.5):
+		# Time's up (or it's pouring): home, and in.
+		activity = ""
+		go_to(home_door, "vanish")
+		return
+	if activity == "play":
+		# Tag: dash to a spot near where they're playing, then another.
+		if _move_to(_target, walk_speed * 2.2):
+			var a := _rng.randf() * TAU
+			_target = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, activity_point + Vector3(cos(a), 0.0, sin(a)) * _rng.randf_range(1.0, 4.0))
+		return
+	if not _move_to(activity_point, walk_speed):
+		return
+	_face_point(activity_look)
+	_pose = activity_pose as NPCBody.Pose
+	if activity_alt >= 0 and fmod(float(_frame) / 60.0 + float(get_instance_id() % 7), 6.0) > 4.2:
+		_pose = activity_alt as NPCBody.Pose
+	_line_timer -= delta
+	if _line_timer <= 0.0 and not activity_lines.is_empty():
+		_line_timer = _rng.randf_range(14.0, 30.0)
+		_say(activity_lines[_rng.randi() % activity_lines.size()], 14.0)
+
+
 func _start_chat() -> bool:
 	for node in get_tree().get_nodes_in_group("civilians"):
 		var other := node as Civilian
@@ -359,6 +416,9 @@ func _say(line: String, max_distance: float) -> void:
 
 
 func _resume() -> void:
+	if activity != "":
+		state = State.ACTIVITY
+		return
 	if leaving:
 		state = State.TRAVEL
 		return

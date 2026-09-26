@@ -726,6 +726,8 @@ static func _kerb_strips(b: Dictionary, cr: Rect2) -> Array:
 			out.append(Rect2(r.end.x - w, r.position.y + gap, w, r.size.y - gap * 2.0))
 	var clipped := []
 	for s: Rect2 in out:
+		if s.size.x <= 0.0 or s.size.y <= 0.0:
+			continue # a block too short for a strip between its corner gaps
 		var i := s.intersection(cr)
 		if i.size.x > 0.0 and i.size.y > 0.0:
 			clipped.append(i)

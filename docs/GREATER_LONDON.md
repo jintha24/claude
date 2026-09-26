@@ -150,6 +150,40 @@ Now it is:
   - Walk or drive at them and they clatter up and away, then settle again a little way off.
 - **How they're drawn:** each flock is one draw call, with the wings flapping in the vertex shader.
 
+### Street life (`scripts/city/city_life.gd`, `scripts/npc/civilian.gd`)
+Round the doors near the player, up to 12 street scenes go on at once. The people in them are real townsfolk: you can talk to them, rob them or bump into them. They come out of a door, walk to their spot, get on with their business through their hours, and walk home and in when the day's done (or when it pours).
+
+| Scene | Where | Hours |
+|---|---|---|
+| Sweeping the step | a house | 6:30-10:30 |
+| Neighbours gossiping | a house | 9:30-18:30 |
+| A pipe on the step | a house | 18:00-22:30 |
+| Children playing tag | a house | 9:00-18:00 |
+| The shopkeeper at the door | a shop | 8:00-19:00 |
+| Window-shopping | a shop | 9:00-19:00 |
+| A beggar asking for coppers | a shop | 8:00-21:00 |
+| Drinkers outside, merrier after ten | a pub | noon-00:30 |
+| Carters loading | a workshop or warehouse | 6:30-18:00 |
+
+Each keeps slightly different hours, and each has a few lines they say when Harry's near.
+
+### The crowd (`scripts/world/throng.gd`, `assets/characters/crowd.gdshader`)
+Beyond the people you can talk to, rob or bump into, every pavement is thronged: about 6,700 walkers placed round the old streets and 10,500 round a city street at the busiest hours (on the High preset).
+
+**How it's cheap enough:**
+- Each walker is one instance of a look's one-piece body, baked in two strides by `tools/bake_crowd.gd`.
+- The shader walks them along their stretch of pavement and swings them between the two strides. No bones, physics or pathfinding, and no CPU per frame.
+- They're grouped in 64 m cells, so cells off-screen or past 190 m are skipped whole. The engine also switches to coarser meshes further off (down to about 200 triangles).
+- They fade in beyond 13 m from the camera; nearer than that are the real townsfolk. They fade out by 150 m.
+
+**Where they walk:**
+- In the city, along the middle of every block's pavements, in the 3 x 3 chunks round Harry.
+- In the old streets, along straight, clear runs of the navigation mesh: on the pavements and across the market, and over the road only to cross it.
+
+**How many are out** follows the hour and the weather: all of them in the morning and evening rush, most by day, half in the evening, a handful at 3 am, and far fewer in rain or snow. Lower graphics presets place fewer (down to a third on Low).
+
+`tests/test_throng.gd` checks the numbers, the hours, the rain, and that the crowd follows Harry across the city.
+
 ### Crowds and dogs
 - The city streets hold up to about 56 passers-by round the player at the busiest hours.
 - Some walk their dogs (`scripts/world/street_dog.gd`), which trot at their owner's heel.

@@ -173,6 +173,14 @@ def smoothstep(a, b, x):
     return t * t * (3 - 2 * t)
 
 
+def soften(mask, size, radius):
+    """A mask over the texture (flat), blurred in UV space so its edges fade."""
+    from PIL import ImageFilter
+    img = Image.fromarray((np.clip(mask, 0, 1).reshape(size, size) * 255).astype(np.uint8))
+    img = img.filter(ImageFilter.GaussianBlur(radius))
+    return (np.asarray(img).astype(np.float64) / 255.0).reshape(-1)
+
+
 def blob(P, c, r):
     d2 = ((P - c) ** 2).sum(axis=1)
     return np.exp(-d2 / (r * r))
@@ -214,7 +222,10 @@ def bake_skin(state, out_dir, name, male, size=1024, seed=7):
     col = np.tile(base, (len(flat), 1))
     mott = nz.fbm(P * 9.0, 4)
     fine = nz.fbm(P * 60.0 + 3.1, 3)
-    col *= (1.0 + 0.07 * mott + 0.035 * fine)[:, None]
+    # Uneven tone: warmer and cooler patches, never one flat colour (that reads as wax).
+    col *= (1.0 + 0.12 * mott + 0.05 * fine)[:, None]
+    warm = nz.fbm(P * 5.0 + 11.0, 3)
+    col = col * (1.0 + np.outer(warm, np.array([0.035, -0.01, -0.04])))
     # Blood near the surface: cheeks, nose, ears, lips, knuckles, elbows, knees.
     red = np.zeros(len(flat))
     for side in (-1, 1):
@@ -228,15 +239,22 @@ def bake_skin(state, out_dir, name, male, size=1024, seed=7):
     for jn in ("lowerarm_l", "lowerarm_r", "calf_l", "calf_r"):
         red += blob(P, state.joint(jn), 0.04) * 0.3
     red = np.clip(red, 0, 1)
-    col = col * (1 - red[:, None] * 0.28) + np.array([0.80, 0.42, 0.40]) * red[:, None] * 0.28
+    col = col * (1 - red[:, None] * 0.45) + np.array([0.80, 0.42, 0.40]) * red[:, None] * 0.45
     # Lips.
-    lip_col = np.array([0.66, 0.36, 0.36]) if not male else np.array([0.64, 0.42, 0.40])
-    lip = np.clip(lipsm, 0, 1) * (0.85 + 0.15 * fine)
-    col = col * (1 - lip[:, None]) + lip_col * lip[:, None]
+    # Lips: only a little darker and rosier than the face, with soft edges (a hard-edged
+    # pink patch is what makes a mannequin's mouth).
+    lip_col = np.array([0.70, 0.45, 0.43]) if not male else np.array([0.66, 0.47, 0.43])
+    lip = soften(lipsm, size, 2.5) * (0.85 + 0.15 * fine) * 0.7
+    col = col * (1 - lip[:, None]) + (col * 0.35 + lip_col * 0.65) * lip[:, None]
     # Eyelids a touch darker and pinker; the eye socket a little shadowed.
-    col *= (1.0 - 0.08 * np.clip(lidm, 0, 1))[:, None]
+    lid = soften(lidm, size, 1.5)
+    col = col * (1 - lid[:, None] * 0.16) + np.array([0.62, 0.44, 0.42]) * lid[:, None] * 0.16
     for e in (eye_l, eye_r):
-        col *= (1.0 - 0.07 * blob(P, e + np.array([0, -0.006, 0.0]), 0.022))[:, None]
+        # Shadow in the socket and under the eye, a little violet-brown.
+        sock = blob(P, e + np.array([0, -0.006, 0.0]), 0.024)
+        under = blob(P, e + np.array([0, -0.017, -0.004]), 0.014)
+        shade = np.clip(sock * 0.16 + under * 0.12, 0, 0.3)
+        col = col * (1 - shade[:, None]) + col * np.array([0.72, 0.6, 0.62]) * shade[:, None]
     # Eyebrows: dense short strokes along each brow ridge.
     brow = np.zeros(len(flat))
     for e in (eye_l, eye_r):
@@ -258,8 +276,10 @@ def bake_skin(state, out_dir, name, male, size=1024, seed=7):
         beard *= 1 - smoothstep(0.035, 0.07, np.abs(P[:, 0]) - np.clip(eye_l[1] - P[:, 1], 0, 1) * 0.3)
         beard *= (1 - lipsm).clip(0, 1)
         beard += smoothstep(jaw[1] + 0.01, jaw[1] - 0.03, P[:, 1]) * (P[:, 1] > state.joint("neck_01")[1]) * 0.8
-        beard = np.clip(beard, 0, 1) * (0.7 + 0.3 * (0.5 + 0.5 * nz(P * 700.0)))
-        col = col * (1 - beard[:, None] * 0.22) + np.array([0.42, 0.38, 0.37]) * beard[:, None] * 0.22
+        beard = soften(np.clip(beard, 0, 1), size, 4.0)
+        stubble = np.clip(0.5 + 0.8 * nz(P * 900.0), 0, 1)
+        beard = beard * (0.45 + 0.55 * stubble)
+        col = col * (1 - beard[:, None] * 0.13) + col * np.array([0.62, 0.6, 0.62]) * beard[:, None] * 0.13
     # Nails: pale pink at the finger tips (the last joints, backs of the fingers).
     tips = np.isin(names, [f + "_03_l" for f in ("index", "middle", "ring", "pinky", "thumb")] + [f + "_03_r" for f in ("index", "middle", "ring", "pinky", "thumb")])
     col = np.where(tips[:, None], col * 0.85 + np.array([0.86, 0.72, 0.68]) * 0.15, col)
@@ -275,6 +295,14 @@ def bake_skin(state, out_dir, name, male, size=1024, seed=7):
     freck = (tile_noise(size, 256, seed + 34) > 0.78) * np.clip(tile_fbm(size, 8, seed + 35, 2) + 0.2, 0, 1)
     albedo = albedo * (1.0 - freck[..., None] * np.array([0.05, 0.1, 0.12]))
     save_rgb(albedo, os.path.join(out_dir, name + ".jpg"))
+    # Pores and fine lines as a normal map; oilier nose, forehead and lips in the roughness.
+    height = pores * 0.7 + tile_noise(size, 96, seed + 36) * 0.3
+    Image.fromarray(height_to_normal(height, 2.2)).save(os.path.join(out_dir, name + "_n.png"), optimize=True)
+    tzone = (blob(P, nose_tip, 0.03) + blob(P, np.array([0.0, eye_l[1] + 0.045, eye_l[2] - 0.01]), 0.035)).clip(0, 1)
+    rough = 0.66 - 0.12 * tzone - 0.2 * soften(lipsm, size, 2.0) + 0.04 * fine
+    rough = rough.reshape(size, size) + 0.05 * (np.clip(pores, 0, 1) - 0.5)
+    r8 = (np.clip(rough, 0.3, 0.9) * 255).astype(np.uint8)
+    Image.fromarray(r8).save(os.path.join(out_dir, name + "_r.png"), optimize=True)
     return albedo
 
 
@@ -290,7 +318,7 @@ def bake_eyes(out_dir):
     sat = (mx - mn) / np.maximum(mx, 1e-6)
     iris = (sat > 0.18) & (mx > 0.05) & (mx < 0.95)
     lum = rgb.mean(axis=2, keepdims=True)
-    variants = {"eye_brown": None, "eye_hazel": np.array([0.55, 0.45, 0.22]), "eye_blue": np.array([0.32, 0.48, 0.66]), "eye_grey": np.array([0.47, 0.52, 0.55])}
+    variants = {"eye_brown": np.array([0.42, 0.27, 0.15]), "eye_hazel": np.array([0.55, 0.45, 0.22]), "eye_blue": np.array([0.32, 0.48, 0.66]), "eye_grey": np.array([0.47, 0.52, 0.55])}
     for name, tint in variants.items():
         out = rgb.copy()
         if tint is not None:

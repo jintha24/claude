@@ -224,6 +224,7 @@ func _purse_snatch(spot: Vector3) -> void:
 	var thief := _person("Cutpurse", NPCBody.Outfit.RAGGED, spot + away.normalized() * 1.6, 1.66)
 	lady.face(thief)
 	thief.add_collision_exception_with(lady) # he barges past her
+	thief.collision_mask &= ~NPCCharacter.LAYER_NPC # and dodges through the crowd
 	_state = {"lady": lady, "thief": thief, "phase": "run", "purse": false}
 	var run_to := spot + away.normalized() * 70.0 + Vector3(_rng.randf_range(-20, 20), 0, _rng.randf_range(-20, 20))
 	if place == "london":

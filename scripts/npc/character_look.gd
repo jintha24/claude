@@ -274,12 +274,18 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			var skin := "skin_female" if look == "lady" else ("skin_child" if look == "child" else "skin_male")
 			m.albedo_texture = _tex(skin + ".jpg")
 			m.albedo_color = tone
-			# Real skin: a soft, slightly oily sheen and only a little light passing through
-			# (too much scattering and a glowing rim are what make faces look like wax).
-			m.roughness = 0.52
-			m.metallic_specular = 0.45
+			# Real skin: pores and fine lines (normal map), oilier T-zone and lips and a matt
+			# rest (roughness map), and only a little light passing through. Smooth, even,
+			# uniformly glossy skin is what reads as wax.
+			m.normal_enabled = true
+			m.normal_texture = _tex(skin + "_n.png")
+			m.normal_scale = 0.12 # (the face is a small part of the texture: keep pores fine)
+			m.roughness = 1.0
+			m.roughness_texture = _tex(skin + "_r.png")
+			m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+			m.metallic_specular = 0.38
 			m.subsurf_scatter_enabled = true
-			m.subsurf_scatter_strength = 0.12
+			m.subsurf_scatter_strength = 0.1
 			m.subsurf_scatter_skin_mode = true
 		"eye":
 			m.albedo_texture = _tex(eye + ".png")
@@ -287,7 +293,8 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			m.clearcoat_enabled = true
 			m.clearcoat = 1.0
 		"lash":
-			m.albedo_color = Color(0.03, 0.025, 0.02)
+			# Lashes are fine and brownish; solid black reads as painted eyeliner.
+			m.albedo_color = Color(0.16, 0.12, 0.09)
 			m.roughness = 0.9
 		"teeth":
 			m.albedo_color = Color(0.85, 0.82, 0.74)
@@ -298,8 +305,8 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			m.normal_enabled = true
 			m.normal_texture = _tex("hair_n.png")
 			m.normal_scale = 0.6
-			m.roughness = 0.6
-			m.metallic_specular = 0.45
+			m.roughness = 0.72
+			m.metallic_specular = 0.3
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 			m.alpha_scissor_threshold = 0.5 if slot == "beard" else 0.3
 			m.vertex_color_use_as_albedo = true # alpha thins out towards hairlines
@@ -311,7 +318,7 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 				m.albedo_texture = _tex("cloth_%s.jpg" % spec[0])
 				m.normal_enabled = true
 				m.normal_texture = _tex("cloth_%s_n.png" % spec[0])
-				m.normal_scale = 0.35 if spec[0] == "leather" else 0.7
+				m.normal_scale = 0.35 if spec[0] == "leather" else 1.0
 			# Mapped in the model's own space, not along the body's UVs: those are laid out for
 			# skin and would stretch the weave over the chest, knees and elbows.
 			m.uv1_triplanar = true
@@ -322,10 +329,11 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			if spec[0] in ["wool", "tweed", "felt", "linen", "silk"]:
 				# Fabric: fibres catch the light at grazing angles (a soft sheen at the
 				# silhouette) and there's no hard highlight anywhere.
+				# (Kept faint: a strong rim makes cloth look like foam.)
 				m.rim_enabled = true
-				m.rim = 0.45
+				m.rim = 0.18
 				m.rim_tint = 0.85
-				m.metallic_specular = 0.25
+				m.metallic_specular = 0.2
 			elif spec[0] == "leather":
 				m.metallic_specular = 0.35
 			m.vertex_color_use_as_albedo = true

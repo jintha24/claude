@@ -21,6 +21,7 @@ func run_tests() -> void:
 	await _test_birds()
 	await _test_crowds()
 	await _test_encounters()
+	await _test_street_scenes()
 
 
 func _test_sky() -> void:
@@ -155,3 +156,33 @@ func _test_encounters() -> void:
 	check("she thanks him with sixpence, and his Legend grows", harry.inventory.money == money + 6 and Progress.legend > legend)
 	await wait(420)
 	check("then the street goes back to normal", enc.active == "", enc.active)
+
+
+func _test_street_scenes() -> void:
+	# People at their daily business round the doors: sweeping steps, gossiping, keeping
+	# shop, drinking outside the pub, loading carts, children at play.
+	GameClock.minutes = 11.0 * 60.0
+	Weather.set_weather(Weather.Kind.CLEAR, true)
+	await tp(Vector3(330.0, 0.4, -150.0))
+	city.build_all_now(harry.global_position)
+	await wait_until(func() -> bool: return life.scene_count() >= 5, 900)
+	check("street scenes go on round the player", life.scene_count() >= 5, str(life.scene_kinds()))
+	var kinds := {}
+	for k: String in life.scene_kinds():
+		kinds[k] = true
+	check("...all sorts of them", kinds.size() >= 3, str(kinds.keys()))
+	var busy := func() -> Array:
+		return get_nodes_in_group_safe("civilians").filter(func(n: Node) -> bool:
+			var c := n as Civilian
+			return c.state == Civilian.State.ACTIVITY and c.activity != "play" and c.global_position.distance_to(c.activity_point) < 0.8)
+	await wait_until(func() -> bool: return busy.call().size() >= 3, 1200)
+	check("people walk to their spot and get on with it", busy.call().size() >= 3, str(busy.call().size()))
+	# Late at night they go home, and in.
+	GameClock.minutes = 23.9 * 60.0
+	var going := func() -> int:
+		return get_nodes_in_group_safe("civilians").filter(func(n: Node) -> bool:
+			var c := n as Civilian
+			return c.activity in ["sweep", "gossip", "keeper", "window", "loading", "play"]).size()
+	await wait_until(func() -> bool: return going.call() == 0, 600)
+	check("when their day's done they go home", going.call() == 0, str(going.call()))
+	GameClock.minutes = 11.0 * 60.0
