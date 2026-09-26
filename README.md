@@ -118,6 +118,7 @@ and bite.
 - **One-command builds:**
   - `tools\build_windows.bat` builds the game and installer on Windows.
   - `tools/build_release.sh` builds Windows and Linux, runs the exported game's self-test (`--smoke-test`) and zips both for itch.io.
+- **Soak test:** `godot --headless --path . --script res://tools/soak_test.gd` plays the whole game unattended (the hills by day and night, riding, hunting, the road to London, every district in every weather, street incidents, save and load, and back). It reports any fall out of the world, leaked nodes, memory creep or long stalls, and the log shows any engine error.
 - **Release helpers:** version bumping (`tools/set_version.sh`), Steam upload scripts (SteamPipe) and itch.io publishing (butler).
 - **In-game extras:** the title screen shows the version, and **F12** saves a screenshot without the HUD.
 
@@ -131,7 +132,7 @@ and bite.
 **Realistic people:** everyone in the game is a real human body (from the CC0 MakeHuman
 data) in period clothes: gentlemen in frock coats and top hats, ladies in crinolines and
 bonnets, costermongers, constables, rookery folk and Harry himself, each one different
-in build, face, skin, hair, beard and colours. See [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md).
+in build, face, skin, hair, beard and colours. Hair and beards are layered shells with a soft, strandy edge; contact shadows are baked into every character (under collars and brims, in the folds where garments meet); and nobody stands dead still: they breathe, shift their weight and glance about. See [docs/REALISTIC_LOOK.md](docs/REALISTIC_LOOK.md).
 
 **Daily routines:** the town is a roster of about 130 residents, each with a home, a trade
 and a day. Costermongers keep their stalls from half past six to half past six; clerks

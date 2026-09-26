@@ -200,3 +200,14 @@ Keep collision as the simple boxes, so climbing stays reliable.
 
   All of these are already set.
 - **Recommended PC** for this look: RTX 3060 / RX 6700 or better, 16 GB RAM.
+
+
+## Hair, contact shadows and idle life
+
+**Hair and beards** (`tools/characters/build_characters.py`, `add_fur`): the base shell plus three lifted layers, each 2.2 mm further out and cut away more by the strand texture (vertex alpha 0.8, 0.62, 0.46). The result has volume and a broken, strandy hairline instead of a painted cap. The layers are only drawn within 30 m, cast no shadows, and are left out of the far body.
+
+**Contact shadows** (`bake_ao`): ambient occlusion baked into every piece's vertex colours. The character is voxelised at 1.5 cm, and from each vertex 16 directions over its hemisphere are marched out to 24 cm. It darkens where surfaces crowd each other: under collars and hat brims, in armpits, between the legs, where garments overlap. Strength 0.6, never darker than half. The skin material uses the vertex colour too.
+
+**Skin** (`textures.py`, `bake_skin`): stronger, uneven tone, and redness at cheeks, nose, ears and knuckles. Also shadowed eye sockets, soft rosy lips, light stubble, and pore normal and roughness maps (`skin_*_n.png`, `skin_*_r.png`). Rebuild only the skin with `python3 build_characters.py --skin`.
+
+**Idle life** (`scripts/npc/npc_body.gd`): anyone standing about breathes, slowly shifts their weight from foot to foot (hips sway, the unweighted knee bends), glances round now and then, and lets their arms hang easy. Each person is out of step with the rest.

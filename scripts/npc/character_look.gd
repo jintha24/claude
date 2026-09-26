@@ -165,7 +165,7 @@ static func dress(model: Node3D, look: String, seed: int) -> void:
 			continue
 		# Optional pieces.
 		if n.begins_with("beard_"):
-			mi.visible = beard != "" and n == "beard_" + beard
+			mi.visible = beard != "" and (n == "beard_" + beard or n.begins_with("beard_%s_fur" % beard))
 		elif n.begins_with("hat_top"):
 			mi.visible = look == "harry" or hat_choice == "top"
 		elif n.begins_with("hat_bowler"):
@@ -182,7 +182,9 @@ static func dress(model: Node3D, look: String, seed: int) -> void:
 		# well before the person does, only the big pieces cast shadows, and beyond
 		# RANGE_NEAR the whole person is the one-piece far body instead.
 		var reach := PerfTuning.RANGE_NEAR if has_far else PerfTuning.RANGE_PERSON
-		if n in FINE_DETAIL or n.ends_with("_buttons"):
+		if n.contains("_fur"):
+			reach = minf(reach, 30.0) # hair's volume only shows close to
+		elif n in FINE_DETAIL or n.ends_with("_buttons"):
 			reach = minf(reach, PerfTuning.RANGE_FACE)
 		elif n in SMALL_DETAIL or n.ends_with("_band") or n.ends_with("_peak") or n.ends_with("_plate"):
 			reach = minf(reach, PerfTuning.RANGE_SMALL_DETAIL)
@@ -274,6 +276,7 @@ static func material(slot: String, look: String, colours: Dictionary, tone: Colo
 			var skin := "skin_female" if look == "lady" else ("skin_child" if look == "child" else "skin_male")
 			m.albedo_texture = _tex(skin + ".jpg")
 			m.albedo_color = tone
+			m.vertex_color_use_as_albedo = true # (contact shadows baked in: tools/characters)
 			# Real skin: pores and fine lines (normal map), oilier T-zone and lips and a matt
 			# rest (roughness map), and only a little light passing through. Smooth, even,
 			# uniformly glossy skin is what reads as wax.

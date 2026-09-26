@@ -354,6 +354,30 @@ func _pose_mannequin(delta: float) -> void:
 			_shoulder[1].rotation.x = deg_to_rad(160.0)
 			_shoulder[1].rotation.z = deg_to_rad(-15.0) + sin(_t * 9.0) * deg_to_rad(20.0)
 			_elbow[1].rotation.x = deg_to_rad(20.0)
+	# Standing about: nobody stands dead still. Breathing, a slow shift of weight from one
+	# foot to the other, now and then a glance round, arms hanging easy. Each person is
+	# out of step with the rest.
+	if move < 0.2 and pose in [Pose.NORMAL, Pose.LOOK_AROUND, Pose.TALK, Pose.BROWSE]:
+		var still := 1.0 - move * 5.0
+		var o := float(absi(variation_seed) % 997) * 0.37
+		var breath := sin(_t * 1.5 + o)
+		_spine.rotation.x += breath * deg_to_rad(0.8) * still
+		var shift := sin(_t * 0.31 + o)
+		_hips.position.x = shift * 0.022 * still
+		_hips.rotation.z = -shift * deg_to_rad(1.6) * still
+		for i in 2:
+			var loaded := shift if i == 0 else -shift
+			_knee[i].rotation.x -= maxf(-loaded, 0.0) * deg_to_rad(7.0) * still
+			_shoulder[i].rotation.x += breath * deg_to_rad(0.6) * still
+			if pose == Pose.NORMAL:
+				_elbow[i].rotation.x = maxf(_elbow[i].rotation.x, deg_to_rad(14.0 + 4.0 * i))
+		if pose == Pose.NORMAL:
+			var glance := sin(_t * 0.19 + o * 1.7)
+			_head.rotation.y += signf(glance) * smoothstep(0.55, 0.9, absf(glance)) * deg_to_rad(28.0) * still
+			_head.rotation.x += sin(_t * 0.27 + o) * deg_to_rad(4.0) * still
+	else:
+		_hips.position.x = 0.0
+		_hips.rotation.z = 0.0
 	if has_umbrella_open():
 		_shoulder[0].rotation.x = deg_to_rad(70.0)
 		_shoulder[0].rotation.z = deg_to_rad(-15.0)

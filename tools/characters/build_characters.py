@@ -44,7 +44,7 @@ FAR_CHANNEL = {"skin": 0, "teeth": 0, "hair": 1, "beard": 1, "lash": 1,
                "cravat": 7, "trim": 7, "buttons": 7, "badge": 7,
                "hat": 8, "cap": 8, "helmet": 8, "bonnet": 8}
 FAR_VARIANT = [("beard_full", 1), ("beard_moustache", 2), ("beard_chops", 3), ("hat_top", 4), ("hat_bowler", 5), ("hat_cap", 6), ("hat_bonnet", 7)]
-FAR_SKIP = ("lashes", "teeth")
+FAR_SKIP = ("lashes", "teeth", "hair_fur1", "hair_fur2", "hair_fur3") + tuple("beard_%s_fur%d" % (b, k) for b in ("full", "moustache", "chops") for k in (1, 2, 3))
 FAR_CELL = 0.025
 
 
@@ -97,6 +97,87 @@ def far_body(pieces, variants):
     return merged, [mean(d) for d in deltas]
 
 
+# ---------------------------------------------------------------------------
+# Hair with volume, and contact shadows
+# ---------------------------------------------------------------------------
+FUR_LAYERS = ((0.0022, 0.8), (0.0044, 0.62), (0.0066, 0.46))
+
+
+def add_fur(pieces):
+    """Hair and beards as a stack of shells (the base plus three lifted layers, each thinner
+    and more broken up than the last): real volume and a soft, strandy edge instead of a
+    painted-on cap."""
+    out = list(pieces)
+    for p in pieces:
+        if p.name != "hair" and not p.name.startswith("beard_"):
+            continue
+        for k, (lift, alpha) in enumerate(FUR_LAYERS):
+            pos = p.positions + p.normals * lift
+            col = p.colors.copy()
+            col[:, 3] *= alpha
+            col[:, :3] *= 1.0 + 0.06 * (k + 1)  # the outer ends catch more light
+            uv = p.uvs + np.array([0.013 * (k + 1), 0.029 * (k + 1)])
+            layer = Piece("%s_fur%d" % (p.name, k + 1), p.material, pos, p.normals.copy(), uv, p.tris.copy(),
+                          p.joints.copy(), p.weights.copy(), col, p.double_sided)
+            out.append(layer)
+    return out
+
+
+def _hemisphere(n=16):
+    """Directions over the upper hemisphere (z up), none lower than about 20 degrees."""
+    out = []
+    golden = np.pi * (3.0 - np.sqrt(5.0))
+    for i in range(n):
+        z = 0.34 + 0.66 * (i + 0.5) / n
+        r = np.sqrt(1.0 - z * z)
+        a = golden * i
+        out.append([np.cos(a) * r, np.sin(a) * r, z])
+    return np.array(out)
+
+
+def bake_ao(pieces, cell=0.015, strength=0.6, floor=0.5):
+    """Ambient occlusion into each piece's vertex colours: darker where the character's own
+    surfaces crowd round (under collars and brims, in armpits, between the legs, in the
+    folds where garments meet). Without it clothes look like smooth foam."""
+    pts = []
+    for p in pieces:
+        if p.name in FAR_SKIP or "_fur" in p.name or p.name == "eyes":
+            continue
+        P, T = p.positions, p.tris
+        a, b, c = P[T[:, 0]], P[T[:, 1]], P[T[:, 2]]
+        pts += [P, (a + b + c) / 3.0, (a + b) * 0.5, (b + c) * 0.5, (a + c) * 0.5]
+    X = np.vstack(pts)
+    lo = X.min(axis=0) - 0.3
+    idx = np.floor((X - lo) / cell).astype(np.int64)
+    dims = idx.max(axis=0) + 40
+    grid = np.zeros(dims, dtype=bool)
+    grid[idx[:, 0], idx[:, 1], idx[:, 2]] = True
+    dirs = _hemisphere()
+    steps = (0.03, 0.05, 0.08, 0.12, 0.17, 0.24)
+    for p in pieces:
+        if p.name in ("eyes", "lashes", "teeth"):
+            continue
+        P, N = p.positions, p.normals
+        N = N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
+        helper = np.where(np.abs(N[:, 1:2]) < 0.9, np.array([[0.0, 1.0, 0.0]]), np.array([[1.0, 0.0, 0.0]]))
+        tan = np.cross(helper, N)
+        tan /= np.maximum(np.linalg.norm(tan, axis=1, keepdims=True), 1e-9)
+        bit = np.cross(N, tan)
+        start = P + N * (cell * 1.2)
+        occl = np.zeros(len(P))
+        for d in dirs:
+            w = tan * d[0] + bit * d[1] + N * d[2]
+            hit = np.zeros(len(P), dtype=bool)
+            for s in steps:
+                q = np.floor((start + w * s - lo) / cell).astype(np.int64)
+                q = np.clip(q, 0, dims - 1)
+                hit |= grid[q[:, 0], q[:, 1], q[:, 2]]
+            occl += hit * d[2]
+        ao = 1.0 - strength * occl / dirs[:, 2].sum()
+        p.colors = p.colors.copy()
+        p.colors[:, :3] *= np.clip(ao, floor, 1.0)[:, None]
+
+
 def morph_params(base, name):
     p = dict(base)
     if name == "heavy":
@@ -116,7 +197,8 @@ def build(lib, outfit):
     base = BodyState(lib, base_params)
     anatomy = Anatomy(base)
     builder = Builder(anatomy)
-    pieces = outfit_pieces(outfit, builder, base, male)
+    pieces = add_fur(outfit_pieces(outfit, builder, base, male))
+    bake_ao(pieces)
     morphs = [] if outfit == "harry" else MORPHS
     variants = []
     for m in morphs:
@@ -124,7 +206,7 @@ def build(lib, outfit):
         if m.startswith("face_"):
             detail = random_face(np.random.default_rng(hash(m) % 1000 + 17), 0.7)
         st = BodyState(lib, morph_params(base_params, m), detail, scale=base.scale)
-        variants.append(outfit_pieces(outfit, builder, st, male))
+        variants.append(add_fur(outfit_pieces(outfit, builder, st, male)))
     g = GLB()
     g.add_skeleton(lib.rig.bones, lib.rig.parent, base.heads)
     verts = 0
